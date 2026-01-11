@@ -11,12 +11,15 @@ from datetime import datetime
 import uuid
 import logging
 
-from services.gsl_dictionary_service import GSLDictionaryService
-from services.mediapipe_service import MediaPipeService
-from services.translation_service import TranslationService
-from services.avatar_service import AvatarService
-from database.models import TranslationSession, TranslationEvent
-from database.database import SessionLocal, init_db
+from .services.gsl_dictionary_service import GSLDictionaryService
+from .services.mediapipe_service import MediaPipeService
+from .services.translation_service import TranslationService
+from .services.avatar_service import AvatarService
+from .services.speech_recognition_service import SpeechRecognitionService, SpeechRecognitionConfig
+from backend.sign_recognition.baseline import classify
+from pathlib import Path
+from .database.models import TranslationSession, TranslationEvent
+from .database.database import SessionLocal, init_db
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -40,8 +43,11 @@ app.add_middleware(
 # Initialize services
 dictionary_service = GSLDictionaryService()
 mediapipe_service = MediaPipeService()
-translation_service = TranslationService()
+from .services.translation_service import TranslationConfig
+translation_service = TranslationService(TranslationConfig())
 avatar_service = AvatarService()
+speech_service = SpeechRecognitionService(SpeechRecognitionConfig(device="cpu", language="en", fp16=False, chunk_duration=2.0, overlap_duration=0.5))
+_audio_buffers: Dict[str, Any] = {}
 
 # WebSocket connection managers
 class ConnectionManager:
@@ -74,6 +80,29 @@ class ConnectionManager:
             await connection.send_text(message)
 
 manager = ConnectionManager()
+
+def _save_sample(name: str, payload: Dict[str, Any]):
+    try:
+        out_dir = Path("data")/"processed"/"samples"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / f"{name}.json"
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.warning(f"Failed to save sample: {e}")
+
+def _load_prototypes() -> Dict[str, List[List[float]]]:
+    try:
+        art = Path("ml")/"datasets"/"artifacts"/"sequences.json"
+        if art.exists():
+            with open(art, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            return {k: v for k, v in data.items()}
+    except Exception as e:
+        logger.warning(f"Failed to load prototypes: {e}")
+    return {}
+
+_PROTOTYPES = _load_prototypes()
 
 # Pydantic models
 class TranslationRequest(BaseModel):
@@ -127,13 +156,37 @@ async def video_stream(websocket: WebSocket):
                 # Process frame with MediaPipe
                 pose_data = await mediapipe_service.process_frame(frame_data)
                 
-                # Send pose data back to client
+                # Baseline classification (pose-only)
+                pose_lms = pose_data.get("landmarks", {}).get("pose")
+                predicted_gloss = None
+                predicted_confidence = 0.0
+                if isinstance(pose_lms, dict):
+                    pose_list = pose_lms.get("landmarks", [])
+                else:
+                    pose_list = pose_lms or []
+                seq: List[List[float]] = []
+                for lm in pose_list:
+                    if isinstance(lm, dict):
+                        seq.append([lm.get("x",0), lm.get("y",0), lm.get("z",0)])
+                    elif isinstance(lm, (list, tuple)) and len(lm) >= 3:
+                        seq.append([lm[0], lm[1], lm[2]])
+                if _PROTOTYPES:
+                    try:
+                        g, score = classify({"pose": seq}, _PROTOTYPES)
+                        predicted_gloss = g
+                        predicted_confidence = float(max(0.0, score))
+                    except Exception as e:
+                        logger.warning(f"Baseline classify failed: {e}")
+                
+                # Send pose + baseline result back to client
                 response = {
                     "type": "pose_data",
                     "landmarks": pose_data["landmarks"],
                     "confidence": pose_data["confidence"],
                     "timestamp": message["timestamp"],
-                    "session_id": session_id
+                    "session_id": session_id,
+                    "predicted_gloss": predicted_gloss,
+                    "predicted_confidence": predicted_confidence
                 }
                 
                 await manager.send_personal_message(json.dumps(response), session_id)
@@ -151,6 +204,11 @@ async def video_stream(websocket: WebSocket):
                 db.add(event)
                 db.commit()
                 db.close()
+                _save_sample(f"ws_video_{response['timestamp']}", {
+                    "hands": pose_data.get("landmarks", {}).get("hands", []),
+                    "pose": seq,
+                    "face": pose_data.get("landmarks", {}).get("face", []),
+                })
                 
     except WebSocketDisconnect:
         manager.disconnect(session_id)
@@ -171,25 +229,44 @@ async def audio_stream(websocket: WebSocket):
             message = json.loads(data)
             
             if message["type"] == "audio_chunk":
-                # Process audio with Whisper
-                audio_data = base64.b64decode(message["data"])
+                # Decode Float32 base64 buffer
+                raw = base64.b64decode(message["data"])  
+                import numpy as np
+                audio = np.frombuffer(raw, dtype=np.float32)
+                # Buffer audio and transcribe when chunk ready
+                buf = _audio_buffers.get(session_id)
+                if buf is None:
+                    _audio_buffers[session_id] = []
+                    buf = _audio_buffers[session_id]
+                buf.extend(audio.tolist())
+                chunk_size = int(speech_service.chunk_size) if hasattr(speech_service, 'chunk_size') else 32000
+                overlap = int(speech_service.overlap_size) if hasattr(speech_service, 'overlap_size') else int(0.5 * 16000)
+                response = None
+                if len(buf) >= chunk_size:
+                    chunk = np.array(buf[:chunk_size], dtype=np.float32)
+                    # keep overlap
+                    _audio_buffers[session_id] = buf[chunk_size - overlap:]
+                    try:
+                        result = await speech_service.transcribe_audio_chunk(chunk)
+                        response = {
+                            "type": "transcription",
+                            "text": result.get("text", ""),
+                            "confidence": result.get("confidence", 0.0),
+                            "timestamp": message["timestamp"],
+                            "session_id": session_id
+                        }
+                    except Exception as e:
+                        response = {
+                            "type": "transcription",
+                            "text": "",
+                            "confidence": 0.0,
+                            "error": str(e),
+                            "timestamp": message["timestamp"],
+                            "session_id": session_id
+                        }
                 
-                # Placeholder for Whisper processing
-                transcription = {
-                    "text": "Hello, how are you?",
-                    "confidence": 0.95,
-                    "language": "en"
-                }
-                
-                response = {
-                    "type": "transcription",
-                    "text": transcription["text"],
-                    "confidence": transcription["confidence"],
-                    "timestamp": message["timestamp"],
-                    "session_id": session_id
-                }
-                
-                await manager.send_personal_message(json.dumps(response), session_id)
+                if response:
+                    await manager.send_personal_message(json.dumps(response), session_id)
                 
     except WebSocketDisconnect:
         manager.disconnect(session_id)
