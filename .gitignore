@@ -36,9 +36,14 @@ data/raw_pdf/
 data/chunks_pdf/
 data/images/
 data/embeddings/
+data/processed/
+data/raw/*.pdf
+data/images/signs/
 models/
 *.pth
 *.pt
+*.ckpt
+*.onnx
 *.npy
 
 # Logs and caches
