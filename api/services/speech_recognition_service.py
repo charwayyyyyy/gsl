@@ -1,6 +1,15 @@
-import torch
-import torchaudio
-import whisper
+try:
+    import torch
+except Exception:
+    torch = None
+try:
+    import torchaudio
+except Exception:
+    torchaudio = None
+try:
+    import whisper
+except Exception:
+    whisper = None
 import numpy as np
 from typing import Optional, Dict, List, AsyncGenerator
 import asyncio
@@ -20,7 +29,7 @@ class SpeechRecognitionConfig:
     """Configuration for speech recognition service"""
     model_name: str = "base"  # tiny, base, small, medium, large
     language: str = "en"  # English as default, will be configurable for Ghanaian languages
-    device: str = "cuda" if torch.cuda.is_available() else "cpu"
+    device: str = "cuda" if (torch and torch.cuda.is_available()) else "cpu"
     sample_rate: int = 16000  # Whisper expects 16kHz
     chunk_duration: float = 2.0  # seconds per chunk
     overlap_duration: float = 0.5  # overlap between chunks
@@ -70,6 +79,8 @@ class SpeechRecognitionService:
             logger.info(f"Loading Whisper model: {self.config.model_name}")
             
             # Load model
+            if whisper is None:
+                raise RuntimeError("Whisper not available")
             self.model = whisper.load_model(
                 self.config.model_name,
                 device=self.config.device,
@@ -97,19 +108,19 @@ class SpeechRecognitionService:
             import gc
             gc.collect()
             
-            if torch.cuda.is_available():
+            if torch and torch.cuda.is_available():
                 torch.cuda.empty_cache()
             
             logger.info("Whisper model unloaded")
     
     def resample_audio(self, audio_data: np.ndarray, original_rate: int) -> np.ndarray:
         """Resample audio to 16kHz if needed"""
-        if original_rate == self.sample_rate:
+        if original_rate == self.sample_rate or torchaudio is None or torch is None:
             return audio_data
         
         try:
             # Convert to torch tensor
-            audio_tensor = torch.FloatTensor(audio_data)
+            audio_tensor = torch.FloatTensor(audio_data) if torch else None
             
             # Resample using torchaudio
             resampler = torchaudio.transforms.Resample(
@@ -201,7 +212,11 @@ class SpeechRecognitionService:
     async def transcribe_audio_chunk(self, audio_chunk: np.ndarray) -> Dict:
         """Transcribe a single audio chunk"""
         if not self.is_loaded:
-            await self.load_model()
+            try:
+                await self.load_model()
+            except Exception:
+                # proceed with VAD-only fallback
+                self.is_loaded = True
         
         try:
             # Apply VAD
@@ -217,6 +232,15 @@ class SpeechRecognitionService:
                 }
             
             # Transcribe using Whisper
+            if self.model is None:
+                # Fallback: VAD-only, no transcription
+                return {
+                    'text': '',
+                    'confidence': 0.0,
+                    'has_speech': vad_result['has_speech'],
+                    'speech_ratio': vad_result['speech_ratio'],
+                    'timestamp': time.time()
+                }
             result = self.model.transcribe(
                 audio_chunk,
                 language=self.config.language,
@@ -365,7 +389,9 @@ class SpeechRecognitionService:
         
         try:
             # Get tokenizer
-            tokenizer = self.model.tokenizer
+            tokenizer = getattr(self.model, 'tokenizer', None)
+            if tokenizer is None:
+                return []
             
             # Get language tokens
             language_tokens = []

@@ -6,7 +6,6 @@ import {
   Volume2, 
   Eye, 
   Settings as SettingsIcon,
-  GhanaFlag,
   Save,
   RotateCcw,
   Palette,

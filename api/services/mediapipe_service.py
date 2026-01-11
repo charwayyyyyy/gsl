@@ -1,6 +1,11 @@
 import cv2
 import numpy as np
-import mediapipe as mp
+try:
+    import mediapipe as mp
+    _MP_AVAILABLE = True
+except Exception:
+    mp = None
+    _MP_AVAILABLE = False
 from typing import Dict, List, Any, Optional
 import time
 import asyncio
@@ -39,68 +44,85 @@ class FaceFeatures:
 class MediaPipeService:
     def __init__(self):
         """Initialize MediaPipe solutions for sign language processing"""
-        self.mp_hands = mp.solutions.hands
-        self.mp_pose = mp.solutions.pose
-        self.mp_face_mesh = mp.solutions.face_mesh
-        self.mp_drawing = mp.solutions.drawing_utils
-        self.mp_drawing_styles = mp.solutions.drawing_styles
+        if _MP_AVAILABLE:
+            self.mp_hands = mp.solutions.hands
+            self.mp_pose = mp.solutions.pose
+            self.mp_face_mesh = mp.solutions.face_mesh
+            self.mp_drawing = mp.solutions.drawing_utils
+            self.mp_drawing_styles = mp.solutions.drawing_styles
+        else:
+            self.mp_hands = None
+            self.mp_pose = None
+            self.mp_face_mesh = None
+            self.mp_drawing = None
+            self.mp_drawing_styles = None
         
         # Initialize MediaPipe solutions with optimized parameters
-        self.hands = self.mp_hands.Hands(
+        if _MP_AVAILABLE:
+            self.hands = self.mp_hands.Hands(
             static_image_mode=False,
             max_num_hands=2,
             model_complexity=1,
             min_detection_confidence=0.7,
             min_tracking_confidence=0.5
-        )
+            )
+        else:
+            self.hands = None
         
-        self.pose = self.mp_pose.Pose(
+        if _MP_AVAILABLE:
+            self.pose = self.mp_pose.Pose(
             static_image_mode=False,
             model_complexity=1,
             smooth_landmarks=True,
             min_detection_confidence=0.7,
             min_tracking_confidence=0.5
-        )
+            )
+        else:
+            self.pose = None
         
-        self.face_mesh = self.mp_face_mesh.FaceMesh(
+        if _MP_AVAILABLE:
+            self.face_mesh = self.mp_face_mesh.FaceMesh(
             static_image_mode=False,
             max_num_faces=1,
             refine_landmarks=True,
             min_detection_confidence=0.7,
             min_tracking_confidence=0.5
-        )
+            )
+        else:
+            self.face_mesh = None
         
         # Sign language specific configurations
-        self.sign_language_joints = [
-            # Hand joints important for sign language
-            self.mp_hands.HandLandmark.THUMB_TIP,
-            self.mp_hands.HandLandmark.THUMB_IP,
-            self.mp_hands.HandLandmark.THUMB_MCP,
-            self.mp_hands.HandLandmark.INDEX_FINGER_TIP,
-            self.mp_hands.HandLandmark.INDEX_FINGER_DIP,
-            self.mp_hands.HandLandmark.INDEX_FINGER_PIP,
-            self.mp_hands.HandLandmark.MIDDLE_FINGER_TIP,
-            self.mp_hands.HandLandmark.MIDDLE_FINGER_DIP,
-            self.mp_hands.HandLandmark.MIDDLE_FINGER_PIP,
-            self.mp_hands.HandLandmark.RING_FINGER_TIP,
-            self.mp_hands.HandLandmark.RING_FINGER_DIP,
-            self.mp_hands.HandLandmark.RING_FINGER_PIP,
-            self.mp_hands.HandLandmark.PINKY_TIP,
-            self.mp_hands.HandLandmark.PINKY_DIP,
-            self.mp_hands.HandLandmark.PINKY_PIP,
-            self.mp_hands.HandLandmark.WRIST
-        ]
-        
-        # Body pose joints important for sign language
-        self.body_joints = [
-            self.mp_pose.PoseLandmark.NOSE,
-            self.mp_pose.PoseLandmark.LEFT_SHOULDER,
-            self.mp_pose.PoseLandmark.RIGHT_SHOULDER,
-            self.mp_pose.PoseLandmark.LEFT_ELBOW,
-            self.mp_pose.PoseLandmark.RIGHT_ELBOW,
-            self.mp_pose.PoseLandmark.LEFT_WRIST,
-            self.mp_pose.PoseLandmark.RIGHT_WRIST
-        ]
+        if _MP_AVAILABLE:
+            self.sign_language_joints = [
+                self.mp_hands.HandLandmark.THUMB_TIP,
+                self.mp_hands.HandLandmark.THUMB_IP,
+                self.mp_hands.HandLandmark.THUMB_MCP,
+                self.mp_hands.HandLandmark.INDEX_FINGER_TIP,
+                self.mp_hands.HandLandmark.INDEX_FINGER_DIP,
+                self.mp_hands.HandLandmark.INDEX_FINGER_PIP,
+                self.mp_hands.HandLandmark.MIDDLE_FINGER_TIP,
+                self.mp_hands.HandLandmark.MIDDLE_FINGER_DIP,
+                self.mp_hands.HandLandmark.MIDDLE_FINGER_PIP,
+                self.mp_hands.HandLandmark.RING_FINGER_TIP,
+                self.mp_hands.HandLandmark.RING_FINGER_DIP,
+                self.mp_hands.HandLandmark.RING_FINGER_PIP,
+                self.mp_hands.HandLandmark.PINKY_TIP,
+                self.mp_hands.HandLandmark.PINKY_DIP,
+                self.mp_hands.HandLandmark.PINKY_PIP,
+                self.mp_hands.HandLandmark.WRIST
+            ]
+            self.body_joints = [
+                self.mp_pose.PoseLandmark.NOSE,
+                self.mp_pose.PoseLandmark.LEFT_SHOULDER,
+                self.mp_pose.PoseLandmark.RIGHT_SHOULDER,
+                self.mp_pose.PoseLandmark.LEFT_ELBOW,
+                self.mp_pose.PoseLandmark.RIGHT_ELBOW,
+                self.mp_pose.PoseLandmark.LEFT_WRIST,
+                self.mp_pose.PoseLandmark.RIGHT_WRIST
+            ]
+        else:
+            self.sign_language_joints = []
+            self.body_joints = []
         
         logger.info("MediaPipe service initialized successfully")
 
@@ -156,20 +178,15 @@ class MediaPipeService:
 
     async def _process_media_pipe(self, rgb_frame: np.ndarray) -> Dict[str, Any]:
         """Process frame with all MediaPipe solutions"""
+        if not _MP_AVAILABLE:
+            return {"hands": None, "pose": None, "face": None}
         results = {}
-        
-        # Process hands
-        hand_results = self.hands.process(rgb_frame)
+        hand_results = self.hands.process(rgb_frame) if self.hands else None
         results["hands"] = hand_results
-        
-        # Process pose
-        pose_results = self.pose.process(rgb_frame)
+        pose_results = self.pose.process(rgb_frame) if self.pose else None
         results["pose"] = pose_results
-        
-        # Process face mesh
-        face_results = self.face_mesh.process(rgb_frame)
+        face_results = self.face_mesh.process(rgb_frame) if self.face_mesh else None
         results["face"] = face_results
-        
         return results
 
     def _extract_sign_language_features(self, results: Dict[str, Any], frame: np.ndarray) -> Dict[str, Any]:

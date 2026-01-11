@@ -1,11 +1,11 @@
 # Core FastAPI and web framework
 fastapi==0.104.1
-uvicorn[standard]==0.24.0
+uvicorn==0.24.0
 websockets==12.0
 python-multipart==0.0.6
 
 # Database
-sqlalchemy==2.0.23
+sqlalchemy==2.0.36
 alembic==1.12.1
 # sqlite3 is part of Python stdlib; do not install via pip
 
@@ -45,7 +45,7 @@ xlsxwriter==3.1.9
 
 # Utilities
 python-dotenv==1.0.0
-pydantic==2.5.0
+pydantic==2.12.5
 pydantic-settings==2.1.0
 click==8.1.7
 tqdm==4.66.1

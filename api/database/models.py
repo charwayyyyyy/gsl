@@ -2,7 +2,7 @@ from sqlalchemy import Column, String, Integer, Float, Boolean, DateTime, Text, 
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from datetime import datetime
-from database.database import Base
+from .database import Base
 import uuid
 
 # Association table for many-to-many relationship between signs and sequences
