@@ -1,0 +1,46 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Python
+__pycache__/
+.venv/
+env/
+venv/
+*.pyc
+
+# Data and large artifacts
+Ghanaian Sign Language Dictionary - 3rd Edition.pdf
+data/raw_pdf/
+data/chunks_pdf/
+data/images/
+data/embeddings/
+models/
+*.pth
+*.pt
+*.npy
+
+# Logs and caches
+.cache/
+tmp/

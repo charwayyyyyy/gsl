@@ -1,0 +1,33 @@
+{
+  "entries": [
+    {
+      "id": "HELLO",
+      "gloss": "HELLO",
+      "english_meaning": "greeting",
+      "usage_notes": null,
+      "facial_markers": [],
+      "handshape": null,
+      "location": null,
+      "movement": null,
+      "orientation": null,
+      "both_hands": null,
+      "images": [],
+      "source_page": 1
+    },
+    {
+      "id": "THANK_YOU",
+      "gloss": "THANK YOU",
+      "english_meaning": "politeness",
+      "usage_notes": null,
+      "facial_markers": [],
+      "handshape": null,
+      "location": null,
+      "movement": null,
+      "orientation": null,
+      "both_hands": null,
+      "images": [],
+      "source_page": 1
+    }
+  ],
+  "count": 2
+}
