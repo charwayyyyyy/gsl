@@ -39,20 +39,14 @@ This system translates between Ghana Sign Language and spoken English in real-ti
 ## 📋 Prerequisites
 
 ### System Requirements
-- Python 3.8+
-- Node.js 16+
-- CUDA-compatible GPU (recommended for AI models)
-- 8GB+ RAM
+- Python 3.11 (recommended)
+- Node.js LTS (v18 or v20)
 - Webcam and microphone
+- 8GB+ RAM
 
-### Dependencies
-```bash
-# Python dependencies
-pip install -r requirements.txt
-
-# Frontend dependencies
-npm install
-```
+### Notes
+- Python 3.13 may try to build native wheels (Rust toolchain), causing install failures. Use Python 3.11.
+- If `npm install` throws errors, use `npx pnpm@8.15.8 install` to install frontend dependencies.
 
 ## 🚀 Installation & Setup
 
@@ -92,26 +86,44 @@ cp .env.example .env
 
 ## 🏃‍♂️ Running the Application
 
-### Development Mode
+### Quickstart (Windows)
 ```bash
-# Start backend server
-cd api
-python main.py
+# Create and activate venv
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 
-# Start frontend (in another terminal)
-cd src
-npm run dev
+# Install backend deps
+pip install -r requirements.txt
+pip install -r api/requirements.txt
+
+# Initialize SQLite database
+python scripts/init_sqlite.py
+
+# Start backend (FastAPI)
+python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
+
+# In another terminal: install and start frontend
+npx pnpm@8.15.8 install
+npx pnpm@8.15.8 run dev
+# Open http://localhost:5173
+```
+
+### Helper Scripts
+```bash
+# Backend
+powershell -File scripts/start_backend.ps1
+
+# Frontend
+powershell -File scripts/start_frontend.ps1
 ```
 
 ### Production Mode
 ```bash
 # Build frontend
-cd src
-npm run build
+npx pnpm@8.15.8 run build
 
-# Start production backend
-cd api
-python main.py --production
+# Start backend
+python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
 ```
 
 ## 📖 Usage Guide
@@ -195,24 +207,11 @@ Data outputs:
 
 ### Environment Variables
 ```env
-# Backend Configuration
-API_HOST=localhost
-API_PORT=8000
-WEBSOCKET_PORT=8001
-MODEL_CACHE_DIR=./models
-LOG_LEVEL=INFO
-
-# AI Model Configuration
-WHISPER_MODEL=base
-SIGN_RECOGNITION_MODEL_PATH=./models/sign_recognition.pth
-TRANSLATION_MODEL_PATH=./models/translation_model.pth
-
-# Database Configuration
+# Database
 DATABASE_URL=sqlite:///./gsl_interpreter.db
 
-# Frontend Configuration
+# Frontend
 VITE_API_URL=http://localhost:8000
-VITE_WEBSOCKET_URL=ws://localhost:8001
 ```
 
 ### Model Configuration
@@ -284,22 +283,58 @@ VITE_WEBSOCKET_URL=ws://localhost:8001
 
 ### Project Structure
 ```
-gsl-interpreter/
+gsl/
 ├── api/                    # FastAPI backend
-│   ├── main.py            # Main application
-│   ├── services/          # AI/ML services
-│   ├── database/          # Database models
-│   └── tests/             # Backend tests
-├── src/                   # React frontend
-│   ├── components/        # UI components
-│   ├── pages/            # Application pages
-│   ├── hooks/            # Custom React hooks
-│   ├── stores/           # Zustand state management
-│   └── tests/            # Frontend tests
-├── shared/               # Shared types/utilities
-├── docs/                 # Documentation
-└── tests/                # Integration tests
+│   ├── main.py             # App entry
+│   ├── services/           # Services (translation, mediapipe, etc.)
+│   ├── database/           # SQLAlchemy models & session
+├── src/                    # React frontend
+│   ├── components/         # UI components
+│   ├── pages/              # Home, Interpreter, Settings, Help
+│   ├── hooks/              # WebRTC + WebSocket hooks
+│   ├── stores/             # Zustand app store
+├── scripts/                # Start scripts & DB init
+├── data_pipeline/          # Offline data processing
 ```
+
+## 🔌 API & UI Integration
+
+### Backend Endpoints
+- `GET /health` — health check
+- `WS /api/video/stream` — client sends base64 video frames; server returns `pose_data`
+- `WS /api/audio/stream` — client sends audio chunks; server returns `transcription`
+- `POST /api/translate/sign-to-speech`
+- `POST /api/translate/speech-to-sign`
+- `GET /api/dictionary/search?query=`
+- `GET /api/dictionary/sign/{id}`
+
+### Frontend Routes
+- `/` — Direction selection (start session)
+- `/interpreter` — Live translator UI
+- `/settings` — Accessibility and preferences
+- `/help` — Tutorial and troubleshooting
+
+### CORS
+- Allowed origins: `http://localhost:5173`
+
+## 🔎 Troubleshooting
+
+- "Service is unavailable" on the UI
+  - Ensure the frontend dev server is running at `http://localhost:5173`
+  - Restart the dev server: `npx pnpm@8.15.8 run dev`
+
+- `npm install` errors
+  - Use `npx pnpm@8.15.8 install`
+
+- Python 3.13 package build failures
+  - Install Python 3.11, recreate venv, reinstall requirements
+
+- MediaPipe/Torch missing
+  - Backend runs with graceful fallbacks (rule-based translation, optional mediapipe). Install libs later if needed.
+
+## 🔗 Repository
+
+GitHub: https://github.com/charwayyyyyy/gsl
 
 ### Development Workflow
 1. **Feature Development**: Create feature branch from main
