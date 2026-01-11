@@ -10,6 +10,7 @@ import numpy as np
 from datetime import datetime
 import uuid
 import logging
+import os
 
 from .services.gsl_dictionary_service import GSLDictionaryService
 from .services.mediapipe_service import MediaPipeService
@@ -81,6 +82,14 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+COLLECT_SAMPLES = os.getenv("COLLECT_SAMPLES", "false").lower() == "true"
+if COLLECT_SAMPLES:
+    logger.info("Sample collection enabled")
+else:
+    logger.info("Sample collection disabled")
+
+_collection_buffers: Dict[str, Any] = {}
+
 def _save_sample(name: str, payload: Dict[str, Any]):
     try:
         out_dir = Path("data")/"processed"/"samples"
@@ -147,6 +156,16 @@ async def health_check():
 async def video_stream(websocket: WebSocket):
     session_id = str(uuid.uuid4())
     await manager.connect(websocket, session_id)
+    if COLLECT_SAMPLES:
+        _collection_buffers[session_id] = {
+            "frames": [],
+            "start_time": datetime.now().timestamp(),
+            "predicted_gloss": None,
+            "confidence": 0.0,
+            "last_ts": None,
+            "count": 0,
+        }
+        logger.info(f"Collection started for session: {session_id}")
     
     try:
         while True:
@@ -182,7 +201,7 @@ async def video_stream(websocket: WebSocket):
                         predicted_confidence = float(max(0.0, score))
                     except Exception as e:
                         logger.warning(f"Baseline classify failed: {e}")
-                
+
                 # Send pose + baseline result back to client
                 response = {
                     "type": "pose_data",
@@ -193,7 +212,7 @@ async def video_stream(websocket: WebSocket):
                     "predicted_gloss": predicted_gloss,
                     "predicted_confidence": predicted_confidence
                 }
-                
+
                 await manager.send_personal_message(json.dumps(response), session_id)
                 
                 # Log translation event
@@ -209,14 +228,38 @@ async def video_stream(websocket: WebSocket):
                 db.add(event)
                 db.commit()
                 db.close()
-                _save_sample(f"ws_video_{response['timestamp']}", {
-                    "hands": pose_data.get("landmarks", {}).get("hands", []),
-                    "pose": seq,
-                    "face": pose_data.get("landmarks", {}).get("face", []),
-                })
+                if COLLECT_SAMPLES:
+                    buf = _collection_buffers.get(session_id)
+                    if buf is not None:
+                        buf["frames"].append({
+                            "hands": pose_data.get("landmarks", {}).get("hands", []),
+                            "pose": seq,
+                            "face": pose_data.get("landmarks", {}).get("face", []),
+                        })
+                        buf["predicted_gloss"] = predicted_gloss
+                        buf["confidence"] = predicted_confidence
+                        buf["last_ts"] = message["timestamp"]
+                        buf["count"] += 1
                 
     except WebSocketDisconnect:
         manager.disconnect(session_id)
+        if COLLECT_SAMPLES:
+            buf = _collection_buffers.pop(session_id, None)
+            if buf:
+                end_time = datetime.now().timestamp()
+                start_time = buf["start_time"]
+                duration = max(0.001, end_time - start_time)
+                fps = buf["count"] / duration
+                sample = {
+                    "frames": buf["frames"],
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "fps": fps,
+                    "predicted_gloss": buf["predicted_gloss"],
+                    "confidence": buf["confidence"],
+                }
+                _save_sample(f"session_{session_id}_{int(end_time*1000)}", sample)
+                logger.info(f"Sample saved for session: {session_id} frames={buf['count']} fps={fps:.2f}")
     except Exception as e:
         logger.error(f"Error in video stream: {str(e)}")
         await manager.send_personal_message(json.dumps({"error": str(e)}), session_id)

@@ -1,5 +1,7 @@
 from typing import List, Dict, Any, Tuple
 import numpy as np
+import json
+from pathlib import Path
 
 def average_landmarks(seq: List[List[float]]) -> np.ndarray:
     if not seq:
@@ -13,14 +15,24 @@ def cosine(a: np.ndarray, b: np.ndarray) -> float:
         return 0.0
     return float((a @ b) / (na * nb))
 
-def classify(sequence: Dict[str, Any], prototypes: Dict[str, List[List[float]]]) -> Tuple[str, float]:
+def classify(sequence: Dict[str, Any], prototypes: Dict[str, Any]) -> Tuple[str, float]:
     v = average_landmarks(sequence.get("pose", []))
-    best_gloss = ""
-    best_score = -1.0
-    for gloss, proto_seq in prototypes.items():
-        pv = average_landmarks(proto_seq)
+    best_gloss = "UNKNOWN"
+    best_score = 0.0
+    if not prototypes:
+        return best_gloss, best_score
+    for gloss, proto in prototypes.items():
+        if isinstance(proto, dict) and "centroid" in proto:
+            pv = np.array(proto["centroid"], dtype=float)
+            threshold = float(proto.get("threshold", 0.7))
+        else:
+            pv = average_landmarks(proto)
+            threshold = 0.7
         score = cosine(v, pv)
         if score > best_score:
             best_gloss, best_score = gloss, score
-    return best_gloss, max(0.0, best_score)
+    if best_score < float(prototypes.get(best_gloss, {}).get("threshold", 0.7)) if isinstance(prototypes.get(best_gloss), dict) else (best_score < 0.7):
+        return "UNKNOWN", best_score
+    return best_gloss, best_score
+
 
