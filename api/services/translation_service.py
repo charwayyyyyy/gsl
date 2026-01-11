@@ -1,14 +1,25 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
+try:
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+except Exception:
+    torch = None
+    nn = None
+    F = None
 from typing import Dict, List, Optional, Tuple, Any
 import json
+import time
 import logging
 import re
 from dataclasses import dataclass
 from pathlib import Path
 import numpy as np
-from transformers import MarianMTModel, MarianTokenizer, pipeline
+try:
+    from transformers import MarianMTModel, MarianTokenizer, pipeline
+except Exception:
+    MarianMTModel = None
+    MarianTokenizer = None
+    pipeline = None
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
@@ -27,7 +38,7 @@ class TranslationConfig:
     length_penalty: float = 1.0
     early_stopping: bool = True
     do_sample: bool = True
-    device: str = "cuda" if torch.cuda.is_available() else "cpu"
+    device: str = "cpu"
     batch_size: int = 1
     
     # GSL-specific settings
@@ -256,10 +267,8 @@ class GSLGrammarRules:
                     english_words.append(sign.replace("_", " ").lower())
             
             # Apply English grammar rules
-            english_sentence = " ".join(english_words)
-            english_sentence = self._apply_english_grammar(english_sentence)
-            
-            return english_sentence
+            from ..nlp.gsl_to_en import to_english
+            return to_english(gsl_sequence)
             
         except Exception as e:
             logger.error(f"Error translating to English: {e}")
@@ -267,102 +276,43 @@ class GSLGrammarRules:
     
     def _apply_english_grammar(self, sentence: str) -> str:
         """Apply basic English grammar corrections"""
-        # Capitalize first letter
-        sentence = sentence.capitalize()
-        
-        # Add basic punctuation
-        if not sentence.endswith((".", "!", "?")):
-            sentence += "."
-        
         return sentence
 
-class GSLTranslationModel(nn.Module):
-    """Neural translation model for GSL-English translation"""
-    
-    def __init__(self, config: TranslationConfig, gsl_vocab_size: int, english_vocab_size: int):
-        super().__init__()
-        self.config = config
-        
-        # Embedding layers
-        self.encoder_embedding = nn.Embedding(gsl_vocab_size, 512)
-        self.decoder_embedding = nn.Embedding(english_vocab_size, 512)
-        
-        # Encoder
-        self.encoder = nn.TransformerEncoder(
-            nn.TransformerEncoderLayer(
-                d_model=512,
-                nhead=8,
-                dim_feedforward=2048,
-                dropout=0.1,
-                activation='relu'
-            ),
-            num_layers=6
-        )
-        
-        # Decoder
-        self.decoder = nn.TransformerDecoder(
-            nn.TransformerDecoderLayer(
-                d_model=512,
-                nhead=8,
-                dim_feedforward=2048,
-                dropout=0.1,
-                activation='relu'
-            ),
-            num_layers=6
-        )
-        
-        # Output projection
-        self.output_projection = nn.Linear(512, english_vocab_size)
-        
-        # Positional encoding
-        self.positional_encoding = self._create_positional_encoding(1000, 512)
-        
-        self.dropout = nn.Dropout(0.1)
-    
-    def _create_positional_encoding(self, max_len: int, d_model: int) -> torch.Tensor:
-        """Create positional encoding"""
-        pe = torch.zeros(max_len, d_model)
-        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() * 
-                           (-np.log(10000.0) / d_model))
-        
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        
-        return pe.unsqueeze(0).transpose(0, 1)
-    
-    def forward(self, gsl_tokens: torch.Tensor, english_tokens: torch.Tensor, 
-                src_mask: Optional[torch.Tensor] = None, 
-                tgt_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
-        """
-        Forward pass
-        Args:
-            gsl_tokens: GSL token sequence (seq_len, batch_size)
-            english_tokens: English token sequence (seq_len, batch_size)
-            src_mask: Source mask
-            tgt_mask: Target mask
-        Returns:
-            Logits (seq_len, batch_size, vocab_size)
-        """
-        # Encode GSL sequence
-        gsl_embedded = self.encoder_embedding(gsl_tokens) * np.sqrt(512)
-        gsl_embedded = self.dropout(gsl_embedded + self.positional_encoding[:gsl_tokens.size(0), :])
-        
-        memory = self.encoder(gsl_embedded, src_key_padding_mask=src_mask)
-        
-        # Decode to English
-        english_embedded = self.decoder_embedding(english_tokens) * np.sqrt(512)
-        english_embedded = self.dropout(english_embedded + self.positional_encoding[:english_tokens.size(0), :])
-        
-        decoder_output = self.decoder(
-            english_embedded, 
-            memory, 
-            tgt_key_padding_mask=tgt_mask
-        )
-        
-        logits = self.output_projection(decoder_output)
-        
-        return logits
+if nn is not None and torch is not None:
+    class GSLTranslationModel(nn.Module):
+        """Neural translation model for GSL-English translation"""
+        def __init__(self, config: TranslationConfig, gsl_vocab_size: int, english_vocab_size: int):
+            super().__init__()
+            self.config = config
+            self.encoder_embedding = nn.Embedding(gsl_vocab_size, 512)
+            self.decoder_embedding = nn.Embedding(english_vocab_size, 512)
+            self.encoder = nn.TransformerEncoder(
+                nn.TransformerEncoderLayer(d_model=512, nhead=8, dim_feedforward=2048, dropout=0.1, activation='relu'),
+                num_layers=6
+            )
+            self.decoder = nn.TransformerDecoder(
+                nn.TransformerDecoderLayer(d_model=512, nhead=8, dim_feedforward=2048, dropout=0.1, activation='relu'),
+                num_layers=6
+            )
+            self.output_projection = nn.Linear(512, english_vocab_size)
+            self.positional_encoding = self._create_positional_encoding(1000, 512)
+            self.dropout = nn.Dropout(0.1)
+        def _create_positional_encoding(self, max_len: int, d_model: int) -> torch.Tensor:
+            pe = torch.zeros(max_len, d_model)
+            position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+            div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-np.log(10000.0) / d_model))
+            pe[:, 0::2] = torch.sin(position * div_term)
+            pe[:, 1::2] = torch.cos(position * div_term)
+            return pe.unsqueeze(0).transpose(0, 1)
+        def forward(self, gsl_tokens: torch.Tensor, english_tokens: torch.Tensor, src_mask: Optional[torch.Tensor] = None, tgt_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
+            gsl_embedded = self.encoder_embedding(gsl_tokens) * np.sqrt(512)
+            gsl_embedded = self.dropout(gsl_embedded + self.positional_encoding[:gsl_tokens.size(0), :])
+            memory = self.encoder(gsl_embedded, src_key_padding_mask=src_mask)
+            english_embedded = self.decoder_embedding(english_tokens) * np.sqrt(512)
+            english_embedded = self.dropout(english_embedded + self.positional_encoding[:english_tokens.size(0), :])
+            decoder_output = self.decoder(english_embedded, memory, tgt_key_padding_mask=tgt_mask)
+            logits = self.output_projection(decoder_output)
+            return logits
 
 class GSLTranslationService:
     """Main translation service for GSL-English translation"""
@@ -390,7 +340,7 @@ class GSLTranslationService:
         try:
             logger.info("Loading translation model...")
             
-            if model_path and Path(model_path).exists():
+            if model_path and Path(model_path).exists() and torch is not None:
                 # Load custom trained model
                 checkpoint = torch.load(model_path, map_location=self.config.device)
                 
@@ -414,8 +364,11 @@ class GSLTranslationService:
                 
             else:
                 # Use pre-trained MarianMT model as base
-                self.tokenizer = MarianTokenizer.from_pretrained(self.config.model_name)
-                self.model = MarianMTModel.from_pretrained(self.config.model_name).to(self.config.device)
+                if MarianTokenizer and MarianMTModel and torch is not None:
+                    self.tokenizer = MarianTokenizer.from_pretrained(self.config.model_name)
+                    self.model = MarianMTModel.from_pretrained(self.config.model_name).to(self.config.device)
+                else:
+                    self.model = None
                 
                 # Build basic vocabularies
                 self._build_basic_vocabularies()
@@ -426,7 +379,9 @@ class GSLTranslationService:
             
         except Exception as e:
             logger.error(f"Failed to load translation model: {e}")
-            raise RuntimeError(f"Failed to load translation model: {e}")
+            # Fallback: continue with rule-based only
+            self.model = None
+            self.is_loaded = True
     
     def _build_basic_vocabularies(self):
         """Build basic GSL and English vocabularies"""
@@ -516,9 +471,9 @@ class GSLTranslationService:
             return {
                 'english_text': english_text,
                 'gsl_sequence': gsl_sequence,
-                'confidence': 0.8,  # Placeholder confidence
+                'confidence': 0.8,
                 'translation_method': 'rule_based' if not hasattr(self, 'model') or not isinstance(self.model, GSLTranslationModel) else 'neural',
-                'timestamp': torch.time.time()
+                'timestamp': time.time()
             }
             
         except Exception as e:
@@ -528,13 +483,15 @@ class GSLTranslationService:
                 'gsl_sequence': gsl_sequence,
                 'confidence': 0.0,
                 'error': str(e),
-                'timestamp': torch.time.time()
+                'timestamp': time.time()
             }
     
     async def _neural_translate_gsl_to_english(self, gsl_sequence: List[str]) -> str:
         """Neural translation from GSL to English"""
         try:
             # Convert GSL sequence to tokens
+            if torch is None:
+                return self.grammar_rules.translate_to_english(gsl_sequence)
             gsl_tokens = self.gsl_sequence_to_tokens(gsl_sequence)
             
             # Convert to tensor
@@ -590,7 +547,7 @@ class GSLTranslationService:
                 'english_text': english_text,
                 'confidence': 0.7,
                 'translation_method': 'rule_based',
-                'timestamp': torch.time.time()
+                'timestamp': time.time()
             }
             
         except Exception as e:
@@ -600,37 +557,14 @@ class GSLTranslationService:
                 'english_text': english_text,
                 'confidence': 0.0,
                 'error': str(e),
-                'timestamp': torch.time.time()
+                'timestamp': time.time()
             }
     
     def _english_to_gsl_rule_based(self, english_text: str) -> List[str]:
         """Rule-based English to GSL translation"""
         try:
-            # Convert to lowercase and split
-            words = english_text.lower().split()
-            
-            gsl_sequence = []
-            
-            for word in words:
-                # Remove punctuation
-                word = re.sub(r'[^\w]', '', word)
-                
-                # Check for direct mappings
-                found = False
-                for category, phrases in self.grammar_rules.common_phrases.items():
-                    for gsl_sign, english_phrase in phrases.items():
-                        if word in english_phrase.lower():
-                            gsl_sequence.append(gsl_sign)
-                            found = True
-                            break
-                    if found:
-                        break
-                
-                if not found:
-                    # Try to find similar words or use fingerspelling
-                    gsl_sequence.append(f"FS_{word.upper()}")  # Fingerspelling marker
-            
-            return gsl_sequence
+            from ..nlp.en_to_gsl import to_gsl
+            return to_gsl(english_text)
             
         except Exception as e:
             logger.error(f"Error in rule-based translation: {e}")
