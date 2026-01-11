@@ -93,6 +93,11 @@ def _save_sample(name: str, payload: Dict[str, Any]):
 
 def _load_prototypes() -> Dict[str, List[List[float]]]:
     try:
+        proto = Path("ml")/"datasets"/"artifacts"/"prototypes.json"
+        if proto.exists():
+            with open(proto, "r", encoding="utf-8") as f:
+                labeled = json.load(f)
+            return labeled
         art = Path("ml")/"datasets"/"artifacts"/"sequences.json"
         if art.exists():
             with open(art, "r", encoding="utf-8") as f:
