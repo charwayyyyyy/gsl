@@ -6,6 +6,8 @@ export interface WebRTCState {
   isConnected: boolean
   isVideoEnabled: boolean
   isAudioEnabled: boolean
+  videoPermission: 'unknown' | 'prompt' | 'granted' | 'denied'
+  audioPermission: 'unknown' | 'prompt' | 'granted' | 'denied'
   videoStream: MediaStream | null
   audioStream: MediaStream | null
   error: string | null
@@ -23,6 +25,7 @@ export interface WebRTCActions {
   getVideoFrame: () => string | null
   getAudioData: () => Float32Array | null
   clearError: () => void
+  setVideoElement: (el: HTMLVideoElement | null) => void
 }
 
 export const useWebRTC = (): WebRTCState & WebRTCActions => {
@@ -32,6 +35,8 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
     isConnected: false,
     isVideoEnabled: false,
     isAudioEnabled: false,
+    videoPermission: 'unknown',
+    audioPermission: 'unknown',
     videoStream: null,
     audioStream: null,
     error: null,
@@ -43,15 +48,15 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
   const audioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const dataArrayRef = useRef<Float32Array | null>(null)
-  const animationFrameRef = useRef<number | null>(null)
+  const audioAnimRef = useRef<number | null>(null)
+  const videoAnimRef = useRef<number | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const videoTrackCheckRef = useRef<number | null>(null)
 
   // Check WebRTC support
   useEffect(() => {
     const checkSupport = () => {
-      const supported = !!(navigator.mediaDevices && 
-                          navigator.mediaDevices.getUserMedia && 
-                          window.RTCPeerConnection)
+      const supported = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
       setState(prev => ({ ...prev, isSupported: supported }))
       
       if (!supported) {
@@ -59,9 +64,27 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
           ...prev, 
           error: 'WebRTC is not supported in this browser. Please use a modern browser like Chrome, Firefox, or Edge.' 
         }))
+      } else {
+        setState(prev => ({ ...prev, error: null }))
       }
     }
     checkSupport()
+  }, [])
+
+  // Permissions status
+  useEffect(() => {
+    const perms = (navigator as any).permissions
+    if (!perms) return
+    try {
+      perms.query({ name: 'camera' as any }).then((res: any) => {
+        setState(prev => ({ ...prev, videoPermission: res.state as any }))
+        res.onchange = () => setState(prev => ({ ...prev, videoPermission: res.state as any }))
+      }).catch(() => {})
+      perms.query({ name: 'microphone' as any }).then((res: any) => {
+        setState(prev => ({ ...prev, audioPermission: res.state as any }))
+        res.onchange = () => setState(prev => ({ ...prev, audioPermission: res.state as any }))
+      }).catch(() => {})
+    } catch {}
   }, [])
 
   // Initialize audio context for level monitoring
@@ -99,7 +122,7 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
     setState(prev => ({ ...prev, audioLevel: level }))
 
     if (state.isAudioEnabled) {
-      animationFrameRef.current = requestAnimationFrame(monitorAudioLevel)
+      audioAnimRef.current = requestAnimationFrame(monitorAudioLevel)
     }
   }, [state.isAudioEnabled])
 
@@ -112,7 +135,7 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
     }
 
     if (state.isVideoEnabled) {
-      animationFrameRef.current = requestAnimationFrame(monitorVideoLevel)
+      videoAnimRef.current = requestAnimationFrame(monitorVideoLevel)
     }
   }, [state.videoStream, state.isVideoEnabled])
 
@@ -147,7 +170,12 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
         }
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints)
+      let stream: MediaStream
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints)
+      } catch (primaryErr) {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true })
+      }
       
       setState(prev => ({
         ...prev,
@@ -155,6 +183,43 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
         isVideoEnabled: true,
         isConnected: true
       }))
+
+      // Bind to video element if provided
+      if (videoRef.current) {
+        try {
+          (videoRef.current as any).srcObject = stream
+          const el = videoRef.current
+          const ensurePlay = () => { el.play().catch(() => {}) }
+          if (el.readyState < 2) {
+            el.onloadedmetadata = ensurePlay
+            el.oncanplay = ensurePlay
+          } else {
+            ensurePlay()
+          }
+        } catch {}
+      }
+
+      // Restart if track ends
+      const vt = stream.getVideoTracks()[0]
+      if (vt) {
+        vt.onended = () => {
+          setState(prev => ({ ...prev, isVideoEnabled: false }))
+          startVideo().catch(() => {
+            setState(prev => ({ ...prev, error: 'Camera stopped. Please retry.' }))
+          })
+        }
+        vt.onmute = () => {
+          startVideo().catch(() => {})
+        }
+      }
+      // Periodic check for track state
+      if (videoTrackCheckRef.current) clearInterval(videoTrackCheckRef.current)
+      videoTrackCheckRef.current = window.setInterval(() => {
+        const t = stream.getVideoTracks()[0]
+        if (!t || t.readyState === 'ended' || !stream.active) {
+          startVideo().catch(() => {})
+        }
+      }, 5000)
 
       // Start monitoring video levels
       monitorVideoLevel()
@@ -200,6 +265,9 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
     try {
       setState(prev => ({ ...prev, error: null }))
       initAudioContext()
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume().catch(() => {})
+      }
       
       const constraints: MediaStreamConstraints = {
         audio: {
@@ -211,7 +279,12 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
         }
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints)
+      let stream: MediaStream
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints)
+      } catch (primaryErr) {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      }
       
       // Connect audio to analyser for level monitoring
       if (audioContextRef.current && analyserRef.current) {
@@ -263,9 +336,13 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
       state.videoStream.getTracks().forEach(track => track.stop())
     }
     
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current)
-      animationFrameRef.current = null
+    if (videoAnimRef.current) {
+      cancelAnimationFrame(videoAnimRef.current)
+      videoAnimRef.current = null
+    }
+    if (videoTrackCheckRef.current) {
+      clearInterval(videoTrackCheckRef.current)
+      videoTrackCheckRef.current = null
     }
 
     setState(prev => ({
@@ -282,9 +359,9 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
       state.audioStream.getTracks().forEach(track => track.stop())
     }
     
-    if (animationFrameRef.current) {
-      cancelAnimationFrame(animationFrameRef.current)
-      animationFrameRef.current = null
+    if (audioAnimRef.current) {
+      cancelAnimationFrame(audioAnimRef.current)
+      audioAnimRef.current = null
     }
 
     setState(prev => ({
@@ -326,8 +403,9 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
       const video = videoRef.current
       
       // Set canvas dimensions to match video
-      canvas.width = video.videoWidth || 640
-      canvas.height = video.videoHeight || 480
+      if (!video.videoWidth || !video.videoHeight) return null
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
       
       const ctx = canvas.getContext('2d')
       if (!ctx) return null
@@ -340,6 +418,16 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
     } catch (error) {
       console.error('Error capturing video frame:', error)
       return null
+    }
+  }, [state.videoStream])
+
+  const setVideoElement = useCallback((el: HTMLVideoElement | null) => {
+    videoRef.current = el
+    if (el && state.videoStream) {
+      try {
+        (el as any).srcObject = state.videoStream
+        el.play().catch(() => {})
+      } catch {}
     }
   }, [state.videoStream])
 
@@ -364,9 +452,9 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
-      }
+      if (audioAnimRef.current) cancelAnimationFrame(audioAnimRef.current)
+      if (videoAnimRef.current) cancelAnimationFrame(videoAnimRef.current)
+      if (videoTrackCheckRef.current) clearInterval(videoTrackCheckRef.current)
       if (state.videoStream) {
         state.videoStream.getTracks().forEach(track => track.stop())
       }
@@ -389,7 +477,8 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
     toggleAudio,
     getVideoFrame,
     getAudioData,
-    clearError
+    clearError,
+    setVideoElement
   }
 }
 

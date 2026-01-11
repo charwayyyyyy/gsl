@@ -24,26 +24,28 @@ const VideoCapture: React.FC<VideoCaptureProps> = ({
   
   const { settings } = useAppStore()
   const { 
+    isSupported,
     isVideoEnabled, 
     videoStream, 
     videoLevel, 
     error: webrtcError,
     startVideo, 
     stopVideo,
-    getVideoFrame 
+    getVideoFrame,
+    setVideoElement
   } = useWebRTC()
 
   const { accessibility, visual } = settings
   
-  // Initialize video on mount
+  // Initialize video when support is confirmed
   useEffect(() => {
-    if (!isVideoEnabled) {
+    if (isSupported && !isVideoEnabled) {
       startVideo().catch(err => {
         setError('Failed to start video capture')
         console.error('Video initialization error:', err)
       })
     }
-  }, [])
+  }, [isSupported])
 
   // Handle WebRTC errors
   useEffect(() => {
@@ -56,13 +58,14 @@ const VideoCapture: React.FC<VideoCaptureProps> = ({
   useEffect(() => {
     if (videoRef.current && videoStream) {
       videoRef.current.srcObject = videoStream
+      setVideoElement(videoRef.current)
       
       // Start frame capture loop
       if (onFrameCapture) {
         setIsCapturing(true)
       }
     }
-  }, [videoStream, onFrameCapture])
+  }, [videoStream, onFrameCapture, setVideoElement])
 
   // Frame capture loop
   useEffect(() => {
@@ -173,7 +176,7 @@ const VideoCapture: React.FC<VideoCaptureProps> = ({
         autoPlay
         muted
         playsInline
-        className="w-full h-full object-cover"
+        className="w-full h-full object-cover bg-black"
         style={{
           filter: accessibility.highContrast ? 'contrast(1.5) brightness(1.2)' : undefined
         }}
@@ -219,6 +222,17 @@ const VideoCapture: React.FC<VideoCaptureProps> = ({
             </span>
           </div>
         )}
+
+        {/* Permission Status */}
+        <div className={`
+          flex items-center gap-2 px-3 py-2 rounded-full
+          ${accessibility.highContrast ? 'bg-black border-2 border-white text-yellow-400' : 'bg-white/80'}
+        `}>
+          <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} font-medium`}>
+            {isSupported ? (isVideoEnabled ? 'Camera: granted' : 'Camera: pending') : 'Camera: unsupported'}
+          </span>
+          <div className={`w-2 h-2 rounded-full ${isVideoEnabled ? 'bg-green-500' : (isSupported ? 'bg-yellow-500' : 'bg-red-500')}`} />
+        </div>
       </div>
 
       {/* Bottom Status */}

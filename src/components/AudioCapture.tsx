@@ -18,6 +18,7 @@ const AudioCapture: React.FC<AudioCaptureProps> = ({
   
   const { settings } = useAppStore()
   const { 
+    isSupported,
     isAudioEnabled, 
     audioStream, 
     audioLevel, 
@@ -29,15 +30,15 @@ const AudioCapture: React.FC<AudioCaptureProps> = ({
 
   const { accessibility, audio } = settings
   
-  // Initialize audio on mount
+  // Initialize audio when support is confirmed
   useEffect(() => {
-    if (!isAudioEnabled) {
+    if (isSupported && !isAudioEnabled) {
       startAudio().catch(err => {
         setError('Failed to start audio capture')
         console.error('Audio initialization error:', err)
       })
     }
-  }, [])
+  }, [isSupported])
 
   // Handle WebRTC errors
   useEffect(() => {
@@ -163,6 +164,17 @@ const AudioCapture: React.FC<AudioCaptureProps> = ({
             <Mic className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
           )}
         </button>
+
+        {/* Permission Status */}
+        <div className={`
+          flex items-center gap-2 px-3 py-2 rounded-full
+          ${accessibility.highContrast ? 'bg-black border-2 border-white text-yellow-400' : 'bg-white/80'}
+        `}>
+          <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} font-medium`}>
+            {isSupported ? (isAudioEnabled ? 'Mic: granted' : 'Mic: pending') : 'Mic: unsupported'}
+          </span>
+          <div className={`w-2 h-2 rounded-full ${isAudioEnabled ? 'bg-green-500' : (isSupported ? 'bg-yellow-500' : 'bg-red-500')}`} />
+        </div>
       </div>
 
       {/* Audio Level Visualization */}
