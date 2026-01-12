@@ -54,6 +54,8 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
   const videoTrackCheckRef = useRef<number | null>(null)
   const maintainVideoRef = useRef<boolean>(false)
   const maintainAudioRef = useRef<boolean>(false)
+  const audioBufferRef = useRef<Float32Array | null>(null)
+  const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null)
 
   // Check WebRTC support
   useEffect(() => {
@@ -297,6 +299,25 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
       if (audioContextRef.current && analyserRef.current) {
         const source = audioContextRef.current.createMediaStreamSource(stream)
         source.connect(analyserRef.current)
+        if (!scriptProcessorRef.current) {
+          scriptProcessorRef.current = audioContextRef.current.createScriptProcessor(2048, 1, 1)
+          scriptProcessorRef.current.onaudioprocess = (e: AudioProcessingEvent) => {
+            const input = e.inputBuffer.getChannelData(0)
+            const existing = audioBufferRef.current
+            if (!existing) {
+              audioBufferRef.current = new Float32Array(input)
+            } else {
+              const merged = new Float32Array(existing.length + input.length)
+              merged.set(existing, 0)
+              merged.set(input, existing.length)
+              audioBufferRef.current = merged
+            }
+          }
+          source.connect(scriptProcessorRef.current)
+          try {
+            scriptProcessorRef.current.connect(audioContextRef.current.destination)
+          } catch {}
+        }
       }
 
       setState(prev => ({
@@ -368,10 +389,15 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
       state.audioStream.getTracks().forEach(track => track.stop())
     }
     maintainAudioRef.current = false
+    audioBufferRef.current = null
     
     if (audioAnimRef.current) {
       cancelAnimationFrame(audioAnimRef.current)
       audioAnimRef.current = null
+    }
+    if (scriptProcessorRef.current) {
+      try { scriptProcessorRef.current.disconnect() } catch {}
+      scriptProcessorRef.current = null
     }
 
     setState(prev => ({
@@ -443,15 +469,12 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
 
   // Get current audio data
   const getAudioData = useCallback((): Float32Array | null => {
-    if (!state.audioStream || !analyserRef.current || !dataArrayRef.current) return null
-    
-    try {
-      analyserRef.current.getFloatTimeDomainData(dataArrayRef.current)
-      return new Float32Array(dataArrayRef.current) // Return a copy
-    } catch (error) {
-      console.error('Error getting audio data:', error)
-      return null
-    }
+    if (!state.audioStream) return null
+    const buf = audioBufferRef.current
+    if (!buf || buf.length < 4096) return null
+    const out = buf.slice(0, 4096)
+    audioBufferRef.current = buf.slice(4096)
+    return out
   }, [state.audioStream])
 
   // Clear error

@@ -15,6 +15,9 @@ import os
 from .services.gsl_dictionary_service import GSLDictionaryService
 from backend.dictionary.text_to_sign import TextToSignService
 from backend.sign_matching.dictionary_matcher import DictionaryMatcher
+from scripts.extract_gsl_dictionary import parse_pdf
+from scripts.build_dictionary_sign_embeddings import main as build_sign_index
+from scripts.build_motion_templates import main as build_motion_templates
 from .services.mediapipe_service import MediaPipeService
 from .services.translation_service import TranslationService
 from .services.avatar_service import AvatarService
@@ -149,6 +152,31 @@ class AvatarRequest(BaseModel):
 async def startup_event():
     init_db()
     logger.info("Database initialized")
+    try:
+      proc = Path("data")/"processed"
+      proc.mkdir(parents=True, exist_ok=True)
+      dict_path = proc/"gsl_dictionary.json"
+      if not dict_path.exists():
+        src_pdf = Path("Ghanaian Sign Language Dictionary - 3rd Edition.pdf")
+        raw_pdf = Path("data")/"raw"/"gsl_dictionary.pdf"
+        if src_pdf.exists():
+          data = parse_pdf(src_pdf)
+          with open(dict_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+          logger.info(f"Dictionary extracted: {len(data)} entries")
+        elif raw_pdf.exists():
+          data = parse_pdf(raw_pdf)
+          with open(dict_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+          logger.info(f"Dictionary extracted from data/raw")
+        else:
+          with open(dict_path, "w", encoding="utf-8") as f:
+            json.dump({}, f, ensure_ascii=False, indent=2)
+          logger.warning("No PDF found; wrote empty dictionary")
+      build_sign_index()
+      build_motion_templates()
+    except Exception as e:
+      logger.warning(f"Startup data build failed: {e}")
 
 # Health check endpoint
 @app.get("/health")

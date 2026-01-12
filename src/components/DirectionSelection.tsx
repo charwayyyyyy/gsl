@@ -1,5 +1,5 @@
 import React from 'react'
-import { Hand, Mic, Settings, HelpCircle, Accessibility } from 'lucide-react'
+import { Hand, Mic, Settings, HelpCircle, Accessibility, Book } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 
 interface DirectionSelectionProps {
@@ -80,6 +80,24 @@ const DirectionSelection: React.FC<DirectionSelectionProps> = ({ onDirectionSele
 
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-6 justify-center mb-12">
+        <button
+          onClick={() => window.location.href = '/dictionary'}
+          className={`
+            flex items-center gap-3 px-8 py-4 rounded-full
+            bg-white hover:bg-gray-50 active:bg-gray-100
+            border-2 border-white hover:border-gray-200
+            shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95
+            transition-all duration-200 ease-in-out
+            focus:outline-none focus:ring-4 focus:ring-blue-300
+            ${accessibility.highContrast ? 'bg-black border-yellow-400 text-yellow-400' : 'text-gray-700'}
+          `}
+          aria-label="Text to Sign Search"
+        >
+          <Book className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
+          <span className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-semibold`}>
+            Text → Sign
+          </span>
+        </button>
         <button
           onClick={toggleAccessibilityPanel}
           className={`
