@@ -5,6 +5,8 @@ const Dictionary: React.FC = () => {
   const [result, setResult] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [letter, setLetter] = useState<string>('A')
+  const [list, setList] = useState<any[]>([])
 
   const search = async (query: string) => {
     if (!query) return
@@ -21,12 +23,29 @@ const Dictionary: React.FC = () => {
     }
   }
 
+  const fetchList = async (ltr: string) => {
+    try {
+      setError(null)
+      const resp = await fetch(`http://localhost:8000/api/dictionary/list?letter=${encodeURIComponent(ltr)}`)
+      const data = await resp.json()
+      setList(Array.isArray(data?.items) ? data.items : [])
+    } catch {
+      setList([])
+    }
+  }
+
   useEffect(() => {
     const t = setTimeout(() => {
       if (q.trim()) search(q.trim())
     }, 300)
     return () => clearTimeout(t)
   }, [q])
+
+  useEffect(() => {
+    fetchList(letter)
+  }, [letter])
+
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -38,6 +57,19 @@ const Dictionary: React.FC = () => {
           placeholder="Type a word (e.g., cat)"
           className="w-full p-3 rounded-lg border mb-6"
         />
+        {!q && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {alphabet.map((a) => (
+              <button
+                key={a}
+                onClick={() => setLetter(a)}
+                className={`px-3 py-1 rounded-full border ${letter === a ? 'bg-blue-600 text-white' : 'bg-white'}`}
+              >
+                {a}
+              </button>
+            ))}
+          </div>
+        )}
         {loading && <div className="text-gray-600 mb-4">Searching...</div>}
         {error && <div className="text-red-600 mb-4">{error}</div>}
         {result && result.gloss && (
@@ -52,6 +84,10 @@ const Dictionary: React.FC = () => {
                     src={`http://localhost:8000/static/${result.gloss}/${img}`}
                     alt={`${result.gloss} sign ${i+1}`}
                     className="w-40 h-40 object-contain rounded-lg border bg-white"
+                    loading="lazy"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none'
+                    }}
                   />
                 ))
               ) : (
@@ -62,6 +98,32 @@ const Dictionary: React.FC = () => {
             {result.page && (
               <div className="mt-1 text-sm text-gray-600">Page: {result.page}</div>
             )}
+            {Array.isArray(result.alternatives) && result.alternatives.length > 0 && (
+              <div className="mt-2 text-sm text-gray-600">Alternatives: {result.alternatives.join(', ')}</div>
+            )}
+          </div>
+        )}
+
+        {!q && list && list.length > 0 && (
+          <div className="bg-white rounded-xl shadow p-6 mt-6">
+            <h2 className="text-lg font-semibold mb-3">Glosses: {letter}</h2>
+            <div className="grid grid-cols-2 gap-3">
+              {list.map((item) => (
+                <button
+                  key={item.gloss}
+                  onClick={() => setQ(item.gloss)}
+                  className="text-left p-3 rounded-lg border bg-white hover:bg-gray-50"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{item.gloss}</span>
+                    <span className="text-xs px-2 py-1 rounded-full bg-gray-100 border">
+                      {item.variants} variants
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-600">Page: {item.page || '-'}</div>
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>

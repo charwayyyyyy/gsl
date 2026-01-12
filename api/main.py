@@ -248,6 +248,54 @@ async def startup_event():
         text_to_sign_service._load()
       except Exception as e:
         logger.warning(f"Reload text_to_sign_service failed: {e}")
+      try:
+        dict_path = Path("data")/"processed"/"gsl_dictionary.json"
+        report_path = Path("data")/"processed"/"gsl_dictionary_report.json"
+        total = 0; usable = 0; incomplete = 0; with_images = 0; with_variants = 0
+        data = {}
+        if dict_path.exists():
+          with open(dict_path,"r",encoding="utf-8") as f: data = json.load(f)
+        for gloss, entry in data.items():
+          total += 1
+          desc_ok = bool(entry.get("description"))
+          imgs = entry.get("images") or []
+          base = Path("data")/"processed"/"images"/gloss
+          imgs_ok = False
+          valid_imgs = []
+          for im in imgs:
+            if (base/im).exists():
+              imgs_ok = True
+              valid_imgs.append(im)
+          status = "complete" if (desc_ok or imgs_ok) else "incomplete"
+          if status == "complete": usable += 1
+          else: incomplete += 1
+          if imgs_ok: with_images += 1
+          if int(entry.get("variants") or 0) > 0: with_variants += 1
+          entry["status"] = status
+          entry["images"] = valid_imgs if valid_imgs else imgs
+          data[gloss] = entry
+        with open(report_path,"w",encoding="utf-8") as f:
+          json.dump({
+            "counts": {
+              "total": total,
+              "usable": usable,
+              "incomplete": incomplete,
+              "with_images": with_images,
+              "with_variants": with_variants
+            },
+            "timestamp": datetime.now().isoformat()
+          }, f, ensure_ascii=False, indent=2)
+        logger.info(f"Dictionary validation: total={total} usable={usable} incomplete={incomplete}")
+      except Exception as e:
+        logger.warning(f"Validation failed: {e}")
+      try:
+        first_gloss = next(iter(text_to_sign_service.dictionary.keys()), None)
+        ok1 = first_gloss is not None
+        ok2 = bool(text_to_sign_service.search(first_gloss or "").get("gloss"))
+        static_ok = (Path("data")/"processed"/"images").exists()
+        logger.info(f"Self-test: dict_loaded={ok1} search_ok={ok2} static_ok={static_ok}")
+      except Exception as e:
+        logger.warning(f"Self-test error: {e}")
     except Exception as e:
       logger.warning(f"Startup data build failed: {e}")
 
@@ -301,6 +349,7 @@ async def video_stream(websocket: WebSocket):
                         seq.append([lm[0], lm[1], lm[2]])
                 try:
                     g, score = dict_matcher.best_match(seq)
+                    tops = dict_matcher.top_matches(seq, 3)
                     predicted_gloss = g
                     predicted_confidence = float(max(0.0, score))
                 except Exception as e:
@@ -314,7 +363,8 @@ async def video_stream(websocket: WebSocket):
                     "timestamp": message["timestamp"],
                     "session_id": session_id,
                     "predicted_gloss": predicted_gloss,
-                    "predicted_confidence": predicted_confidence
+                    "predicted_confidence": predicted_confidence,
+                    "top_matches": [{"gloss": t[0], "confidence": float(t[1])} for t in tops] if 'tops' in locals() else []
                 }
 
                 await manager.send_personal_message(json.dumps(response), session_id)
@@ -508,11 +558,36 @@ async def render_avatar(request: AvatarRequest):
 @app.get("/api/dictionary/search")
 async def search_dictionary(q: str):
     try:
-        result = text_to_sign_service.search(q)
-        return result
+        r = text_to_sign_service.search(q)
+        return {
+            "gloss": r.get("gloss"),
+            "images": r.get("images", []),
+            "description": r.get("description", ""),
+            "page": r.get("page"),
+            "confidence": float(r.get("confidence", 0.0)),
+            "alternatives": r.get("alternatives", [])
+        }
     except Exception as e:
         logger.error(f"Error searching dictionary: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/dictionary/list")
+async def list_dictionary(letter: str = "A"):
+    try:
+        items = []
+        l = (letter or "A").upper()
+        for gloss, e in text_to_sign_service.dictionary.items():
+            if gloss.upper().startswith(l):
+                items.append({
+                    "gloss": gloss,
+                    "variants": int(e.get("variants") or len(e.get("images") or [])),
+                    "page": e.get("page")
+                })
+        items.sort(key=lambda x: x["gloss"])
+        return {"items": items}
+    except Exception as e:
+        logger.error(f"Error listing dictionary: {str(e)}")
+        return {"items": []}
 
 @app.get("/api/dictionary/sign/{sign_id}")
 async def get_sign_details(sign_id: str):

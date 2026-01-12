@@ -11,6 +11,7 @@ class TextToSignService:
     def __init__(self):
         self.dictionary: Dict[str, Any] = {}
         self.index: Dict[str, Any] = {}
+        self._cache_vecs: Dict[str, np.ndarray] = {}
         self._load()
 
     def _load(self):
@@ -42,48 +43,122 @@ class TextToSignService:
             return 0.0
         return float((a @ b) / (na * nb))
 
+    def _ensure_images(self, gloss: str, entry: Dict[str, Any]) -> List[str]:
+        images = entry.get("images") or []
+        out: List[str] = []
+        base = PROCESSED / "images" / gloss
+        for img in images:
+            p = base / img
+            if p.exists():
+                out.append(img)
+        if out:
+            return out
+        try:
+            page = int(entry.get("page") or 0)
+            if page > 0:
+                import fitz
+                src_pdf = Path("Ghanaian Sign Language Dictionary - 3rd Edition.pdf")
+                raw_pdf = Path("data")/"raw"/"gsl_dictionary.pdf"
+                pdf_path = src_pdf if src_pdf.exists() else raw_pdf
+                if pdf_path.exists():
+                    base.mkdir(parents=True, exist_ok=True)
+                    doc = fitz.open(pdf_path)
+                    pix = doc.load_page(page-1).get_pixmap()
+                    fname = f"page{page}.png"
+                    dst = base / fname
+                    pix.save(dst)
+                    out.append(fname)
+        except Exception:
+            pass
+        return out
+
     def search(self, q: str) -> Dict[str, Any]:
-        if not q:
-            return {"results": [], "count": 0}
-        qn = q.strip().lower()
-        # exact match by english or gloss
+        qn = (q or "").strip()
+        if qn == "":
+            alts: List[str] = list(self.dictionary.keys())[:3]
+            g = alts[0] if alts else None
+            e = self.dictionary.get(g or "", {})
+            return {
+                "gloss": g,
+                "images": self._ensure_images(g or "", e) if g else [],
+                "description": e.get("description", "") if g else "",
+                "page": e.get("page") if g else None,
+                "confidence": 1.0 if g else 0.0,
+                "alternatives": alts[1:] if len(alts) > 1 else []
+            }
+        cand = []
+        qlow = qn.lower()
+        qup = qn.upper()
+        forms = {qlow, qup}
+        if qlow.endswith("es"):
+            forms.add(qlow[:-2])
+        if qlow.endswith("s"):
+            forms.add(qlow[:-1])
         for gloss, entry in self.dictionary.items():
-            if entry.get("english", "").lower() == qn or gloss.lower() == qn:
+            if gloss.lower() in forms or entry.get("english","").lower() in forms:
+                imgs = self._ensure_images(gloss, entry)
                 return {
                     "gloss": gloss,
-                    "images": entry.get("images", []),
-                    "description": entry.get("description", ""),
+                    "images": imgs,
+                    "description": entry.get("description",""),
+                    "page": entry.get("page"),
                     "confidence": 1.0,
-                    "page": entry.get("page")
+                    "alternatives": []
                 }
-        # semantic search via text embeddings
-        if not self.index:
-            return {"gloss": None, "images": [], "description": "", "confidence": 0.0}
-        # make query vector using same fallback hashing
+        for gloss, entry in self.dictionary.items():
+            if gloss.lower().startswith(qlow) or entry.get("english","").lower().startswith(qlow):
+                cand.append(gloss)
+        if cand:
+            g = cand[0]
+            e = self.dictionary.get(g, {})
+            imgs = self._ensure_images(g, e)
+            return {
+                "gloss": g,
+                "images": imgs,
+                "description": e.get("description",""),
+                "page": e.get("page"),
+                "confidence": 0.6,
+                "alternatives": cand[1:4]
+            }
         try:
             from sentence_transformers import SentenceTransformer
             model = SentenceTransformer("all-MiniLM-L6-v2")
-            qvec = np.array(model.encode(qn, normalize_embeddings=True))
+            qvec = np.array(model.encode(qlow, normalize_embeddings=True))
         except Exception:
-            h = abs(hash(qn)) % (10**8)
+            h = abs(hash(qlow)) % (10**8)
             rng = np.random.default_rng(h)
             qvec = rng.normal(0, 1, 384)
-        best_gloss, best_score = None, -1.0
+        scores = []
         for gloss, rec in self.index.items():
             tv = np.array(rec.get("text_vec", []), dtype=float)
             if tv.size == 0:
-                continue
+                tv = self._cache_vecs.get(gloss)
+                if tv is None:
+                    h = abs(hash(gloss)) % (10**8)
+                    tv = np.random.default_rng(h).normal(0,1,384)
+                    self._cache_vecs[gloss] = tv
             s = self._cos(qvec, tv)
-            if s > best_score:
-                best_gloss, best_score = gloss, s
-        if best_gloss:
-            e = self.dictionary.get(best_gloss, {})
+            scores.append((gloss, float(s)))
+        scores.sort(key=lambda x: x[1], reverse=True)
+        if scores:
+            g, sc = scores[0]
+            e = self.dictionary.get(g, {})
+            imgs = self._ensure_images(g, e)
+            alts = [x[0] for x in scores[1:4]]
             return {
-                "gloss": best_gloss,
-                "images": e.get("images", []),
-                "description": e.get("description", ""),
-                "confidence": max(0.0, min(1.0, best_score)),
-                "page": e.get("page")
+                "gloss": g,
+                "images": imgs,
+                "description": e.get("description",""),
+                "page": e.get("page"),
+                "confidence": float(max(0.0, min(1.0, sc))),
+                "alternatives": alts
             }
-        return {"gloss": None, "images": [], "description": "", "confidence": 0.0}
+        return {
+            "gloss": None,
+            "images": [],
+            "description": "",
+            "page": None,
+            "confidence": 0.0,
+            "alternatives": []
+        }
 
