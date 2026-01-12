@@ -150,7 +150,16 @@ class TextToSignService:
         for gloss, entry in self.dictionary.items():
             if gloss.lower().startswith(qlow) or entry.get("english","").lower().startswith(qlow):
                 cand.append(gloss)
+        
+        # If no startswith matches, try "contains"
+        if not cand:
+            for gloss, entry in self.dictionary.items():
+                if qlow in gloss.lower() or qlow in entry.get("english","").lower():
+                    cand.append(gloss)
+
         if cand:
+            # Sort candidates: shortest match first (likely more relevant)
+            cand.sort(key=len)
             g = cand[0]
             e = self.dictionary.get(g, {})
             imgs = self._ensure_images(g, e)

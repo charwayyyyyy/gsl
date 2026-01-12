@@ -68,6 +68,7 @@ def pdf_to_strict_json(pdf_path: Path) -> Dict[str, Dict]:
 
     for page_idx, text in enumerate(text_pages):
         images = extract_images_from_page(doc, page_idx)
+        # Fallback to page snapshot if no images extracted
         if not images and fitz:
             try:
                 page = fitz.open(pdf_path).load_page(page_idx)
@@ -77,21 +78,31 @@ def pdf_to_strict_json(pdf_path: Path) -> Dict[str, Dict]:
                 images = [out_path.name]
             except Exception:
                 images = []
+        
         lines = [l for l in text.splitlines() if l.strip()]
-        gloss = None
+        
+        # Find ALL glosses on the page
+        page_glosses = []
         for ln in lines:
-            if re.match(r"^[A-Z][A-Z\-\s]+$", ln.strip()):
-                gloss = ln.strip()
-                break
-        if gloss:
-            desc_lines = [l for l in lines if l.strip() != gloss]
-            description = normalize_text(" ".join(desc_lines))
+            clean_ln = ln.strip()
+            # Match All-Caps words, allowing hyphens and spaces, min length 2
+            # Avoid overly long sentences that happen to be all caps (e.g. headers)
+            # Heuristic: < 50 chars
+            if re.match(r"^[A-Z][A-Z\-\s]+$", clean_ln) and len(clean_ln) < 50 and len(clean_ln) > 1:
+                page_glosses.append(clean_ln)
+
+        if not page_glosses:
+            continue
+
+        for gloss in page_glosses:
+            description = normalize_text(text) # Store full page text as context
             english = gloss.replace("-", " ").lower()
-            # Move images into per-gloss directory
+            
+            # Ensure image directory exists for this gloss
             per_gloss = IMAGES_DIR / gloss
             try:
                 per_gloss.mkdir(parents=True, exist_ok=True)
-                moved: List[str] = []
+                # Copy page image to gloss folder
                 for img in images:
                     src = IMAGES_DIR / img
                     if src.exists():
@@ -101,17 +112,25 @@ def pdf_to_strict_json(pdf_path: Path) -> Dict[str, Dict]:
                                 dst.write_bytes(src.read_bytes())
                             except Exception:
                                 pass
-                        moved.append(dst.name)
-                images = moved if moved else images
             except Exception:
                 pass
-            entries[gloss] = {
-                "english": english,
-                "description": description,
-                "images": images,
-                "page": page_idx + 1,
-                "variants": len(images)
-            }
+
+            # Update entry - if exists, we might want to keep the one with better description or merge
+            # For now, simple overwrite or keep first? 
+            # If a word spans multiple pages, we might want the first occurrence.
+            if gloss not in entries:
+                entries[gloss] = {
+                    "english": english,
+                    "description": description,
+                    "images": images, # Point to the page snapshot(s)
+                    "page": page_idx + 1,
+                    "variants": len(images)
+                }
+            else:
+                # If already exists, maybe append images? 
+                # But UI expects single page context usually.
+                # Let's keep the existing one to avoid overwriting "FOOD" (header) with "FOOD" (header on next page)
+                pass
 
     return entries
 
@@ -126,6 +145,14 @@ if __name__ == "__main__":
     parser.add_argument("--pdf", type=str, default=str(RAW_DIR / "gsl_dictionary.pdf"))
     args = parser.parse_args()
     pdf_path = Path(args.pdf)
+    
+    # Try finding the PDF in root if not in data/raw
+    if not pdf_path.exists():
+        root_pdf = Path("Ghanaian Sign Language Dictionary - 3rd Edition.pdf")
+        if root_pdf.exists():
+            pdf_path = root_pdf
+            print(f"Found PDF in root: {pdf_path}")
+
     ensure_dirs()
     if not pdf_path.exists():
         print(f"PDF not found at {pdf_path}. Place the official dictionary as 'data/raw/gsl_dictionary.pdf'.")
