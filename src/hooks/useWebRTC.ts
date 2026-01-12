@@ -52,6 +52,8 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
   const videoAnimRef = useRef<number | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const videoTrackCheckRef = useRef<number | null>(null)
+  const maintainVideoRef = useRef<boolean>(false)
+  const maintainAudioRef = useRef<boolean>(false)
 
   // Check WebRTC support
   useEffect(() => {
@@ -183,6 +185,7 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
         isVideoEnabled: true,
         isConnected: true
       }))
+      maintainVideoRef.current = true
 
       // Bind to video element if provided
       if (videoRef.current) {
@@ -204,19 +207,23 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
       if (vt) {
         vt.onended = () => {
           setState(prev => ({ ...prev, isVideoEnabled: false }))
-          startVideo().catch(() => {
-            setState(prev => ({ ...prev, error: 'Camera stopped. Please retry.' }))
-          })
+          if (maintainVideoRef.current) {
+            startVideo().catch(() => {
+              setState(prev => ({ ...prev, error: 'Camera stopped. Please retry.' }))
+            })
+          }
         }
         vt.onmute = () => {
-          startVideo().catch(() => {})
+          if (maintainVideoRef.current) {
+            startVideo().catch(() => {})
+          }
         }
       }
       // Periodic check for track state
       if (videoTrackCheckRef.current) clearInterval(videoTrackCheckRef.current)
       videoTrackCheckRef.current = window.setInterval(() => {
         const t = stream.getVideoTracks()[0]
-        if (!t || t.readyState === 'ended' || !stream.active) {
+        if (maintainVideoRef.current && (!t || t.readyState === 'ended' || !stream.active)) {
           startVideo().catch(() => {})
         }
       }, 5000)
@@ -298,6 +305,7 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
         isAudioEnabled: true,
         isConnected: true
       }))
+      maintainAudioRef.current = true
 
       // Start monitoring audio levels
       monitorAudioLevel()
@@ -335,6 +343,7 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
     if (state.videoStream) {
       state.videoStream.getTracks().forEach(track => track.stop())
     }
+    maintainVideoRef.current = false
     
     if (videoAnimRef.current) {
       cancelAnimationFrame(videoAnimRef.current)
@@ -358,6 +367,7 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
     if (state.audioStream) {
       state.audioStream.getTracks().forEach(track => track.stop())
     }
+    maintainAudioRef.current = false
     
     if (audioAnimRef.current) {
       cancelAnimationFrame(audioAnimRef.current)
@@ -455,6 +465,8 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
       if (audioAnimRef.current) cancelAnimationFrame(audioAnimRef.current)
       if (videoAnimRef.current) cancelAnimationFrame(videoAnimRef.current)
       if (videoTrackCheckRef.current) clearInterval(videoTrackCheckRef.current)
+      maintainVideoRef.current = false
+      maintainAudioRef.current = false
       if (state.videoStream) {
         state.videoStream.getTracks().forEach(track => track.stop())
       }
