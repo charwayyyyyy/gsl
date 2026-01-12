@@ -16,7 +16,21 @@ class TextToSignService:
     def _load(self):
         if DICT_PATH.exists():
             with open(DICT_PATH, "r", encoding="utf-8") as f:
-                self.dictionary = json.load(f)
+                loaded = json.load(f)
+                if isinstance(loaded, dict) and "entries" in loaded and isinstance(loaded["entries"], list):
+                    d: Dict[str, Any] = {}
+                    for e in loaded["entries"]:
+                        gloss = e.get("gloss")
+                        if gloss:
+                            d[gloss] = {
+                                "english": e.get("english") or "",
+                                "description": e.get("usage") or "",
+                                "images": [e.get("image_path")] if e.get("image_path") else [],
+                                "page": e.get("source_page")
+                            }
+                    self.dictionary = d
+                else:
+                    self.dictionary = loaded or {}
         if INDEX_PATH.exists():
             with open(INDEX_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
