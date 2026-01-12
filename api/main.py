@@ -238,6 +238,10 @@ async def startup_event():
       if build_motion_templates:
         try: build_motion_templates()
         except Exception as e: logger.warning(f"build_motion_templates failed: {e}")
+      try:
+        text_to_sign_service._load()
+      except Exception as e:
+        logger.warning(f"Reload text_to_sign_service failed: {e}")
     except Exception as e:
       logger.warning(f"Startup data build failed: {e}")
 
