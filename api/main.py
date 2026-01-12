@@ -15,9 +15,18 @@ import os
 from .services.gsl_dictionary_service import GSLDictionaryService
 from backend.dictionary.text_to_sign import TextToSignService
 from backend.sign_matching.dictionary_matcher import DictionaryMatcher
-from scripts.extract_gsl_dictionary import parse_pdf
-from scripts.build_dictionary_sign_embeddings import main as build_sign_index
-from scripts.build_motion_templates import main as build_motion_templates
+try:
+    from scripts.extract_gsl_dictionary import parse_pdf
+except Exception:
+    parse_pdf = None
+try:
+    from scripts.build_dictionary_sign_embeddings import main as build_sign_index
+except Exception:
+    build_sign_index = None
+try:
+    from scripts.build_motion_templates import main as build_motion_templates
+except Exception:
+    build_motion_templates = None
 from .services.mediapipe_service import MediaPipeService
 from .services.translation_service import TranslationService
 from .services.avatar_service import AvatarService
@@ -159,22 +168,32 @@ async def startup_event():
       if not dict_path.exists():
         src_pdf = Path("Ghanaian Sign Language Dictionary - 3rd Edition.pdf")
         raw_pdf = Path("data")/"raw"/"gsl_dictionary.pdf"
-        if src_pdf.exists():
-          data = parse_pdf(src_pdf)
-          with open(dict_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-          logger.info(f"Dictionary extracted: {len(data)} entries")
-        elif raw_pdf.exists():
-          data = parse_pdf(raw_pdf)
-          with open(dict_path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-          logger.info(f"Dictionary extracted from data/raw")
+        if parse_pdf and src_pdf.exists():
+          try:
+            data = parse_pdf(src_pdf)
+            with open(dict_path, "w", encoding="utf-8") as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+            logger.info(f"Dictionary extracted: {len(data)} entries")
+          except Exception as e:
+            logger.warning(f"Parse failed for src_pdf: {e}")
+        elif parse_pdf and raw_pdf.exists():
+          try:
+            data = parse_pdf(raw_pdf)
+            with open(dict_path, "w", encoding="utf-8") as f:
+              json.dump(data, f, ensure_ascii=False, indent=2)
+            logger.info("Dictionary extracted from data/raw")
+          except Exception as e:
+            logger.warning(f"Parse failed for raw_pdf: {e}")
         else:
           with open(dict_path, "w", encoding="utf-8") as f:
             json.dump({}, f, ensure_ascii=False, indent=2)
           logger.warning("No PDF found; wrote empty dictionary")
-      build_sign_index()
-      build_motion_templates()
+      if build_sign_index:
+        try: build_sign_index()
+        except Exception as e: logger.warning(f"build_sign_index failed: {e}")
+      if build_motion_templates:
+        try: build_motion_templates()
+        except Exception as e: logger.warning(f"build_motion_templates failed: {e}")
     except Exception as e:
       logger.warning(f"Startup data build failed: {e}")
 
