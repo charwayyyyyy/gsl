@@ -188,6 +188,26 @@ async def startup_event():
           with open(dict_path, "w", encoding="utf-8") as f:
             json.dump({}, f, ensure_ascii=False, indent=2)
           logger.warning("No PDF found; wrote empty dictionary")
+      else:
+        try:
+          with open(dict_path, "r", encoding="utf-8") as f:
+            existing = json.load(f)
+          if isinstance(existing, dict) and "entries" in existing and isinstance(existing["entries"], list):
+            migrated = {}
+            for e in existing["entries"]:
+              g = e.get("gloss")
+              if g:
+                migrated[g] = {
+                  "english": (e.get("english") or "").lower(),
+                  "description": (e.get("usage") or ""),
+                  "images": [e.get("image_path")] if e.get("image_path") else [],
+                  "page": e.get("source_page")
+                }
+            with open(dict_path, "w", encoding="utf-8") as f:
+              json.dump(migrated, f, ensure_ascii=False, indent=2)
+            logger.info(f"Migrated legacy dictionary schema: {len(migrated)} entries")
+        except Exception as e:
+          logger.warning(f"Dictionary migration failed: {e}")
       if build_sign_index:
         try: build_sign_index()
         except Exception as e: logger.warning(f"build_sign_index failed: {e}")
