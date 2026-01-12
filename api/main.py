@@ -16,7 +16,7 @@ from .services.gsl_dictionary_service import GSLDictionaryService
 from backend.dictionary.text_to_sign import TextToSignService
 from backend.sign_matching.dictionary_matcher import DictionaryMatcher
 try:
-    from scripts.extract_gsl_dictionary import parse_pdf
+    from scripts.extract_gsl_dictionary import pdf_to_strict_json as parse_pdf
 except Exception:
     parse_pdf = None
 try:
@@ -65,6 +65,12 @@ translation_service = TranslationService(TranslationConfig())
 avatar_service = AvatarService()
 speech_service = SpeechRecognitionService(SpeechRecognitionConfig(device="cpu", language="en", fp16=False, chunk_duration=2.0, overlap_duration=0.5))
 _audio_buffers: Dict[str, Any] = {}
+
+# Serve extracted dictionary images
+try:
+    app.mount("/static", StaticFiles(directory=str(Path("data")/"processed"/"images")), name="static")
+except Exception:
+    pass
 
 # WebSocket connection managers
 class ConnectionManager:

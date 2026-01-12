@@ -87,11 +87,30 @@ def pdf_to_strict_json(pdf_path: Path) -> Dict[str, Dict]:
             desc_lines = [l for l in lines if l.strip() != gloss]
             description = normalize_text(" ".join(desc_lines))
             english = gloss.replace("-", " ").lower()
+            # Move images into per-gloss directory
+            per_gloss = IMAGES_DIR / gloss
+            try:
+                per_gloss.mkdir(parents=True, exist_ok=True)
+                moved: List[str] = []
+                for img in images:
+                    src = IMAGES_DIR / img
+                    if src.exists():
+                        dst = per_gloss / src.name
+                        if not dst.exists():
+                            try:
+                                dst.write_bytes(src.read_bytes())
+                            except Exception:
+                                pass
+                        moved.append(dst.name)
+                images = moved if moved else images
+            except Exception:
+                pass
             entries[gloss] = {
                 "english": english,
                 "description": description,
                 "images": images,
-                "page": page_idx + 1
+                "page": page_idx + 1,
+                "variants": len(images)
             }
 
     return entries

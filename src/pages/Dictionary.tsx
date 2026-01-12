@@ -45,13 +45,23 @@ const Dictionary: React.FC = () => {
             <h2 className="text-xl font-semibold mb-2">{result.gloss}</h2>
             <p className="text-gray-700 mb-4">{result.description}</p>
             <div className="flex gap-3 flex-wrap">
-              {Array.isArray(result.images) && result.images.map((img: string, i: number) => (
-                <div key={i} className="w-40 h-40 bg-gray-100 rounded-lg border flex items-center justify-center">
-                  <span className="text-sm text-gray-500">{img}</span>
-                </div>
-              ))}
+              {Array.isArray(result.images) && result.images.length > 0 ? (
+                result.images.map((img: string, i: number) => (
+                  <img
+                    key={i}
+                    src={`http://localhost:8000/static/${result.gloss}/${img}`}
+                    alt={`${result.gloss} sign ${i+1}`}
+                    className="w-40 h-40 object-contain rounded-lg border bg-white"
+                  />
+                ))
+              ) : (
+                <div className="w-full text-sm text-gray-500">No images available</div>
+              )}
             </div>
             <div className="mt-4 text-sm text-gray-600">Confidence: {Math.round((result.confidence || 0) * 100)}%</div>
+            {result.page && (
+              <div className="mt-1 text-sm text-gray-600">Page: {result.page}</div>
+            )}
           </div>
         )}
       </div>
