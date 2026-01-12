@@ -3,16 +3,19 @@ import Home from "@/pages/Home";
 import Settings from "@/pages/Settings";
 import Help from "@/pages/Help";
 import Interpreter from "@/pages/Interpreter";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 export default function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/interpreter" element={<Interpreter />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/help" element={<Help />} />
-      </Routes>
+      <ErrorBoundary>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/interpreter" element={<Interpreter />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/help" element={<Help />} />
+        </Routes>
+      </ErrorBoundary>
     </Router>
   );
 }
