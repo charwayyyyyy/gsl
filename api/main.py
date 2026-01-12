@@ -208,6 +208,30 @@ async def startup_event():
             logger.info(f"Migrated legacy dictionary schema: {len(migrated)} entries")
         except Exception as e:
           logger.warning(f"Dictionary migration failed: {e}")
+      # Fallback: seed from data/gsl_json if dictionary empty
+      try:
+        with open(dict_path, "r", encoding="utf-8") as f:
+          data_now = json.load(f)
+        if isinstance(data_now, dict) and len(data_now) == 0:
+          seed_path = Path("data")/"gsl_json"/"gsl_dict_entries_001.json"
+          if seed_path.exists():
+            with open(seed_path, "r", encoding="utf-8") as sf:
+              seed = json.load(sf)
+            migrated = {}
+            for e in seed.get("entries", []):
+              g = e.get("gloss")
+              if g:
+                migrated[g] = {
+                  "english": (e.get("english_meaning") or "").lower(),
+                  "description": (e.get("usage_notes") or ""),
+                  "images": e.get("images") or [],
+                  "page": e.get("source_page")
+                }
+            with open(dict_path, "w", encoding="utf-8") as f:
+              json.dump(migrated, f, ensure_ascii=False, indent=2)
+            logger.info(f"Seeded dictionary from gsl_json: {len(migrated)} entries")
+      except Exception as e:
+        logger.warning(f"Dictionary seed failed: {e}")
       if build_sign_index:
         try: build_sign_index()
         except Exception as e: logger.warning(f"build_sign_index failed: {e}")
