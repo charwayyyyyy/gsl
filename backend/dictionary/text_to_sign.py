@@ -12,6 +12,7 @@ class TextToSignService:
         self.dictionary: Dict[str, Any] = {}
         self.index: Dict[str, Any] = {}
         self._cache_vecs: Dict[str, np.ndarray] = {}
+        self._page_cache: Dict[str, int] = {}
         self._load()
 
     def _load(self):
@@ -55,6 +56,8 @@ class TextToSignService:
             return out
         try:
             page = int(entry.get("page") or 0)
+            if page <= 0:
+                page = self._find_page(gloss)
             if page > 0:
                 import fitz
                 src_pdf = Path("Ghanaian Sign Language Dictionary - 3rd Edition.pdf")
@@ -70,7 +73,46 @@ class TextToSignService:
                     out.append(fname)
         except Exception:
             pass
+        if not out:
+            try:
+                import fitz
+                src_pdf = Path("Ghanaian Sign Language Dictionary - 3rd Edition.pdf")
+                raw_pdf = Path("data")/"raw"/"gsl_dictionary.pdf"
+                pdf_path = src_pdf if src_pdf.exists() else raw_pdf
+                if pdf_path.exists():
+                    base.mkdir(parents=True, exist_ok=True)
+                    doc = fitz.open(pdf_path)
+                    pix = doc.load_page(0).get_pixmap()
+                    fname = f"page1.png"
+                    dst = base / fname
+                    pix.save(dst)
+                    out.append(fname)
+            except Exception:
+                pass
         return out
+
+    def _find_page(self, gloss: str) -> int:
+        g = gloss.strip().upper()
+        if g in self._page_cache:
+            return self._page_cache[g]
+        try:
+            import pdfplumber
+            for cand in [
+                Path("Ghanaian Sign Language Dictionary - 3rd Edition.pdf"),
+                Path("data")/"raw"/"gsl_dictionary.pdf"
+            ]:
+                if cand.exists():
+                    with pdfplumber.open(cand) as pdf:
+                        for i, p in enumerate(pdf.pages):
+                            t = p.extract_text() or ""
+                            lines = [l.strip() for l in t.splitlines() if l.strip()]
+                            for ln in lines:
+                                if ln == g or ln.startswith(g+" "):
+                                    self._page_cache[g] = i+1
+                                    return i+1
+        except Exception:
+            pass
+        return 0
 
     def search(self, q: str) -> Dict[str, Any]:
         qn = (q or "").strip()
@@ -117,7 +159,7 @@ class TextToSignService:
                 "images": imgs,
                 "description": e.get("description",""),
                 "page": e.get("page"),
-                "confidence": 0.6,
+                "confidence": 0.35,
                 "alternatives": cand[1:4]
             }
         try:
@@ -150,7 +192,7 @@ class TextToSignService:
                 "images": imgs,
                 "description": e.get("description",""),
                 "page": e.get("page"),
-                "confidence": float(max(0.0, min(1.0, sc))),
+                "confidence": float(min(0.39, max(0.0, sc))),
                 "alternatives": alts
             }
         return {

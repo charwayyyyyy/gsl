@@ -86,12 +86,15 @@ const Dictionary: React.FC = () => {
                     className="w-40 h-40 object-contain rounded-lg border bg-white"
                     loading="lazy"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).style.display = 'none'
+                      const el = e.target as HTMLImageElement
+                      el.style.display = 'none'
                     }}
                   />
                 ))
               ) : (
-                <div className="w-full text-sm text-gray-500">No images available</div>
+                <div className="w-40 h-40 flex items-center justify-center rounded-lg border bg-gray-100 text-gray-500">
+                  <span className="text-sm">{result.gloss}</span>
+                </div>
               )}
             </div>
             <div className="mt-4 text-sm text-gray-600">Confidence: {Math.round((result.confidence || 0) * 100)}%</div>
