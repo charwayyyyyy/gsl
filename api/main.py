@@ -13,6 +13,8 @@ import logging
 import os
 
 from .services.gsl_dictionary_service import GSLDictionaryService
+from backend.dictionary.text_to_sign import TextToSignService
+from backend.sign_matching.dictionary_matcher import DictionaryMatcher
 from .services.mediapipe_service import MediaPipeService
 from .services.translation_service import TranslationService
 from .services.avatar_service import AvatarService
@@ -43,6 +45,8 @@ app.add_middleware(
 
 # Initialize services
 dictionary_service = GSLDictionaryService()
+text_to_sign_service = TextToSignService()
+dict_matcher = DictionaryMatcher()
 mediapipe_service = MediaPipeService()
 from .services.translation_service import TranslationConfig
 translation_service = TranslationService(TranslationConfig())
@@ -194,13 +198,12 @@ async def video_stream(websocket: WebSocket):
                         seq.append([lm.get("x",0), lm.get("y",0), lm.get("z",0)])
                     elif isinstance(lm, (list, tuple)) and len(lm) >= 3:
                         seq.append([lm[0], lm[1], lm[2]])
-                if _PROTOTYPES:
-                    try:
-                        g, score = classify({"pose": seq}, _PROTOTYPES)
-                        predicted_gloss = g
-                        predicted_confidence = float(max(0.0, score))
-                    except Exception as e:
-                        logger.warning(f"Baseline classify failed: {e}")
+                try:
+                    g, score = dict_matcher.best_match(seq)
+                    predicted_gloss = g
+                    predicted_confidence = float(max(0.0, score))
+                except Exception as e:
+                    logger.warning(f"Dictionary matcher failed: {e}")
 
                 # Send pose + baseline result back to client
                 response = {
@@ -402,11 +405,10 @@ async def render_avatar(request: AvatarRequest):
 
 # GSL dictionary endpoint
 @app.get("/api/dictionary/search")
-async def search_dictionary(query: str, limit: int = 10):
+async def search_dictionary(q: str):
     try:
-        results = await dictionary_service.search_signs(query, limit)
-        return {"results": results, "count": len(results)}
-        
+        result = text_to_sign_service.search(q)
+        return result
     except Exception as e:
         logger.error(f"Error searching dictionary: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

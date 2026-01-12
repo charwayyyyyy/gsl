@@ -16,21 +16,11 @@ except Exception:
 DATA_DIR = Path("data")
 RAW_DIR = DATA_DIR / "raw"
 PROCESSED_DIR = DATA_DIR / "processed"
-IMAGES_DIR = DATA_DIR / "images" / "signs"
-
-STRICT_SCHEMA_KEYS = [
-    "gloss",
-    "english",
-    "usage",
-    "facial_expression",
-    "image_path",
-    "source_page",
-]
+IMAGES_DIR = PROCESSED_DIR / "images"
 
 ENTRY_PATTERNS = [
-    r"([A-Z][A-Z\s]+)\s*\(([^)]+)\)",
+    r"^([A-Z][A-Z\-\s]+)\s*$",
     r"([A-Z][A-Z\s]+):\s*([^\n]+)",
-    r"([A-Z][A-Z\s]+)\s*-\s*([^\n]+)",
 ]
 
 def ensure_dirs():
@@ -41,16 +31,19 @@ def extract_images_from_page(doc, page_index: int) -> List[str]:
     paths: List[str] = []
     if doc is None:
         return paths
-    page = doc.load_page(page_index)
-    for img in page.get_images(full=True):
-        xref = img[0]
-        pix = fitz.Pixmap(doc, xref)
-        if pix.n >= 5:
-            pix = fitz.Pixmap(fitz.csRGB, pix)
-        out_path = IMAGES_DIR / f"page{page_index+1}_img_{xref}.png"
-        pix.save(out_path)
-        pix = None
-        paths.append(str(out_path))
+    try:
+        page = doc.load_page(page_index)
+        for img in page.get_images(full=True):
+            xref = img[0]
+            pix = fitz.Pixmap(doc, xref)
+            if pix.n >= 5:
+                pix = fitz.Pixmap(fitz.csRGB, pix)
+            out_path = IMAGES_DIR / f"page{page_index+1}_img_{xref}.png"
+            pix.save(out_path)
+            pix = None
+            paths.append(out_path.name)
+    except Exception:
+        pass
     return paths
 
 def normalize_text(s: Optional[str]) -> Optional[str]:
@@ -60,9 +53,9 @@ def normalize_text(s: Optional[str]) -> Optional[str]:
     s = re.sub(r"\s+", " ", s)
     return s
 
-def pdf_to_strict_json(pdf_path: Path) -> List[Dict]:
+def pdf_to_strict_json(pdf_path: Path) -> Dict[str, Dict]:
     ensure_dirs()
-    entries: List[Dict] = []
+    entries: Dict[str, Dict] = {}
     text_pages: List[str] = []
 
     if pdfplumber:
@@ -75,27 +68,38 @@ def pdf_to_strict_json(pdf_path: Path) -> List[Dict]:
 
     for page_idx, text in enumerate(text_pages):
         images = extract_images_from_page(doc, page_idx)
-        first_image = images[0] if images else None
-        for pat in ENTRY_PATTERNS:
-            for m in re.finditer(pat, text):
-                gloss = normalize_text(m.group(1))
-                english = normalize_text(m.group(2))
-                entry = {
-                    "gloss": gloss,
-                    "english": english,
-                    "usage": None,
-                    "facial_expression": None,
-                    "image_path": first_image,
-                    "source_page": page_idx + 1,
-                }
-                entries.append(entry)
+        if not images and fitz:
+            try:
+                page = fitz.open(pdf_path).load_page(page_idx)
+                pix = page.get_pixmap()
+                out_path = IMAGES_DIR / f"page{page_idx+1}.png"
+                pix.save(out_path)
+                images = [out_path.name]
+            except Exception:
+                images = []
+        lines = [l for l in text.splitlines() if l.strip()]
+        gloss = None
+        for ln in lines:
+            if re.match(r"^[A-Z][A-Z\-\s]+$", ln.strip()):
+                gloss = ln.strip()
+                break
+        if gloss:
+            desc_lines = [l for l in lines if l.strip() != gloss]
+            description = normalize_text(" ".join(desc_lines))
+            english = gloss.replace("-", " ").lower()
+            entries[gloss] = {
+                "english": english,
+                "description": description,
+                "images": images,
+                "page": page_idx + 1
+            }
 
     return entries
 
-def validate_schema(entries: List[Dict]) -> None:
-    for e in entries:
-        for k in STRICT_SCHEMA_KEYS:
-            assert k in e, f"Missing key {k} in entry"
+def validate_schema(entries: Dict[str, Dict]) -> None:
+    for g, e in entries.items():
+        for k in ["english", "description", "images", "page"]:
+            assert k in e, f"Missing key {k} in entry {g}"
 
 if __name__ == "__main__":
     import argparse
@@ -116,6 +120,6 @@ if __name__ == "__main__":
         validate_schema(entries)
         out_path = PROCESSED_DIR / "gsl_dictionary.json"
         with open(out_path, "w", encoding="utf-8") as f:
-            json.dump({"entries": entries, "count": len(entries)}, f, ensure_ascii=False, indent=2)
+            json.dump(entries, f, ensure_ascii=False, indent=2)
         print(f"Wrote {len(entries)} entries to {out_path}")
 
