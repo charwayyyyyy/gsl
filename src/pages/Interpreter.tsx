@@ -117,9 +117,12 @@ const Interpreter: React.FC = () => {
   const speakText = useCallback((text: string) => {
     if ('speechSynthesis' in window && !isMuted) {
       const utterance = new SpeechSynthesisUtterance(text)
-      utterance.rate = audio.speechSpeed
-      utterance.volume = audio.volumeLevel
-      utterance.pitch = 1
+      const rate = Number.isFinite(audio.speechSpeed) ? Math.min(2, Math.max(0.1, audio.speechSpeed)) : 1
+      const volume = Number.isFinite(audio.volumeLevel) ? Math.min(1, Math.max(0, audio.volumeLevel)) : 1
+      const pitch = 1
+      utterance.rate = rate
+      utterance.volume = volume
+      utterance.pitch = pitch
       
       // Use Ghanaian accent if available
       if (audio.ghanaianAccent) {
