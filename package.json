@@ -11,7 +11,8 @@
     "check": "tsc -b --noEmit",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage"
+    "test:coverage": "vitest --coverage",
+    "start:all": "powershell -ExecutionPolicy Bypass -File scripts/start_all.ps1"
   },
   "dependencies": {
     "clsx": "^2.1.1",
