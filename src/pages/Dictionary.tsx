@@ -1,10 +1,18 @@
 import React, { useState, useEffect } from 'react'
+import { Mic, MicOff } from 'lucide-react'
+
+// Add interface for SpeechRecognition
+interface IWindow extends Window {
+  webkitSpeechRecognition: any;
+  SpeechRecognition: any;
+}
 
 const Dictionary: React.FC = () => {
   const [q, setQ] = useState('')
   const [result, setResult] = useState<any>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [isListening, setIsListening] = useState(false)
   const [letter, setLetter] = useState<string>('A')
   const [list, setList] = useState<any[]>([])
 
@@ -21,6 +29,48 @@ const Dictionary: React.FC = () => {
     } finally {
       setLoading(false)
     }
+  }
+
+  const toggleListening = () => {
+    if (isListening) {
+      setIsListening(false)
+      return
+    }
+
+    const { webkitSpeechRecognition, SpeechRecognition } = window as unknown as IWindow
+    const Recognition = SpeechRecognition || webkitSpeechRecognition
+
+    if (!Recognition) {
+      setError('Speech recognition is not supported in this browser.')
+      return
+    }
+
+    const recognition = new Recognition()
+    recognition.lang = 'en-US'
+    recognition.continuous = false
+    recognition.interimResults = false
+
+    recognition.onstart = () => {
+      setIsListening(true)
+    }
+
+    recognition.onend = () => {
+      setIsListening(false)
+    }
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript
+      setQ(transcript)
+      search(transcript)
+    }
+
+    recognition.onerror = (event: any) => {
+      console.error(event.error)
+      setIsListening(false)
+      setError('Error occurred in speech recognition: ' + event.error)
+    }
+
+    recognition.start()
   }
 
   const fetchList = async (ltr: string) => {
@@ -51,12 +101,23 @@ const Dictionary: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto p-6">
         <h1 className="text-2xl font-bold mb-4">Text → Sign</h1>
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Type a word (e.g., cat)"
-          className="w-full p-3 rounded-lg border mb-6"
-        />
+        <div className="relative mb-6">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Type a word (e.g., cat) or click mic to speak"
+            className="w-full p-3 pr-12 rounded-lg border"
+          />
+          <button
+            onClick={toggleListening}
+            className={`absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full transition-colors ${
+              isListening ? 'bg-red-100 text-red-600 animate-pulse' : 'text-gray-500 hover:text-blue-600'
+            }`}
+            title="Search by voice"
+          >
+            {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+          </button>
+        </div>
         {!q && (
           <div className="flex flex-wrap gap-2 mb-4">
             {alphabet.map((a) => (
