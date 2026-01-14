@@ -7,12 +7,14 @@ interface AudioCaptureProps {
   onAudioData?: (audioData: Float32Array) => void
   showLevel?: boolean
   className?: string
+  disabled?: boolean
 }
 
 const AudioCapture: React.FC<AudioCaptureProps> = ({
   onAudioData,
   showLevel = true,
-  className = ''
+  className = '',
+  disabled = false
 }) => {
   const [error, setError] = useState<string | null>(null)
   
@@ -147,6 +149,7 @@ const AudioCapture: React.FC<AudioCaptureProps> = ({
         {/* Toggle Button */}
         <button
           onClick={toggleAudio}
+          disabled={disabled}
           className={`
             ${getButtonSize()} rounded-full flex items-center justify-center
             ${isAudioEnabled 
@@ -155,6 +158,7 @@ const AudioCapture: React.FC<AudioCaptureProps> = ({
             }
             shadow-lg transform hover:scale-110 active:scale-95 transition-all duration-200
             focus:outline-none focus:ring-4 focus:ring-white/50
+            ${disabled ? 'opacity-50 cursor-not-allowed transform-none' : ''}
           `}
           aria-label={isAudioEnabled ? 'Mute microphone' : 'Unmute microphone'}
         >

@@ -253,3 +253,37 @@ class UserSettings(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None
         }
+
+class AnalyticsEvent(Base):
+    __tablename__ = "analytics_events"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    session_id = Column(String, index=True)
+    event_type = Column(String(50))  # search, voice_search, unknown_search
+    data = Column(JSON)
+    timestamp = Column(DateTime, default=func.now())
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "session_id": self.session_id,
+            "event_type": self.event_type,
+            "data": self.data,
+            "timestamp": self.timestamp.isoformat() if self.timestamp else None
+        }
+
+class FeedbackReport(Base):
+    __tablename__ = "feedback_reports"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    gloss = Column(String(100))
+    reason = Column(String(200))
+    timestamp = Column(DateTime, default=func.now())
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "gloss": self.gloss,
+            "reason": self.reason,
+            "timestamp": self.timestamp.isoformat() if self.timestamp else None
+        }

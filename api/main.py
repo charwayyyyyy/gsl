@@ -33,7 +33,7 @@ from .services.avatar_service import AvatarService
 from .services.speech_recognition_service import SpeechRecognitionService, SpeechRecognitionConfig
 from backend.sign_recognition.baseline import classify
 from pathlib import Path
-from .database.models import TranslationSession, TranslationEvent
+from .database.models import TranslationSession, TranslationEvent, AnalyticsEvent, FeedbackReport
 from .database.database import SessionLocal, init_db
 
 # Configure logging
@@ -161,6 +161,15 @@ class AvatarRequest(BaseModel):
     animation_mode: str = "3d_avatar"
     speed: float = 1.0
     facial_expressions: bool = True
+
+class AnalyticsEventRequest(BaseModel):
+    event_type: str
+    data: Dict[str, Any]
+    session_id: Optional[str] = None
+
+class FeedbackRequest(BaseModel):
+    gloss: str
+    reason: Optional[str] = None
 
 # Initialize database on startup
 @app.on_event("startup")
@@ -565,11 +574,46 @@ async def search_dictionary(q: str):
             "description": r.get("description", ""),
             "page": r.get("page"),
             "confidence": float(r.get("confidence", 0.0)),
-            "alternatives": r.get("alternatives", [])
+            "alternatives": r.get("alternatives", []),
+            "match_type": r.get("match_type", "None"),
+            "variants": r.get("variants", 0)
         }
     except Exception as e:
         logger.error(f"Error searching dictionary: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/analytics/track")
+async def track_analytics(event: AnalyticsEventRequest):
+    try:
+        db = SessionLocal()
+        db_event = AnalyticsEvent(
+            session_id=event.session_id or "anonymous",
+            event_type=event.event_type,
+            data=event.data
+        )
+        db.add(db_event)
+        db.commit()
+        db.close()
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Analytics tracking failed: {e}")
+        return {"status": "ignored"}
+
+@app.post("/api/feedback/report")
+async def report_feedback(feedback: FeedbackRequest):
+    try:
+        db = SessionLocal()
+        report = FeedbackReport(
+            gloss=feedback.gloss,
+            reason=feedback.reason
+        )
+        db.add(report)
+        db.commit()
+        db.close()
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Feedback reporting failed: {e}")
+        return {"status": "ignored"}
 
 @app.get("/api/dictionary/list")
 async def list_dictionary(letter: str = "A"):

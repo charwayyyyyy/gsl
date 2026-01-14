@@ -126,7 +126,9 @@ class TextToSignService:
                 "description": e.get("description", "") if g else "",
                 "page": e.get("page") if g else None,
                 "confidence": 1.0 if g else 0.0,
-                "alternatives": alts[1:] if len(alts) > 1 else []
+                "alternatives": alts[1:] if len(alts) > 1 else [],
+                "match_type": "Random" if not g else "Exact",
+                "variants": int(e.get("variants") or 0) if g else 0
             }
         cand = []
         qlow = qn.lower()
@@ -145,7 +147,9 @@ class TextToSignService:
                     "description": entry.get("description",""),
                     "page": entry.get("page"),
                     "confidence": 1.0,
-                    "alternatives": []
+                    "alternatives": [],
+                    "match_type": "Exact",
+                    "variants": int(entry.get("variants") or 0)
                 }
         for gloss, entry in self.dictionary.items():
             if gloss.lower().startswith(qlow) or entry.get("english","").lower().startswith(qlow):
@@ -168,8 +172,10 @@ class TextToSignService:
                 "images": imgs,
                 "description": e.get("description",""),
                 "page": e.get("page"),
-                "confidence": 0.35,
-                "alternatives": cand[1:4]
+                "confidence": 0.85,
+                "alternatives": cand[1:4],
+                "match_type": "Prefix/Contains",
+                "variants": int(e.get("variants") or 0)
             }
         try:
             from sentence_transformers import SentenceTransformer
@@ -201,8 +207,10 @@ class TextToSignService:
                 "images": imgs,
                 "description": e.get("description",""),
                 "page": e.get("page"),
-                "confidence": float(min(0.39, max(0.0, sc))),
-                "alternatives": alts
+                "confidence": float(min(0.69, max(0.0, sc))),
+                "alternatives": alts,
+                "match_type": "Semantic",
+                "variants": int(e.get("variants") or 0)
             }
         return {
             "gloss": None,
@@ -210,6 +218,8 @@ class TextToSignService:
             "description": "",
             "page": None,
             "confidence": 0.0,
-            "alternatives": []
+            "alternatives": [],
+            "match_type": "None",
+            "variants": 0
         }
 
