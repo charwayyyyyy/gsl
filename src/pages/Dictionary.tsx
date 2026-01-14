@@ -144,7 +144,7 @@ const Dictionary: React.FC = () => {
                     key={i}
                     src={`http://localhost:8000/static/${result.gloss}/${img}`}
                     alt={`${result.gloss} sign ${i+1}`}
-                    className="w-40 h-40 object-contain rounded-lg border bg-white"
+                    className="w-96 h-96 object-contain rounded-lg border bg-white"
                     loading="lazy"
                     onError={(e) => {
                       const el = e.target as HTMLImageElement
@@ -153,7 +153,7 @@ const Dictionary: React.FC = () => {
                   />
                 ))
               ) : (
-                <div className="w-40 h-40 flex items-center justify-center rounded-lg border bg-gray-100 text-gray-500">
+                <div className="w-96 h-96 flex items-center justify-center rounded-lg border bg-gray-100 text-gray-500">
                   <span className="text-sm">{result.gloss}</span>
                 </div>
               )}
