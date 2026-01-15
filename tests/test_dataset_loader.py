@@ -1,3 +1,8 @@
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
 from data_pipeline.dataset import GSLTemporalDataset
 
 def test_dataset_loads():

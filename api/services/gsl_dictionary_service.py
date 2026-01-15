@@ -35,11 +35,13 @@ class GSLSign:
 
 @dataclass
 class GSLDictionary:
-    """Complete GSL dictionary with metadata"""
     signs: Dict[str, GSLSign]
     metadata: Dict[str, any]
     categories: List[str]
     complexity_levels: List[str]
+
+
+DictionaryEntry = GSLSign
 
 class GSLDictionaryExtractor:
     """Extracts and processes Ghana Sign Language dictionary data from PDF"""

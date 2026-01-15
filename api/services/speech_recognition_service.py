@@ -30,6 +30,7 @@ class SpeechRecognitionConfig:
     model_name: str = "base"  # tiny, base, small, medium, large
     language: str = "en"  # English as default, will be configurable for Ghanaian languages
     device: str = "cuda" if (torch and torch.cuda.is_available()) else "cpu"
+    task: str = "transcribe"
     sample_rate: int = 16000  # Whisper expects 16kHz
     chunk_duration: float = 2.0  # seconds per chunk
     overlap_duration: float = 0.5  # overlap between chunks
@@ -194,9 +195,6 @@ class SpeechRecognitionService:
     def preprocess_audio(self, audio_data: np.ndarray, sample_rate: int) -> np.ndarray:
         """Preprocess audio for Whisper"""
         try:
-            # Resample if necessary
-            audio_data = self.resample_audio(audio_data, sample_rate)
-            
             # Normalize audio
             audio_data = self.normalize_audio(audio_data)
             
@@ -472,6 +470,226 @@ class AdvancedSpeechRecognitionService(SpeechRecognitionService):
             'end_time': len(audio_data) / self.sample_rate,
             'confidence': 1.0
         }]
+
+
+class WhisperSpeechRecognitionService:
+    def __init__(self, config: Optional[SpeechRecognitionConfig] = None):
+        self.config = config or SpeechRecognitionConfig()
+        self.model = None
+        self.executor = asyncio.get_event_loop().run_in_executor if asyncio.get_event_loop().is_running() else None
+        self._load_model()
+
+    def _load_model(self):
+        try:
+            if whisper is None:
+                raise RuntimeError("Whisper not available")
+            try:
+                self.model = whisper.load_model(self.config.model_name, device=self.config.device)
+            except Exception:
+                if self.config.device != "cpu":
+                    self.config.device = "cpu"
+                    self.model = whisper.load_model(self.config.model_name, device=self.config.device)
+                else:
+                    raise
+        except Exception as e:
+            logger.error(f"Failed to load Whisper model: {e}")
+            self.model = None
+
+    def _create_temp_audio_file(self, audio_data: np.ndarray, sample_rate: int) -> str:
+        if not isinstance(audio_data, np.ndarray):
+            raise TypeError("audio_data must be a numpy array")
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+            path = tmp.name
+        with wave.open(path, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(sample_rate)
+            int_data = np.int16(np.clip(audio_data, -1.0, 1.0) * 32767)
+            wf.writeframes(int_data.tobytes())
+        return path
+
+    def _cleanup_temp_file(self, file_path: str):
+        try:
+            Path(file_path).unlink()
+        except FileNotFoundError:
+            return
+        except Exception as e:
+            logger.warning(f"Failed to remove temp file {file_path}: {e}")
+
+    def transcribe_audio(self, audio_data: Optional[np.ndarray], sample_rate: int = 16000) -> Dict:
+        if audio_data is None or not isinstance(audio_data, np.ndarray):
+            return {
+                "success": False,
+                "text": "",
+                "language": "unknown",
+                "confidence": 0.0,
+                "segments": [],
+                "duration": 0.0,
+                "processing_time": 0.0,
+                "model": self.config.model_name,
+                "device": self.config.device,
+                "error": "Invalid audio data",
+            }
+        temp_path = None
+        start_time = time.time()
+        try:
+            temp_path = self._create_temp_audio_file(audio_data, sample_rate)
+            if self.model is None:
+                raise RuntimeError("Model not loaded")
+            result = self.model.transcribe(temp_path)
+            text = result.get("text", "").strip()
+            segments = result.get("segments", []) or []
+            if segments:
+                start = segments[0].get("start", 0.0)
+                end = segments[-1].get("end", 0.0)
+                duration = max(end - start, 0.0)
+            else:
+                duration = 0.0
+            confidence = 0.0
+            if segments:
+                avg_logprob = np.mean([s.get("avg_logprob", 0.0) for s in segments])
+                confidence = float(min(max(np.exp(avg_logprob), 0.0), 1.0))
+            processing_time = time.time() - start_time
+            return {
+                "success": True,
+                "text": text,
+                "language": result.get("language", self.config.language),
+                "confidence": confidence,
+                "segments": segments,
+                "duration": duration,
+                "processing_time": processing_time,
+                "model": self.config.model_name,
+                "device": self.config.device,
+            }
+        except Exception as e:
+            logger.error(f"Error during transcription: {e}")
+            return {
+                "success": False,
+                "text": "",
+                "language": "unknown",
+                "confidence": 0.0,
+                "segments": [],
+                "duration": 0.0,
+                "processing_time": time.time() - start_time,
+                "model": self.config.model_name,
+                "device": self.config.device,
+                "error": str(e),
+            }
+        finally:
+            if temp_path:
+                self._cleanup_temp_file(temp_path)
+
+    def transcribe_audio_file(self, audio_file_path: str) -> Dict:
+        start_time = time.time()
+        try:
+            if self.model is None:
+                raise RuntimeError("Model not loaded")
+            result = self.model.transcribe(audio_file_path)
+            text = result.get("text", "").strip()
+            segments = result.get("segments", []) or []
+            if segments:
+                start = segments[0].get("start", 0.0)
+                end = segments[-1].get("end", 0.0)
+                duration = max(end - start, 0.0)
+            else:
+                duration = 0.0
+            confidence = 0.0
+            if segments:
+                avg_logprob = np.mean([s.get("avg_logprob", 0.0) for s in segments])
+                confidence = float(min(max(np.exp(avg_logprob), 0.0), 1.0))
+            processing_time = time.time() - start_time
+            return {
+                "success": True,
+                "text": text,
+                "language": result.get("language", self.config.language),
+                "confidence": confidence,
+                "segments": segments,
+                "duration": duration,
+                "processing_time": processing_time,
+                "model": self.config.model_name,
+                "device": self.config.device,
+            }
+        except Exception as e:
+            logger.error(f"Error transcribing audio file: {e}")
+            return {
+                "success": False,
+                "text": "",
+                "language": "unknown",
+                "confidence": 0.0,
+                "segments": [],
+                "duration": 0.0,
+                "processing_time": time.time() - start_time,
+                "model": self.config.model_name,
+                "device": self.config.device,
+                "error": str(e),
+            }
+
+    def detect_language(self, audio_data: np.ndarray) -> Dict:
+        try:
+            if self.model is None:
+                raise RuntimeError("Model not loaded")
+            _, probs = self.model.detect_language(audio_data)
+            if not probs:
+                return {
+                    "success": False,
+                    "detected_language": "unknown",
+                    "confidence": 0.0,
+                    "top_languages": [],
+                }
+            top_items = sorted(probs.items(), key=lambda x: x[1], reverse=True)
+            detected_language, best_conf = top_items[0]
+            top_languages = [{"language": k, "confidence": float(v)} for k, v in top_items]
+            return {
+                "success": True,
+                "detected_language": detected_language,
+                "confidence": float(best_conf),
+                "top_languages": top_languages,
+            }
+        except Exception as e:
+            logger.error(f"Error detecting language: {e}")
+            return {
+                "success": False,
+                "detected_language": "unknown",
+                "confidence": 0.0,
+                "top_languages": [],
+                "error": str(e),
+            }
+
+    def get_model_info(self) -> Dict:
+        is_multilingual = bool(getattr(self.model, "is_multilingual", False)) if self.model is not None else False
+        return {
+            "model_name": self.config.model_name,
+            "language": self.config.language,
+            "device": self.config.device,
+            "task": self.config.task,
+            "is_multilingual": is_multilingual,
+            "supported_languages": [],
+        }
+
+    def update_config(self, **kwargs) -> Dict:
+        reload_required = False
+        for key, value in kwargs.items():
+            if hasattr(self.config, key):
+                setattr(self.config, key, value)
+                if key in {"model_name", "device", "language", "task"}:
+                    reload_required = True
+        if reload_required:
+            self._load_model()
+        return {"success": True, "config": self.config}
+
+    async def transcribe_audio_async(self, audio_data: np.ndarray, sample_rate: int = 16000) -> Dict:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.transcribe_audio, audio_data, sample_rate)
+
+
+_whisper_service: Optional[WhisperSpeechRecognitionService] = None
+
+
+def get_whisper_speech_recognition_service() -> WhisperSpeechRecognitionService:
+    global _whisper_service
+    if _whisper_service is None:
+        _whisper_service = WhisperSpeechRecognitionService()
+    return _whisper_service
 
 # Usage example and testing
 if __name__ == "__main__":

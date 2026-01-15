@@ -1,28 +1,27 @@
 {
-  "timestamp": "2026-01-15T14:23:15.218346",
+  "timestamp": "2026-01-15T14:57:12.458075",
   "summary": {
-    "total_tests": 4,
-    "passed": 1,
-    "failed": 3
+    "total_tests": 2,
+    "passed": 0,
+    "failed": 2
   },
   "results": {
     "dependencies": {
       "python": {
-        "available": false,
+        "available": true,
         "available_packages": [
           "torch",
           "numpy",
+          "mediapipe",
           "whisper",
           "opencv-python",
+          "pytest",
+          "pytest-cov",
           "fastapi",
           "websockets",
           "sqlalchemy"
         ],
-        "missing_packages": [
-          "mediapipe",
-          "pytest",
-          "pytest-cov"
-        ]
+        "missing_packages": []
       },
       "node": {
         "available": true,
@@ -33,6 +32,7 @@
           "react-dom",
           "react-router-dom",
           "tailwind-merge",
+          "three",
           "zustand"
         ],
         "dev_dependencies": [
@@ -40,6 +40,7 @@
           "@types/node",
           "@types/react",
           "@types/react-dom",
+          "@types/three",
           "@vitejs/plugin-react",
           "@testing-library/react",
           "@testing-library/jest-dom",
@@ -72,28 +73,16 @@
     },
     "backend": {
       "success": false,
-      "return_code": 1,
-      "stdout": "",
-      "stderr": "C:\\Users\\Theo-Kyei\\Desktop\\gsl\\.venv\\Scripts\\python.exe: No module named pytest\n",
-      "timestamp": "2026-01-15T14:23:15.148516"
-    },
-    "frontend": {
-      "success": true,
-      "message": "npm not available, frontend tests skipped",
-      "timestamp": "2026-01-15T14:23:15.153290"
-    },
-    "integration": {
-      "success": false,
-      "return_code": 1,
-      "stdout": "",
-      "stderr": "C:\\Users\\Theo-Kyei\\Desktop\\gsl\\.venv\\Scripts\\python.exe: No module named pytest\n",
-      "timestamp": "2026-01-15T14:23:15.217567"
+      "return_code": 2,
+      "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.13.5, pytest-9.0.2, pluggy-1.6.0 -- C:\\Users\\Theo-Kyei\\Desktop\\gsl\\.venv\\Scripts\\python.exe\ncachedir: .pytest_cache\nrootdir: C:\\Users\\Theo-Kyei\\Desktop\\gsl\\tests\nplugins: anyio-3.7.1, cov-7.0.0\ncollecting ... collected 70 items / 2 errors / 1 skipped\n\n=================================== ERRORS ====================================\n___________________ ERROR collecting test_all_components.py ___________________\nImportError while importing test module 'C:\\Users\\Theo-Kyei\\Desktop\\gsl\\tests\\test_all_components.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n..\\..\\..\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\importlib\\__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_all_components.py:17: in <module>\n    from api.services.mediapipe_service import MediaPipeService, MediaPipeConfig\nE   ImportError: cannot import name 'MediaPipeConfig' from 'api.services.mediapipe_service' (C:\\Users\\Theo-Kyei\\Desktop\\gsl\\api\\services\\mediapipe_service.py)\n__________________ ERROR collecting test_sign_recognition.py __________________\nImportError while importing test module 'C:\\Users\\Theo-Kyei\\Desktop\\gsl\\tests\\test_sign_recognition.py'.\nHint: make sure your test modules/packages have valid Python names.\nTraceback:\n..\\..\\..\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\importlib\\__init__.py:88: in import_module\n    return _bootstrap._gcd_import(name[level:], package, level)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\ntest_sign_recognition.py:11: in <module>\n    from services.sign_recognition_service import (\nE   ImportError: cannot import name 'SignRecognitionTransformer' from 'services.sign_recognition_service' (C:\\Users\\Theo-Kyei\\Desktop\\gsl\\tests\\..\\api\\services\\sign_recognition_service.py)\n============================== warnings summary ===============================\n..\\.venv\\Lib\\site-packages\\PyPDF2\\__init__.py:21\n  C:\\Users\\Theo-Kyei\\Desktop\\gsl\\.venv\\Lib\\site-packages\\PyPDF2\\__init__.py:21: DeprecationWarning: PyPDF2 is deprecated. Please move to the pypdf library instead.\n    warnings.warn(\n\ntest_gsl_translation.py:403\n  C:\\Users\\Theo-Kyei\\Desktop\\gsl\\tests\\test_gsl_translation.py:403: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html\n    @pytest.mark.integration\n\ntest_speech_recognition.py:397\n  C:\\Users\\Theo-Kyei\\Desktop\\gsl\\tests\\test_speech_recognition.py:397: PytestUnknownMarkWarning: Unknown pytest.mark.asyncio - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html\n    @pytest.mark.asyncio\n\ntest_speech_recognition.py:485\n  C:\\Users\\Theo-Kyei\\Desktop\\gsl\\tests\\test_speech_recognition.py:485: PytestUnknownMarkWarning: Unknown pytest.mark.integration - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html\n    @pytest.mark.integration\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n----- generated xml file: C:\\Users\\Theo-Kyei\\Desktop\\gsl\\test_results.xml -----\n=========================== short test summary info ===========================\nERROR test_all_components.py\nERROR test_sign_recognition.py\n!!!!!!!!!!!!!!!!!!! Interrupted: 2 errors during collection !!!!!!!!!!!!!!!!!!!\n================== 1 skipped, 4 warnings, 2 errors in 4.53s ===================\n",
+      "stderr": "",
+      "timestamp": "2026-01-15T14:57:12.456695"
     }
   },
   "recommendations": [
     "Fix backend test failures before proceeding",
+    "Fix frontend test failures or ensure npm is available",
     "Fix integration test failures for full system functionality",
-    "Install missing Python packages: mediapipe, pytest, pytest-cov",
     "Install ffmpeg for audio processing capabilities"
   ]
 }

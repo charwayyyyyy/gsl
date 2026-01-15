@@ -1,3 +1,8 @@
+import os
+import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
 from backend.nlp.gsl_to_en import to_english
 from backend.nlp.en_to_gsl import to_gsl
 

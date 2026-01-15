@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 try:
     import mediapipe as mp
-    _MP_AVAILABLE = True
+    _MP_AVAILABLE = hasattr(mp, "solutions")
 except Exception:
     mp = None
     _MP_AVAILABLE = False

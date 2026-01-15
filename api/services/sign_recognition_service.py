@@ -4,13 +4,19 @@ import torch.nn.functional as F
 import numpy as np
 from typing import List, Dict, Optional, Tuple
 from dataclasses import dataclass
-import mediapipe as mp
+try:
+    import mediapipe as mp
+    _MP_AVAILABLE = hasattr(mp, "solutions")
+except Exception:
+    mp = None
+    _MP_AVAILABLE = False
 import cv2
 from pathlib import Path
 import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 import asyncio
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -138,14 +144,18 @@ class SignRecognitionService:
             self.load_model(model_path)
         
         # MediaPipe setup
-        self.mp_holistic = mp.solutions.holistic
-        self.holistic = self.mp_holistic.Holistic(
-            static_image_mode=False,
-            model_complexity=1,
-            enable_segmentation=False,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
-        )
+        if _MP_AVAILABLE:
+            self.mp_holistic = mp.solutions.holistic
+            self.holistic = self.mp_holistic.Holistic(
+                static_image_mode=False,
+                model_complexity=1,
+                enable_segmentation=False,
+                min_detection_confidence=0.5,
+                min_tracking_confidence=0.5
+            )
+        else:
+            self.mp_holistic = None
+            self.holistic = None
         
         # State management
         self.frame_buffer = []
@@ -172,7 +182,7 @@ class SignRecognitionService:
         torch.save({
             'model_state_dict': self.model.state_dict(),
             'config': self.config,
-            'timestamp': torch.tensor([torch.time.time()])
+            'timestamp': torch.tensor([time.time()])
         }, model_path)
         logger.info(f"Saved model to {model_path}")
     
@@ -183,6 +193,8 @@ class SignRecognitionService:
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             
             # Process with MediaPipe
+            if not self.holistic:
+                return None
             results = self.holistic.process(rgb_frame)
             
             if not results:
@@ -317,7 +329,7 @@ class SignRecognitionService:
                 'confidence': confidence.item(),
                 'probabilities': probabilities.cpu().numpy().tolist(),
                 'attention_weights': attention_weights.cpu().numpy().tolist(),
-                'timestamp': torch.time.time()
+                'timestamp': time.time()
             }
             
             # Add to prediction buffer for temporal smoothing
@@ -359,7 +371,7 @@ class SignRecognitionService:
                 'predicted_class': most_common_class,
                 'confidence': avg_confidence,
                 'smoothed': True,
-                'timestamp': torch.time.time()
+                'timestamp': time.time()
             }
             
         except Exception as e:
