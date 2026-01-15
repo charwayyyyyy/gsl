@@ -21,6 +21,7 @@
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.3.0",
     "tailwind-merge": "^3.0.2",
+    "three": "^0.169.0",
     "zustand": "^5.0.3"
   },
   "devDependencies": {
@@ -28,6 +29,7 @@
     "@types/node": "^22.15.30",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@types/three": "^0.169.0",
     "@vitejs/plugin-react": "^4.4.1",
     "@testing-library/react": "^14.2.0",
     "@testing-library/jest-dom": "^6.4.0",

@@ -5,6 +5,7 @@ import { useAppStore } from '../stores/appStore'
 import { useWebRTC, useWebSocket } from '../hooks/useWebRTC'
 import VideoCapture from '../components/VideoCapture'
 import AudioCapture from '../components/AudioCapture'
+import Avatar3D from '../components/Avatar3D'
 
 interface SignPrimitives {
   direction: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT' | 'FORWARD' | 'CIRCULAR' | 'TAP' | 'HOLD' | 'NONE'
@@ -1162,53 +1163,37 @@ const Interpreter: React.FC = () => {
                   Signing Avatar
                 </h3>
                 
-                <div className={`h-64 rounded-xl border-2 flex items-center justify-center ${
-                  accessibility.highContrast 
-                    ? 'bg-black border-yellow-400' 
-                    : 'bg-gray-100 border-gray-200'
-                }`}>
+                <div className="space-y-4">
+                  <div className="h-96">
+                    <Avatar3D
+                      isVisible={avatarStatus === 'ready' && !!avatarKeyframes && avatarKeyframes.length > 0}
+                      signSequence={
+                        avatarKeyframes
+                          ? avatarKeyframes
+                              .map(kf => String(kf.sign || kf.gloss || '').toUpperCase())
+                              .filter(label => label.length > 0)
+                          : []
+                      }
+                      currentSign={
+                        avatarKeyframes && avatarKeyframes.length > 0
+                          ? String(avatarKeyframes[0].sign || avatarKeyframes[0].gloss || '').toUpperCase()
+                          : undefined
+                      }
+                    />
+                  </div>
+
                   {avatarStatus === 'loading' && (
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4 border-blue-500" />
-                      <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
+                    <div className="rounded-xl p-3 flex items-center justify-between bg-blue-50 border border-blue-200">
+                      <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-blue-800'}`}>
                         Preparing signing sequence from dictionary...
                       </p>
                     </div>
                   )}
-                  {avatarStatus === 'ready' && avatarKeyframes && avatarKeyframes.length > 0 && (
-                    <div className="w-full h-full flex flex-col items-center justify-center px-4 overflow-hidden">
-                      <div className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold mb-2 ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-800'}`}>
-                        Avatar signing path
-                      </div>
-                      <p className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} mb-3 ${accessibility.highContrast ? 'text-yellow-200' : 'text-gray-600'}`}>
-                        The avatar will follow this sequence, one dictionary-backed sign at a time.
-                      </p>
-                      <div className="w-full max-h-40 overflow-y-auto text-left">
-                        {avatarKeyframes.slice(0, 8).map((kf, idx) => {
-                          const label = String(kf.sign || kf.gloss || '').toUpperCase() || 'UNKNOWN'
-                          const start = typeof kf.start === 'number' ? Math.round(kf.start) : null
-                          const end = typeof kf.end === 'number' ? Math.round(kf.end) : null
-                          return (
-                            <div
-                              key={`${label}-${idx}`}
-                              className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-200' : 'text-gray-700'} mb-1`}
-                            >
-                              <span className="font-semibold">{label}</span>
-                              {start !== null && end !== null && (
-                                <span className="ml-2">
-                                  {start}–{end} ms
-                                </span>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
+
                   {(avatarStatus === 'idle' || avatarStatus === 'error' || !avatarKeyframes || avatarKeyframes.length === 0) && (
-                    <div className="text-center px-4">
+                    <div className="rounded-xl p-4 text-center bg-gray-50 border border-gray-200">
                       <div className="text-6xl mb-4">🤟</div>
-                      <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
+                      <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-700'}`}>
                         {avatarMessage || 'Avatar will activate only for signs that exist in the dictionary.'}
                       </p>
                       <p className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-200' : 'text-gray-500'} mt-2`}>
