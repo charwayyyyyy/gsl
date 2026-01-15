@@ -17,6 +17,7 @@ const AudioCapture: React.FC<AudioCaptureProps> = ({
   disabled = false
 }) => {
   const [error, setError] = useState<string | null>(null)
+  const [micState, setMicState] = useState<'idle' | 'requesting_permission' | 'listening' | 'processing' | 'error'>('idle')
   
   const { settings } = useAppStore()
   const { 
@@ -32,24 +33,28 @@ const AudioCapture: React.FC<AudioCaptureProps> = ({
 
   const { accessibility, audio } = settings
   
-  // Initialize audio when support is confirmed
   useEffect(() => {
-    if (isSupported && !isAudioEnabled) {
-      startAudio().catch(err => {
-        setError('Failed to start audio capture')
-        console.error('Audio initialization error:', err)
-      })
+    if (!isSupported) {
+      setMicState('error')
+      return
     }
-  }, [isSupported])
+    if (error || webrtcError) {
+      setMicState('error')
+      return
+    }
+    if (isAudioEnabled) {
+      setMicState('listening')
+    } else if (micState !== 'processing' && micState !== 'requesting_permission') {
+      setMicState('idle')
+    }
+  }, [isSupported, isAudioEnabled, error, webrtcError])
 
-  // Handle WebRTC errors
   useEffect(() => {
     if (webrtcError) {
       setError(webrtcError)
     }
   }, [webrtcError])
 
-  // Audio data capture loop
   useEffect(() => {
     if (!onAudioData || !isAudioEnabled) return
 
@@ -59,21 +64,27 @@ const AudioCapture: React.FC<AudioCaptureProps> = ({
         onAudioData(audioData)
       }
     }
-
-    // Capture audio at 30 FPS for real-time processing
     const interval = setInterval(captureAudio, 1000 / 30)
 
     return () => clearInterval(interval)
   }, [isAudioEnabled, onAudioData, getAudioData])
 
   const toggleAudio = async () => {
+    if (disabled) return
     if (isAudioEnabled) {
+      setMicState('processing')
       stopAudio()
+      setTimeout(() => {
+        setMicState(prev => (prev === 'processing' ? 'idle' : prev))
+      }, 800)
     } else {
       try {
+        setError(null)
+        setMicState('requesting_permission')
         await startAudio()
       } catch (error) {
         setError('Failed to start audio')
+        setMicState('error')
         console.error('Audio toggle error:', error)
       }
     }
@@ -94,6 +105,11 @@ const AudioCapture: React.FC<AudioCaptureProps> = ({
     if (level >= 0.4) return 'bg-yellow-500'
     return 'bg-green-500'
   }
+
+  const displayLevel = isAudioEnabled ? audioLevel : 0
+  const isListening = micState === 'listening'
+  const isProcessing = micState === 'processing'
+  const isRequesting = micState === 'requesting_permission'
 
   if (error) {
     return (
@@ -149,20 +165,22 @@ const AudioCapture: React.FC<AudioCaptureProps> = ({
         {/* Toggle Button */}
         <button
           onClick={toggleAudio}
-          disabled={disabled}
+          disabled={disabled || micState === 'requesting_permission'}
           className={`
             ${getButtonSize()} rounded-full flex items-center justify-center
-            ${isAudioEnabled 
-              ? 'bg-red-600 hover:bg-red-700 text-white' 
-              : 'bg-green-600 hover:bg-green-700 text-white'
+            ${isListening 
+              ? 'bg-green-600 hover:bg-green-700 text-white' 
+              : isProcessing
+                ? 'bg-blue-600 text-white animate-pulse' 
+                : 'bg-red-600 hover:bg-red-700 text-white'
             }
-            shadow-lg transform hover:scale-110 active:scale-95 transition-all duration-200
+            shadow-lg transform ${disabled ? '' : 'hover:scale-110 active:scale-95'} transition-all duration-200
             focus:outline-none focus:ring-4 focus:ring-white/50
             ${disabled ? 'opacity-50 cursor-not-allowed transform-none' : ''}
           `}
-          aria-label={isAudioEnabled ? 'Mute microphone' : 'Unmute microphone'}
+          aria-label={isListening ? 'Mute microphone' : 'Unmute microphone'}
         >
-          {isAudioEnabled ? (
+          {isListening ? (
             <MicOff className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
           ) : (
             <Mic className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
@@ -175,9 +193,27 @@ const AudioCapture: React.FC<AudioCaptureProps> = ({
           ${accessibility.highContrast ? 'bg-black border-2 border-white text-yellow-400' : 'bg-white/80'}
         `}>
           <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} font-medium`}>
-            {isSupported ? (isAudioEnabled ? 'Mic: granted' : 'Mic: pending') : 'Mic: unsupported'}
+            {!isSupported
+              ? 'Mic: unsupported'
+              : micState === 'requesting_permission'
+                ? 'Mic: requesting permission'
+                : micState === 'processing'
+                  ? 'Mic: processing'
+                  : isListening
+                    ? 'Mic: listening'
+                    : 'Mic: idle'}
           </span>
-          <div className={`w-2 h-2 rounded-full ${isAudioEnabled ? 'bg-green-500' : (isSupported ? 'bg-yellow-500' : 'bg-red-500')}`} />
+          <div
+            className={`w-2 h-2 rounded-full ${
+              !isSupported
+                ? 'bg-red-500'
+                : isListening
+                  ? 'bg-green-500'
+                  : isProcessing || isRequesting
+                    ? 'bg-yellow-500'
+                    : 'bg-red-500'
+            }`}
+          />
         </div>
       </div>
 
@@ -189,15 +225,15 @@ const AudioCapture: React.FC<AudioCaptureProps> = ({
               Audio Level
             </span>
             <div className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-bold text-blue-600`}>
-              {Math.round(audioLevel * 100)}%
+              {Math.round(displayLevel * 100)}%
             </div>
           </div>
           
           {/* Level Bar */}
           <div className={`w-full ${accessibility.largeText ? 'h-6' : 'h-4'} bg-gray-200 rounded-full overflow-hidden ${accessibility.highContrast ? 'bg-gray-800' : ''}`}>
             <div
-              className={`h-full transition-all duration-150 ease-out ${getVolumeColor(audioLevel)}`}
-              style={{ width: `${Math.min(100, audioLevel * 100)}%` }}
+              className={`h-full transition-all duration-150 ease-out ${getVolumeColor(displayLevel)}`}
+              style={{ width: `${Math.min(100, displayLevel * 100)}%` }}
             />
           </div>
           
@@ -219,11 +255,19 @@ const AudioCapture: React.FC<AudioCaptureProps> = ({
       {/* Audio Status */}
       <div className="flex items-center gap-3">
         <div className={`
-          w-3 h-3 rounded-full ${isAudioEnabled ? 'bg-green-500' : 'bg-red-500'}
-          ${isAudioEnabled ? 'animate-pulse' : ''}
+          w-3 h-3 rounded-full ${
+            isListening ? 'bg-green-500' : micState === 'processing' ? 'bg-yellow-500' : 'bg-red-500'
+          }
+          ${isListening ? 'animate-pulse' : ''}
         `} />
         <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-700'}`}>
-          {isAudioEnabled ? 'Microphone Active' : 'Microphone Off'}
+          {isListening
+            ? 'Listening for speech'
+            : micState === 'processing'
+              ? 'Processing speech'
+              : micState === 'requesting_permission'
+                ? 'Waiting for microphone access'
+                : 'Microphone Off'}
         </span>
       </div>
 

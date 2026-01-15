@@ -1,10 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX } from 'lucide-react'
+import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX, ChevronLeft, ChevronRight, Play, Pause, AlertTriangle } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useWebRTC, useWebSocket } from '../hooks/useWebRTC'
 import VideoCapture from '../components/VideoCapture'
 import AudioCapture from '../components/AudioCapture'
+
+interface SignWord {
+  word: string
+  gloss: string | null
+  images: string[]
+  description: string
+  page?: number
+  confidence: number
+  match_type: string
+  variants: number
+  status: 'matched' | 'unknown'
+}
+
+type RecognitionTier = 'browser' | 'backend' | 'manual'
+
+const dictionaryCache: Record<string, any> = {}
 
 const Interpreter: React.FC = () => {
   const navigate = useNavigate()
@@ -20,6 +36,23 @@ const Interpreter: React.FC = () => {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [showAvatar, setShowAvatar] = useState(true)
   const [isMuted, setIsMuted] = useState(false)
+  const [recognitionTier, setRecognitionTier] = useState<RecognitionTier>('backend')
+  const [lastTierUsed, setLastTierUsed] = useState<RecognitionTier>('backend')
+  const [speechError, setSpeechError] = useState<string | null>(null)
+  const [dictionaryOffline, setDictionaryOffline] = useState(false)
+  const [supportsBrowserRecognition, setSupportsBrowserRecognition] = useState(false)
+  const [signSequence, setSignSequence] = useState<SignWord[]>([])
+  const [currentSignIndex, setCurrentSignIndex] = useState(0)
+  const [currentFrameIndex, setCurrentFrameIndex] = useState(0)
+  const [autoPlay, setAutoPlay] = useState(false)
+  const [recognizedWords, setRecognizedWords] = useState<string[]>([])
+  const [matchedCount, setMatchedCount] = useState(0)
+  const [unknownCount, setUnknownCount] = useState(0)
+  const [silenceMessage, setSilenceMessage] = useState<string | null>(null)
+  const [sttConfidence, setSttConfidence] = useState(0)
+  const [dictConfidence, setDictConfidence] = useState(0)
+  const [lastUpdateTime, setLastUpdateTime] = useState<string | null>(null)
+  const [manualInput, setManualInput] = useState('')
   
   const { startTranslationSession, endTranslationSession, setLastTranslation } = useAppStore.getState()
   
@@ -29,13 +62,250 @@ const Interpreter: React.FC = () => {
   
   const { accessibility, visual, audio } = settings
   
-  // Initialize session
   useEffect(() => {
     if (!currentSession) {
-      // Default to sign to speech if no session exists
       startTranslationSession('sign_to_speech')
     }
   }, [])
+
+  useEffect(() => {
+    const w = window as any
+    const Recognition = w.SpeechRecognition || w.webkitSpeechRecognition
+    if (Recognition) {
+      setSupportsBrowserRecognition(true)
+      setRecognitionTier('browser')
+    }
+  }, [])
+
+  useEffect(() => {
+    if (currentSession?.direction !== 'speech_to_sign') return
+    const runChecks = async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        console.warn('Microphone API not available; using manual input fallback')
+      }
+      try {
+        const res = await fetch('http://localhost:8000/health')
+        if (!res.ok) {
+          console.warn('Backend health check failed with status', res.status)
+        }
+      } catch (e) {
+        console.warn('Backend health check error', e)
+      }
+      try {
+        const resp = await fetch('http://localhost:8000/api/dictionary/list?letter=A')
+        if (!resp.ok) {
+          console.warn('Dictionary list check failed with status', resp.status)
+        } else {
+          const data = await resp.json()
+          if (!data || !Array.isArray(data.items) || data.items.length === 0) {
+            console.warn('Dictionary appears to be empty or not loaded')
+          }
+        }
+      } catch (e) {
+        console.warn('Dictionary availability check error', e)
+      }
+    }
+    runChecks()
+  }, [currentSession?.direction])
+
+  const normalizeText = (text: string): string[] => {
+    const lower = text.toLowerCase()
+    const cleaned = lower.replace(/[^a-z0-9\s']/g, ' ')
+    const rawTokens = cleaned.split(/\s+/).filter(Boolean)
+    const fillers = new Set([
+      'uh',
+      'um',
+      'erm',
+      'mm',
+      'mmm',
+      'ah',
+      'eh',
+      'please',
+      'like'
+    ])
+    const auxiliaries = new Set([
+      'can',
+      'could',
+      'would',
+      'should',
+      'shall',
+      'will',
+      'do',
+      'does',
+      'did'
+    ])
+    return rawTokens.filter(word => !fillers.has(word) && !auxiliaries.has(word))
+  }
+
+  const runTextToSignPipeline = useCallback(
+    async (text: string, tier: RecognitionTier, sttConf: number) => {
+      const tokens = normalizeText(text)
+      setRecognizedWords(tokens)
+      if (tokens.length === 0) {
+        setTranslationText('')
+        setTranslationText('')
+        setSilenceMessage('No speech detected')
+        setSttConfidence(sttConf)
+        setDictConfidence(0)
+        setConfidence(0)
+        setMatchedCount(0)
+        setUnknownCount(0)
+        setLastTierUsed(tier)
+        setLastUpdateTime(new Date().toLocaleTimeString())
+        return
+      }
+      setSilenceMessage(null)
+      const results: SignWord[] = []
+      let matchSum = 0
+      let matchCountLocal = 0
+      for (const token of tokens) {
+        const key = token.toLowerCase()
+        let data = dictionaryCache[key]
+        if (!data) {
+          try {
+            const resp = await fetch(
+              `http://localhost:8000/api/dictionary/search?q=${encodeURIComponent(key)}`
+            )
+            if (resp.ok) {
+              data = await resp.json()
+              dictionaryCache[key] = data
+              setDictionaryOffline(false)
+            } else {
+              setDictionaryOffline(true)
+              data = dictionaryCache[key]
+            }
+          } catch (e) {
+            setDictionaryOffline(true)
+            data = dictionaryCache[key]
+          }
+        }
+        if (data && data.gloss) {
+          const c = typeof data.confidence === 'number' ? data.confidence : 0
+          results.push({
+            word: token,
+            gloss: data.gloss || null,
+            images: Array.isArray(data.images) ? data.images : [],
+            description: typeof data.description === 'string' ? data.description : '',
+            page: data.page,
+            confidence: c,
+            match_type: data.match_type || 'None',
+            variants: typeof data.variants === 'number' ? data.variants : 0,
+            status: 'matched'
+          })
+          matchSum += c
+          matchCountLocal += 1
+        } else {
+          results.push({
+            word: token,
+            gloss: null,
+            images: [],
+            description: '',
+            page: undefined,
+            confidence: 0,
+            match_type: 'None',
+            variants: 0,
+            status: 'unknown'
+          })
+        }
+      }
+      const dictConfLocal = matchCountLocal ? matchSum / matchCountLocal : 0
+      const combined =
+        tokens.length > 0 ? Math.max(0.01, sttConf * 0.6 + dictConfLocal * 0.4) : 0
+      setSignSequence(results)
+      setCurrentSignIndex(0)
+      setCurrentFrameIndex(0)
+      setMatchedCount(matchCountLocal)
+      setUnknownCount(tokens.length - matchCountLocal)
+      setDictConfidence(dictConfLocal)
+      setSttConfidence(sttConf)
+      setConfidence(combined)
+      setTranslationText(text)
+      setLastTierUsed(tier)
+      setLastUpdateTime(new Date().toLocaleTimeString())
+      const summary = {
+        input: text,
+        output: results.map(r => r.gloss || r.word.toUpperCase()).join(' '),
+        confidence: combined,
+        timestamp: Date.now()
+      }
+      setLastTranslation(summary)
+    },
+    [setLastTranslation]
+  )
+
+  const startBrowserRecognition = () => {
+    const w = window as any
+    const Recognition = w.SpeechRecognition || w.webkitSpeechRecognition
+    if (!Recognition) {
+      setRecognitionTier('backend')
+      setSpeechError('Browser speech recognition not available. Using server transcription.')
+      return
+    }
+    try {
+      const recognition = new Recognition()
+      recognition.lang = 'en-US'
+      recognition.continuous = false
+      recognition.interimResults = false
+      recognition.onstart = () => {
+        setSpeechError(null)
+        setRecognitionTier('browser')
+      }
+      recognition.onend = () => {}
+      recognition.onerror = (event: any) => {
+        const code = event && event.error ? String(event.error) : ''
+        if (code === 'not-allowed') {
+          setSpeechError(
+            'Microphone access was denied for browser recognition. Falling back to server.'
+          )
+        } else if (code === 'no-speech') {
+          setSpeechError('No speech detected. You can try again or type below.')
+          setSilenceMessage('No speech detected')
+        } else {
+          setSpeechError('Browser speech recognition failed. Using server transcription.')
+        }
+        setRecognitionTier('backend')
+      }
+      recognition.onresult = (event: any) => {
+        if (!event || !event.results || !event.results[0] || !event.results[0][0]) return
+        const res = event.results[0][0]
+        const text = String(res.transcript || '')
+        const conf =
+          typeof res.confidence === 'number' && res.confidence > 0 ? res.confidence : 0.7
+        runTextToSignPipeline(text, 'browser', conf)
+      }
+      recognition.start()
+    } catch (e) {
+      setRecognitionTier('backend')
+      setSpeechError('Browser speech recognition could not start. Using server transcription.')
+    }
+  }
+
+  useEffect(() => {
+    if (!autoPlay || !signSequence.length) return
+    const interval = setInterval(() => {
+      setCurrentFrameIndex(prevFrame => {
+        const current = signSequence[currentSignIndex]
+        const frameCount =
+          current && Array.isArray(current.images) && current.images.length > 0
+            ? current.images.length
+            : 1
+        const nextFrame = prevFrame + 1
+        if (nextFrame < frameCount) {
+          return nextFrame
+        }
+        setCurrentSignIndex(prevSign => {
+          const nextSign = prevSign + 1
+          if (nextSign < signSequence.length) {
+            return nextSign
+          }
+          setAutoPlay(false)
+          return prevSign
+        })
+        return 0
+      })
+    }, 1500)
+    return () => clearInterval(interval)
+  }, [autoPlay, signSequence, currentSignIndex])
 
   // Handle video frame processing
   const handleVideoFrame = useCallback((frameData: string) => {
@@ -95,23 +365,34 @@ const Interpreter: React.FC = () => {
   }, [videoSocket.lastMessage, setLastTranslation])
 
   useEffect(() => {
-    if (audioSocket.lastMessage) {
-      const message = audioSocket.lastMessage
-      if (message.type === 'transcription') {
-        // Process transcription for speech to sign
-        setTranslationText(message.text || '')
-        setConfidence(message.confidence || 0)
-        
-        const mockTranslation = {
-          input: message.text || '',
-          output: 'GSL signs will be displayed',
-          confidence: message.confidence || 0.85,
-          timestamp: Date.now()
-        }
-        setLastTranslation(mockTranslation)
+    if (!audioSocket.lastMessage) return
+    if (currentSession?.direction !== 'speech_to_sign') return
+    const message = audioSocket.lastMessage
+    if (message.type === 'transcription') {
+      const text = String(message.text || '').trim()
+      const conf =
+        typeof message.confidence === 'number' && message.confidence > 0
+          ? message.confidence
+          : 0.7
+      if (!text) {
+        setSilenceMessage('No speech detected')
+        setTranslationText('')
+        setSignSequence([])
+        setRecognizedWords([])
+        setMatchedCount(0)
+        setUnknownCount(0)
+        setSttConfidence(0)
+        setDictConfidence(0)
+        setConfidence(0)
+        setLastTierUsed('backend')
+        setLastUpdateTime(new Date().toLocaleTimeString())
+        return
       }
+      setSpeechError(null)
+      setSilenceMessage(null)
+      runTextToSignPipeline(text, 'backend', conf)
     }
-  }, [audioSocket.lastMessage, setLastTranslation])
+  }, [audioSocket.lastMessage, currentSession?.direction, runTextToSignPipeline])
 
   // Text-to-speech functionality
   const speakText = useCallback((text: string) => {
@@ -162,9 +443,16 @@ const Interpreter: React.FC = () => {
   }
 
   const getConfidenceColor = (level: number) => {
-    if (level >= 0.8) return 'text-green-500'
-    if (level >= 0.6) return 'text-yellow-500'
+    if (level >= 0.7) return 'text-green-500'
+    if (level >= 0.4) return 'text-yellow-500'
     return 'text-red-500'
+  }
+
+  const getConfidenceLabel = (level: number) => {
+    if (level >= 0.7) return 'Clear'
+    if (level >= 0.4) return 'Fair'
+    if (level === 0) return 'No speech detected'
+    return 'Unclear'
   }
 
   if (!currentSession) {
@@ -325,28 +613,51 @@ const Interpreter: React.FC = () => {
               )}
             </div>
 
-            {/* Confidence Indicator */}
             {visual.showConfidence && (
               <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400' : 'bg-white'} rounded-2xl shadow-xl p-6 border-2`}>
                 <div className="flex items-center justify-between mb-4">
                   <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
                     Recognition Confidence
                   </h3>
-                  <div className={`text-2xl font-bold ${getConfidenceColor(confidence)}`}>
-                    {Math.round(confidence * 100)}%
-                  </div>
+                  {(() => {
+                    const effective = silenceMessage ? 0 : Math.max(0.01, confidence || 0)
+                    return (
+                      <div className="text-right">
+                        <div className={`text-2xl font-bold ${getConfidenceColor(effective)}`}>
+                          {Math.round(effective * 100)}%
+                        </div>
+                        <div className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
+                          {getConfidenceLabel(effective)}
+                        </div>
+                      </div>
+                    )
+                  })()}
                 </div>
                 
                 <div className={`w-full ${accessibility.largeText ? 'h-4' : 'h-3'} bg-gray-200 rounded-full overflow-hidden ${accessibility.highContrast ? 'bg-gray-700' : ''}`}>
                   <div
                     className={`h-full transition-all duration-300 ease-out ${
-                      confidence >= 0.8 ? 'bg-green-500' :
-                      confidence >= 0.6 ? 'bg-yellow-500' : 'bg-red-500'
+                      (!silenceMessage && confidence >= 0.7) ? 'bg-green-500' :
+                      (!silenceMessage && confidence >= 0.4) ? 'bg-yellow-500' : 'bg-red-500'
                     }`}
-                    style={{ width: `${Math.min(100, confidence * 100)}%` }}
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        (silenceMessage ? 0 : Math.max(0.01, confidence || 0)) * 100
+                      )}%`
+                    }}
                   />
                 </div>
                 
+                <div className="mt-3 grid grid-cols-1 gap-1">
+                  <div className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
+                    Speech recognition: {Math.round((sttConfidence || 0) * 100)}%
+                  </div>
+                  <div className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
+                    Dictionary match: {Math.round((dictConfidence || 0) * 100)}%
+                  </div>
+                </div>
+
                 <div className="flex justify-between mt-2">
                   <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
                     Poor
@@ -360,11 +671,114 @@ const Interpreter: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {currentSession.direction === 'speech_to_sign' && (
+              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400' : 'bg-white'} rounded-2xl shadow-xl p-6 border-2`}>
+                <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold mb-4 ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
+                  Speech Controls & Text Fallback
+                </h3>
+
+                {speechError && (
+                  <div className={`mb-4 flex items-start gap-3 rounded-xl p-3 ${
+                    accessibility.highContrast ? 'bg-black border border-yellow-400' : 'bg-red-50 border border-red-200'
+                  }`}>
+                    <AlertTriangle className={`${accessibility.largeText ? 'w-7 h-7' : 'w-5 h-5'} ${accessibility.highContrast ? 'text-yellow-400' : 'text-red-500'} mt-0.5`} />
+                    <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} ${accessibility.highContrast ? 'text-yellow-200' : 'text-red-700'}`}>
+                      {speechError}
+                    </p>
+                  </div>
+                )}
+
+                {silenceMessage && (
+                  <div className={`mb-4 flex items-start gap-3 rounded-xl p-3 ${
+                    accessibility.highContrast ? 'bg-black border border-yellow-400' : 'bg-yellow-50 border border-yellow-200'
+                  }`}>
+                    <AlertTriangle className={`${accessibility.largeText ? 'w-7 h-7' : 'w-5 h-5'} ${accessibility.highContrast ? 'text-yellow-400' : 'text-yellow-500'} mt-0.5`} />
+                    <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} ${accessibility.highContrast ? 'text-yellow-200' : 'text-yellow-800'}`}>
+                      {silenceMessage}
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <label
+                    htmlFor="manual-speech-input"
+                    className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-800'}`}
+                  >
+                    Manual Text Input
+                  </label>
+                  <textarea
+                    id="manual-speech-input"
+                    value={manualInput}
+                    onChange={e => setManualInput(e.target.value)}
+                    rows={accessibility.largeText ? 4 : 3}
+                    className={`
+                      w-full rounded-xl border-2 px-4 py-3
+                      ${accessibility.highContrast
+                        ? 'bg-black border-yellow-400 text-yellow-200 placeholder-yellow-500'
+                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                      }
+                      focus:outline-none focus:ring-4 focus:ring-blue-300
+                      ${accessibility.largeText ? 'text-lg' : 'text-base'}
+                    `}
+                    placeholder="Type what was said here if the microphone has trouble..."
+                  />
+
+                  <div className="flex flex-wrap gap-3 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const text = manualInput.trim()
+                        if (!text) return
+                        setSilenceMessage(null)
+                        setSpeechError(null)
+                        setRecognitionTier('manual')
+                        runTextToSignPipeline(text, 'manual', 0.9)
+                      }}
+                      className={`
+                        inline-flex items-center justify-center px-5 py-2.5 rounded-full font-semibold
+                        ${accessibility.highContrast
+                          ? 'bg-yellow-400 text-black hover:bg-yellow-500'
+                          : 'bg-blue-600 text-white hover:bg-blue-700'
+                        }
+                        transform hover:scale-105 active:scale-95 transition-all duration-200
+                        focus:outline-none focus:ring-4 focus:ring-blue-300
+                        ${accessibility.largeText ? 'text-lg' : 'text-base'}
+                      `}
+                    >
+                      Translate Text
+                    </button>
+
+                    {supportsBrowserRecognition && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSilenceMessage(null)
+                          setSpeechError(null)
+                          startBrowserRecognition()
+                        }}
+                        className={`
+                          inline-flex items-center justify-center px-5 py-2.5 rounded-full font-semibold
+                          ${accessibility.highContrast
+                            ? 'bg-gray-800 text-yellow-300 border border-yellow-400 hover:bg-gray-700'
+                            : 'bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200'
+                          }
+                          transform hover:scale-105 active:scale-95 transition-all duration-200
+                          focus:outline-none focus:ring-4 focus:ring-blue-300
+                          ${accessibility.largeText ? 'text-lg' : 'text-base'}
+                        `}
+                      >
+                        Use Browser Speech Recognition
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right Panel - Output */}
           <div className="space-y-6">
-            {/* Translation Display */}
             <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400' : 'bg-white'} rounded-2xl shadow-xl p-6 border-2`}>
               <h2 className={`${getTextSize()} font-bold mb-4 ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
                 Translation Output
@@ -390,7 +804,240 @@ const Interpreter: React.FC = () => {
               </div>
             </div>
 
-            {/* Signing Avatar */}
+            {currentSession.direction === 'speech_to_sign' && (
+              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400' : 'bg-white'} rounded-2xl shadow-xl p-6 border-2`}>
+                <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold mb-4 ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
+                  Sign Playback
+                </h3>
+
+                {dictionaryOffline && (
+                  <div className={`mb-4 rounded-xl p-3 ${
+                    accessibility.highContrast ? 'bg-black border border-yellow-400' : 'bg-yellow-50 border border-yellow-200'
+                  }`}>
+                    <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} ${accessibility.highContrast ? 'text-yellow-200' : 'text-yellow-800'}`}>
+                      Dictionary server is offline. Using cached dictionary results only.
+                    </p>
+                  </div>
+                )}
+
+                {signSequence.length === 0 ? (
+                  <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} italic ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-500'}`}>
+                    After speech or text is processed, signs will appear here one by one.
+                  </p>
+                ) : (
+                  <>
+                    {(() => {
+                      const current = signSequence[currentSignIndex] || signSequence[0]
+                      const hasImages = current.images && current.images.length > 0
+                      const glossKey = (current.gloss || current.word || '').toUpperCase()
+                      const frameCount = hasImages ? current.images.length : 1
+                      const clampedFrame = Math.min(
+                        frameCount - 1,
+                        Math.max(0, currentFrameIndex)
+                      )
+                      const imageSrc =
+                        hasImages && glossKey
+                          ? `http://localhost:8000/static/${glossKey}/${current.images[clampedFrame]}`
+                          : null
+                      const statusText =
+                        current.status === 'matched'
+                          ? 'Dictionary match'
+                          : 'Unknown word, showing fallback'
+
+                      return (
+                        <>
+                          {imageSrc ? (
+                            <div className="mb-4">
+                              <div className={`w-full h-64 rounded-xl border-2 overflow-hidden flex items-center justify-center ${
+                                accessibility.highContrast
+                                  ? 'bg-black border-yellow-400'
+                                  : 'bg-gray-100 border-gray-200'
+                              }`}>
+                                <img
+                                  src={imageSrc}
+                                  alt={`${glossKey} sign ${clampedFrame + 1}`}
+                                  className="max-h-full max-w-full object-contain"
+                                  onError={e => {
+                                    const el = e.target as HTMLImageElement
+                                    el.style.display = 'none'
+                                  }}
+                                />
+                              </div>
+                              {frameCount > 1 && (
+                                <div className="flex items-center justify-between mt-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setCurrentFrameIndex(prev =>
+                                        prev > 0 ? prev - 1 : frameCount - 1
+                                      )
+                                    }}
+                                    className={`
+                                      inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold
+                                      ${accessibility.highContrast
+                                        ? 'bg-gray-800 text-yellow-300 border border-yellow-400 hover:bg-gray-700'
+                                        : 'bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200'
+                                      }
+                                      transform hover:scale-105 active:scale-95 transition-all duration-200
+                                      ${accessibility.largeText ? 'text-lg' : 'text-sm'}
+                                    `}
+                                  >
+                                    <ChevronLeft className={`${accessibility.largeText ? 'w-6 h-6' : 'w-4 h-4'}`} />
+                                    Previous frame
+                                  </button>
+                                  <div className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-700'}`}>
+                                    Frame {clampedFrame + 1} of {frameCount}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setCurrentFrameIndex(prev =>
+                                        prev + 1 < frameCount ? prev + 1 : 0
+                                      )
+                                    }}
+                                    className={`
+                                      inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold
+                                      ${accessibility.highContrast
+                                        ? 'bg-gray-800 text-yellow-300 border border-yellow-400 hover:bg-gray-700'
+                                        : 'bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200'
+                                      }
+                                      transform hover:scale-105 active:scale-95 transition-all duration-200
+                                      ${accessibility.largeText ? 'text-lg' : 'text-sm'}
+                                    `}
+                                  >
+                                    Next frame
+                                    <ChevronRight className={`${accessibility.largeText ? 'w-6 h-6' : 'w-4 h-4'}`} />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className={`mb-4 p-4 rounded-xl border-2 ${
+                              accessibility.highContrast
+                                ? 'bg-black border-yellow-400 text-yellow-200'
+                                : 'bg-gray-50 border-gray-200 text-gray-900'
+                            }`}>
+                              <div className={`${getTextSize()} font-bold mb-2`}>
+                                {(current.gloss || current.word || '').toUpperCase() || 'UNKNOWN'}
+                              </div>
+                              {current.description && (
+                                <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} mb-1`}>
+                                  {current.description}
+                                </p>
+                              )}
+                              {current.page && (
+                                <p className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
+                                  See Ghanaian Sign Language Dictionary, page {current.page}
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between mt-2">
+                            <div className="flex flex-wrap gap-3">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCurrentSignIndex(prev => Math.max(0, prev - 1))
+                                  setCurrentFrameIndex(0)
+                                }}
+                                disabled={currentSignIndex === 0}
+                                className={`
+                                  inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold
+                                  ${currentSignIndex === 0
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : 'transform hover:scale-105 active:scale-95 transition-all duration-200'
+                                  }
+                                  ${accessibility.highContrast
+                                    ? 'bg-gray-800 text-yellow-300 border border-yellow-400 hover:bg-gray-700'
+                                    : 'bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200'
+                                  }
+                                  ${accessibility.largeText ? 'text-lg' : 'text-sm'}
+                                `}
+                              >
+                                <ChevronLeft className={`${accessibility.largeText ? 'w-6 h-6' : 'w-4 h-4'}`} />
+                                Previous word
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCurrentSignIndex(prev =>
+                                    prev + 1 < signSequence.length ? prev + 1 : prev
+                                  )
+                                  setCurrentFrameIndex(0)
+                                }}
+                                disabled={currentSignIndex >= signSequence.length - 1}
+                                className={`
+                                  inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold
+                                  ${currentSignIndex >= signSequence.length - 1
+                                    ? 'opacity-50 cursor-not-allowed'
+                                    : 'transform hover:scale-105 active:scale-95 transition-all duration-200'
+                                  }
+                                  ${accessibility.highContrast
+                                    ? 'bg-gray-800 text-yellow-300 border border-yellow-400 hover:bg-gray-700'
+                                    : 'bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200'
+                                  }
+                                  ${accessibility.largeText ? 'text-lg' : 'text-sm'}
+                                `}
+                              >
+                                Next word
+                                <ChevronRight className={`${accessibility.largeText ? 'w-6 h-6' : 'w-4 h-4'}`} />
+                              </button>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => setAutoPlay(prev => !prev)}
+                              className={`
+                                inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold
+                                ${autoPlay
+                                  ? accessibility.highContrast
+                                    ? 'bg-red-600 text-white hover:bg-red-700'
+                                    : 'bg-red-600 text-white hover:bg-red-700'
+                                  : accessibility.highContrast
+                                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                                }
+                                transform hover:scale-105 active:scale-95 transition-all duration-200
+                                ${accessibility.largeText ? 'text-lg' : 'text-sm'}
+                              `}
+                            >
+                              {autoPlay ? (
+                                <>
+                                  <Pause className={`${accessibility.largeText ? 'w-6 h-6' : 'w-4 h-4'}`} />
+                                  Stop auto-play
+                                </>
+                              ) : (
+                                <>
+                                  <Play className={`${accessibility.largeText ? 'w-6 h-6' : 'w-4 h-4'}`} />
+                                  Auto-play signs
+                                </>
+                              )}
+                            </button>
+                          </div>
+
+                          <div className="mt-4 space-y-1">
+                            <div className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-800'}`}>
+                              Current word:{' '}
+                              <span className="font-semibold">
+                                {current.word || (current.gloss || '').toLowerCase()}
+                              </span>
+                            </div>
+                            <div className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
+                              Status: {statusText}
+                            </div>
+                            <div className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
+                              Word {currentSignIndex + 1} of {signSequence.length}
+                            </div>
+                          </div>
+                        </>
+                      )
+                    })()}
+                  </>
+                )}
+              </div>
+            )}
+
             {currentSession.direction === 'speech_to_sign' && showAvatar && (
               <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400' : 'bg-white'} rounded-2xl shadow-xl p-6 border-2`}>
                 <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold mb-4 ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
@@ -421,7 +1068,7 @@ const Interpreter: React.FC = () => {
                 Session Information
               </h3>
               
-              <div className="space-y-3">
+                <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
                     Direction:
@@ -460,6 +1107,57 @@ const Interpreter: React.FC = () => {
                     </span>
                     <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${getConfidenceColor(currentSession.avgConfidence)}`}>
                       {Math.round(currentSession.avgConfidence * 100)}%
+                    </span>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center">
+                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
+                    Recognition tier:
+                  </span>
+                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
+                    {lastTierUsed === 'browser'
+                      ? 'Browser (on-device)'
+                      : lastTierUsed === 'backend'
+                        ? 'Server (Whisper)'
+                        : 'Manual text'}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
+                    Words recognized:
+                  </span>
+                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
+                    {recognizedWords.length}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
+                    Words matched:
+                  </span>
+                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
+                    {matchedCount}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
+                    Unknown words:
+                  </span>
+                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
+                    {unknownCount}
+                  </span>
+                </div>
+
+                {lastUpdateTime && (
+                  <div className="flex justify-between items-center">
+                    <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
+                      Last update:
+                    </span>
+                    <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
+                      {lastUpdateTime}
                     </span>
                   </div>
                 )}
