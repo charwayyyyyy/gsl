@@ -576,7 +576,8 @@ async def search_dictionary(q: str):
             "confidence": float(r.get("confidence", 0.0)),
             "alternatives": r.get("alternatives", []),
             "match_type": r.get("match_type", "None"),
-            "variants": r.get("variants", 0)
+            "variants": r.get("variants", 0),
+            "primitives": r.get("primitives", None),
         }
     except Exception as e:
         logger.error(f"Error searching dictionary: {str(e)}")

@@ -6,6 +6,16 @@ import { useWebRTC, useWebSocket } from '../hooks/useWebRTC'
 import VideoCapture from '../components/VideoCapture'
 import AudioCapture from '../components/AudioCapture'
 
+interface SignPrimitives {
+  direction: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT' | 'FORWARD' | 'CIRCULAR' | 'TAP' | 'HOLD' | 'NONE'
+  repetition: 'SINGLE' | 'REPEAT'
+  handshape: 'FLAT' | 'FIST' | 'POINT' | 'OPEN' | 'CURVED' | 'UNKNOWN'
+  location: 'HEAD' | 'FACE' | 'CHIN' | 'CHEST' | 'TORSO' | 'NEUTRAL' | 'UNKNOWN'
+  two_hands: boolean
+  facial: boolean
+  can_animate: boolean
+}
+
 interface SignWord {
   word: string
   gloss: string | null
@@ -16,6 +26,7 @@ interface SignWord {
   match_type: string
   variants: number
   status: 'matched' | 'unknown'
+  primitives?: SignPrimitives | null
 }
 
 type RecognitionTier = 'browser' | 'backend' | 'manual'
@@ -53,6 +64,9 @@ const Interpreter: React.FC = () => {
   const [dictConfidence, setDictConfidence] = useState(0)
   const [lastUpdateTime, setLastUpdateTime] = useState<string | null>(null)
   const [manualInput, setManualInput] = useState('')
+  const [avatarStatus, setAvatarStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
+  const [avatarMessage, setAvatarMessage] = useState<string | null>(null)
+  const [avatarKeyframes, setAvatarKeyframes] = useState<any[] | null>(null)
   
   const { startTranslationSession, endTranslationSession, setLastTranslation } = useAppStore.getState()
   
@@ -181,6 +195,18 @@ const Interpreter: React.FC = () => {
         }
         if (data && data.gloss) {
           const c = typeof data.confidence === 'number' ? data.confidence : 0
+          const primitives: SignPrimitives | null =
+            data && data.primitives && typeof data.primitives === 'object'
+              ? {
+                  direction: data.primitives.direction || 'NONE',
+                  repetition: data.primitives.repetition || 'SINGLE',
+                  handshape: data.primitives.handshape || 'UNKNOWN',
+                  location: data.primitives.location || 'UNKNOWN',
+                  two_hands: Boolean(data.primitives.two_hands),
+                  facial: Boolean(data.primitives.facial),
+                  can_animate: Boolean(data.primitives.can_animate)
+                }
+              : null
           results.push({
             word: token,
             gloss: data.gloss || null,
@@ -190,7 +216,8 @@ const Interpreter: React.FC = () => {
             confidence: c,
             match_type: data.match_type || 'None',
             variants: typeof data.variants === 'number' ? data.variants : 0,
-            status: 'matched'
+            status: 'matched',
+            primitives
           })
           matchSum += c
           matchCountLocal += 1
@@ -393,6 +420,97 @@ const Interpreter: React.FC = () => {
       runTextToSignPipeline(text, 'backend', conf)
     }
   }, [audioSocket.lastMessage, currentSession?.direction, runTextToSignPipeline])
+
+  useEffect(() => {
+    if (currentSession?.direction !== 'speech_to_sign') {
+      setAvatarStatus('idle')
+      setAvatarMessage(null)
+      setAvatarKeyframes(null)
+      return
+    }
+    if (!showAvatar) {
+      return
+    }
+    if (!signSequence.length) {
+      setAvatarStatus('idle')
+      setAvatarKeyframes(null)
+      setAvatarMessage('Avatar will activate when there is a dictionary-backed translation.')
+      return
+    }
+    const matched = signSequence.filter(s => s.status === 'matched' && s.gloss)
+    if (!matched.length) {
+      setAvatarStatus('idle')
+      setAvatarKeyframes(null)
+      setAvatarMessage('No dictionary signs available for these words. Avatar is disabled.')
+      return
+    }
+    const animatable = matched.filter(
+      s => s.primitives && s.primitives.can_animate
+    )
+    if (!animatable.length) {
+      setAvatarStatus('idle')
+      setAvatarKeyframes(null)
+      setAvatarMessage(
+        'Dictionary descriptions do not contain enough motion detail. Using dictionary images only.'
+      )
+      return
+    }
+    const gslSequence = matched.map(s => (s.gloss || '').toUpperCase())
+    if (!gslSequence.length) {
+      setAvatarStatus('idle')
+      setAvatarKeyframes(null)
+      setAvatarMessage('Avatar will activate when there is a dictionary-backed translation.')
+      return
+    }
+    setAvatarStatus('loading')
+    setAvatarMessage('Preparing signing path from dictionary.')
+    const controller = new AbortController()
+    const run = async () => {
+      try {
+        const resp = await fetch('http://localhost:8000/api/avatar/render', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            gsl_sequence: gslSequence,
+            animation_mode: '3d_avatar',
+            speed: 1.0,
+            facial_expressions: true
+          }),
+          signal: controller.signal
+        })
+        if (!resp.ok) {
+          throw new Error('Avatar request failed')
+        }
+        const data = await resp.json()
+        const keyframes =
+          data &&
+          data.animation_data &&
+          Array.isArray(data.animation_data.keyframes)
+            ? data.animation_data.keyframes
+            : []
+        if (!keyframes.length) {
+          setAvatarStatus('idle')
+          setAvatarKeyframes(null)
+          setAvatarMessage(
+            'Avatar did not receive any motion instructions. Dictionary images remain primary.'
+          )
+          return
+        }
+        setAvatarKeyframes(keyframes)
+        setAvatarStatus('ready')
+        setAvatarMessage(null)
+      } catch (err) {
+        if (controller.signal.aborted) return
+        setAvatarStatus('error')
+        setAvatarKeyframes(null)
+        setAvatarMessage(
+          'Avatar engine is unavailable at the moment. Dictionary images remain primary.'
+        )
+      }
+    }
+    run()
+    return () => controller.abort()
+  }, [signSequence, currentSession?.direction, showAvatar])
 
   // Text-to-speech functionality
   const speakText = useCallback((text: string) => {
@@ -1049,15 +1167,55 @@ const Interpreter: React.FC = () => {
                     ? 'bg-black border-yellow-400' 
                     : 'bg-gray-100 border-gray-200'
                 }`}>
-                  <div className="text-center">
-                    <div className="text-6xl mb-4">🤟</div>
-                    <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                      Avatar will appear here
-                    </p>
-                    <p className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-200' : 'text-gray-500'} mt-2`}>
-                      3D signing animation will be displayed
-                    </p>
-                  </div>
+                  {avatarStatus === 'loading' && (
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto mb-4 border-blue-500" />
+                      <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
+                        Preparing signing sequence from dictionary...
+                      </p>
+                    </div>
+                  )}
+                  {avatarStatus === 'ready' && avatarKeyframes && avatarKeyframes.length > 0 && (
+                    <div className="w-full h-full flex flex-col items-center justify-center px-4 overflow-hidden">
+                      <div className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold mb-2 ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-800'}`}>
+                        Avatar signing path
+                      </div>
+                      <p className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} mb-3 ${accessibility.highContrast ? 'text-yellow-200' : 'text-gray-600'}`}>
+                        The avatar will follow this sequence, one dictionary-backed sign at a time.
+                      </p>
+                      <div className="w-full max-h-40 overflow-y-auto text-left">
+                        {avatarKeyframes.slice(0, 8).map((kf, idx) => {
+                          const label = String(kf.sign || kf.gloss || '').toUpperCase() || 'UNKNOWN'
+                          const start = typeof kf.start === 'number' ? Math.round(kf.start) : null
+                          const end = typeof kf.end === 'number' ? Math.round(kf.end) : null
+                          return (
+                            <div
+                              key={`${label}-${idx}`}
+                              className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-200' : 'text-gray-700'} mb-1`}
+                            >
+                              <span className="font-semibold">{label}</span>
+                              {start !== null && end !== null && (
+                                <span className="ml-2">
+                                  {start}–{end} ms
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {(avatarStatus === 'idle' || avatarStatus === 'error' || !avatarKeyframes || avatarKeyframes.length === 0) && (
+                    <div className="text-center px-4">
+                      <div className="text-6xl mb-4">🤟</div>
+                      <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
+                        {avatarMessage || 'Avatar will activate only for signs that exist in the dictionary.'}
+                      </p>
+                      <p className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-200' : 'text-gray-500'} mt-2`}>
+                        Dictionary pages remain the primary reference for sign accuracy.
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

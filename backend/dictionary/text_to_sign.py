@@ -7,6 +7,7 @@ PROCESSED = Path("data") / "processed"
 DICT_PATH = PROCESSED / "gsl_dictionary.json"
 INDEX_PATH = PROCESSED / "gsl_sign_index.json"
 
+
 class TextToSignService:
     def __init__(self):
         self.dictionary: Dict[str, Any] = {}
@@ -28,7 +29,7 @@ class TextToSignService:
                                 "english": e.get("english") or "",
                                 "description": e.get("usage") or "",
                                 "images": [e.get("image_path")] if e.get("image_path") else [],
-                                "page": e.get("source_page")
+                                "page": e.get("source_page"),
                             }
                     self.dictionary = d
                 else:
@@ -39,7 +40,8 @@ class TextToSignService:
                 self.index = data.get("index", {})
 
     def _cos(self, a: np.ndarray, b: np.ndarray) -> float:
-        na = np.linalg.norm(a); nb = np.linalg.norm(b)
+        na = np.linalg.norm(a)
+        nb = np.linalg.norm(b)
         if na == 0 or nb == 0:
             return 0.0
         return float((a @ b) / (na * nb))
@@ -60,13 +62,14 @@ class TextToSignService:
                 page = self._find_page(gloss)
             if page > 0:
                 import fitz
+
                 src_pdf = Path("Ghanaian Sign Language Dictionary - 3rd Edition.pdf")
-                raw_pdf = Path("data")/"raw"/"gsl_dictionary.pdf"
+                raw_pdf = Path("data") / "raw" / "gsl_dictionary.pdf"
                 pdf_path = src_pdf if src_pdf.exists() else raw_pdf
                 if pdf_path.exists():
                     base.mkdir(parents=True, exist_ok=True)
                     doc = fitz.open(pdf_path)
-                    pix = doc.load_page(page-1).get_pixmap()
+                    pix = doc.load_page(page - 1).get_pixmap()
                     fname = f"page{page}.png"
                     dst = base / fname
                     pix.save(dst)
@@ -76,14 +79,15 @@ class TextToSignService:
         if not out:
             try:
                 import fitz
+
                 src_pdf = Path("Ghanaian Sign Language Dictionary - 3rd Edition.pdf")
-                raw_pdf = Path("data")/"raw"/"gsl_dictionary.pdf"
+                raw_pdf = Path("data") / "raw" / "gsl_dictionary.pdf"
                 pdf_path = src_pdf if src_pdf.exists() else raw_pdf
                 if pdf_path.exists():
                     base.mkdir(parents=True, exist_ok=True)
                     doc = fitz.open(pdf_path)
                     pix = doc.load_page(0).get_pixmap()
-                    fname = f"page1.png"
+                    fname = "page1.png"
                     dst = base / fname
                     pix.save(dst)
                     out.append(fname)
@@ -97,9 +101,10 @@ class TextToSignService:
             return self._page_cache[g]
         try:
             import pdfplumber
+
             for cand in [
                 Path("Ghanaian Sign Language Dictionary - 3rd Edition.pdf"),
-                Path("data")/"raw"/"gsl_dictionary.pdf"
+                Path("data") / "raw" / "gsl_dictionary.pdf",
             ]:
                 if cand.exists():
                     with pdfplumber.open(cand) as pdf:
@@ -107,12 +112,139 @@ class TextToSignService:
                             t = p.extract_text() or ""
                             lines = [l.strip() for l in t.splitlines() if l.strip()]
                             for ln in lines:
-                                if ln == g or ln.startswith(g+" "):
-                                    self._page_cache[g] = i+1
-                                    return i+1
+                                if ln == g or ln.startswith(g + " "):
+                                    self._page_cache[g] = i + 1
+                                    return i + 1
         except Exception:
             pass
         return 0
+
+    def _infer_primitives(self, gloss: str, entry: Dict[str, Any]) -> Dict[str, Any]:
+        text = (
+            ((entry.get("description") or "") + " " + (entry.get("english") or "")).lower()
+        )
+        direction = "NONE"
+        if any(
+            phrase in text
+            for phrase in [
+                "move hand up",
+                "move up",
+                "raise hand",
+                "raise your hand",
+                "lift hand",
+                "lift your hand",
+                "upward",
+                "upwards",
+                "point up",
+            ]
+        ):
+            direction = "UP"
+        elif any(
+            phrase in text
+            for phrase in [
+                "move hand down",
+                "move down",
+                "lower hand",
+                "downward",
+                "downwards",
+            ]
+        ):
+            direction = "DOWN"
+        elif "side to side" in text or "side-to-side" in text or "sideways" in text:
+            direction = "CIRCULAR"
+        elif any(
+            phrase in text
+            for phrase in [
+                "move hand forward",
+                "move forward",
+                "push forward",
+                "towards the front",
+                "toward the front",
+                "in front of you",
+                "in front of the body",
+            ]
+        ):
+            direction = "FORWARD"
+        elif "circle" in text or "circular" in text:
+            direction = "CIRCULAR"
+        elif "tap" in text:
+            direction = "TAP"
+        elif any(phrase in text for phrase in ["hold", "stay still", "keep still"]):
+            direction = "HOLD"
+        elif "left" in text:
+            direction = "LEFT"
+        elif "right" in text:
+            direction = "RIGHT"
+
+        repetition = "SINGLE"
+        if any(
+            phrase in text
+            for phrase in [
+                "twice",
+                "two times",
+                "repeat",
+                "repeatedly",
+                "several times",
+                "many times",
+            ]
+        ):
+            repetition = "REPEAT"
+
+        handshape = "UNKNOWN"
+        if "fist" in text or "clenched" in text:
+            handshape = "FIST"
+        elif "flat hand" in text or "flat-hand" in text or "palm" in text or "flat" in text:
+            handshape = "FLAT"
+        elif "point" in text or "index finger" in text or "index" in text:
+            handshape = "POINT"
+        elif "curved" in text or "c-shape" in text or "c shape" in text:
+            handshape = "CURVED"
+        elif "open hand" in text or "open palm" in text or "open" in text:
+            handshape = "OPEN"
+
+        location = "UNKNOWN"
+        if "chin" in text:
+            location = "CHIN"
+        elif "mouth" in text or "lip" in text or "lips" in text:
+            location = "FACE"
+        elif "forehead" in text or "temple" in text or "head" in text:
+            location = "HEAD"
+        elif "chest" in text or "heart" in text:
+            location = "CHEST"
+        elif "shoulder" in text or "torso" in text or "body" in text:
+            location = "TORSO"
+        elif "in front of" in text or "in front" in text or "neutral space" in text:
+            location = "NEUTRAL"
+
+        two_hands = any(
+            phrase in text
+            for phrase in ["both hands", "two hands", "hands together", "with both hands"]
+        )
+        facial = any(
+            phrase in text
+            for phrase in [
+                "eyebrow",
+                "eyebrows",
+                "eye",
+                "eyes",
+                "mouth",
+                "cheek",
+                "facial expression",
+                "face",
+            ]
+        )
+
+        can_animate = direction != "NONE" or handshape != "UNKNOWN" or location != "UNKNOWN"
+
+        return {
+            "direction": direction,
+            "repetition": repetition,
+            "handshape": handshape,
+            "location": location,
+            "two_hands": two_hands,
+            "facial": facial,
+            "can_animate": can_animate,
+        }
 
     def search(self, q: str) -> Dict[str, Any]:
         qn = (q or "").strip()
@@ -120,6 +252,7 @@ class TextToSignService:
             alts: List[str] = list(self.dictionary.keys())[:3]
             g = alts[0] if alts else None
             e = self.dictionary.get(g or "", {})
+            primitives = self._infer_primitives(g or "", e)
             return {
                 "gloss": g,
                 "images": self._ensure_images(g or "", e) if g else [],
@@ -128,9 +261,10 @@ class TextToSignService:
                 "confidence": 1.0 if g else 0.0,
                 "alternatives": alts[1:] if len(alts) > 1 else [],
                 "match_type": "Random" if not g else "Exact",
-                "variants": int(e.get("variants") or 0) if g else 0
+                "variants": int(e.get("variants") or 0) if g else 0,
+                "primitives": primitives,
             }
-        cand = []
+        cand: List[str] = []
         qlow = qn.lower()
         qup = qn.upper()
         forms = {qlow, qup}
@@ -139,60 +273,63 @@ class TextToSignService:
         if qlow.endswith("s"):
             forms.add(qlow[:-1])
         for gloss, entry in self.dictionary.items():
-            if gloss.lower() in forms or entry.get("english","").lower() in forms:
+            if gloss.lower() in forms or entry.get("english", "").lower() in forms:
                 imgs = self._ensure_images(gloss, entry)
+                primitives = self._infer_primitives(gloss, entry)
                 return {
                     "gloss": gloss,
                     "images": imgs,
-                    "description": entry.get("description",""),
+                    "description": entry.get("description", ""),
                     "page": entry.get("page"),
                     "confidence": 1.0,
                     "alternatives": [],
                     "match_type": "Exact",
-                    "variants": int(entry.get("variants") or 0)
+                    "variants": int(entry.get("variants") or 0),
+                    "primitives": primitives,
                 }
         for gloss, entry in self.dictionary.items():
-            if gloss.lower().startswith(qlow) or entry.get("english","").lower().startswith(qlow):
+            if gloss.lower().startswith(qlow) or entry.get("english", "").lower().startswith(qlow):
                 cand.append(gloss)
-        
-        # If no startswith matches, try "contains"
+
         if not cand:
             for gloss, entry in self.dictionary.items():
-                if qlow in gloss.lower() or qlow in entry.get("english","").lower():
+                if qlow in gloss.lower() or qlow in entry.get("english", "").lower():
                     cand.append(gloss)
 
         if cand:
-            # Sort candidates: shortest match first (likely more relevant)
             cand.sort(key=len)
             g = cand[0]
             e = self.dictionary.get(g, {})
             imgs = self._ensure_images(g, e)
+            primitives = self._infer_primitives(g, e)
             return {
                 "gloss": g,
                 "images": imgs,
-                "description": e.get("description",""),
+                "description": e.get("description", ""),
                 "page": e.get("page"),
                 "confidence": 0.85,
                 "alternatives": cand[1:4],
                 "match_type": "Prefix/Contains",
-                "variants": int(e.get("variants") or 0)
+                "variants": int(e.get("variants") or 0),
+                "primitives": primitives,
             }
         try:
             from sentence_transformers import SentenceTransformer
+
             model = SentenceTransformer("all-MiniLM-L6-v2")
             qvec = np.array(model.encode(qlow, normalize_embeddings=True))
         except Exception:
             h = abs(hash(qlow)) % (10**8)
             rng = np.random.default_rng(h)
             qvec = rng.normal(0, 1, 384)
-        scores = []
+        scores: List[Any] = []
         for gloss, rec in self.index.items():
             tv = np.array(rec.get("text_vec", []), dtype=float)
             if tv.size == 0:
                 tv = self._cache_vecs.get(gloss)
                 if tv is None:
                     h = abs(hash(gloss)) % (10**8)
-                    tv = np.random.default_rng(h).normal(0,1,384)
+                    tv = np.random.default_rng(h).normal(0, 1, 384)
                     self._cache_vecs[gloss] = tv
             s = self._cos(qvec, tv)
             scores.append((gloss, float(s)))
@@ -202,16 +339,19 @@ class TextToSignService:
             e = self.dictionary.get(g, {})
             imgs = self._ensure_images(g, e)
             alts = [x[0] for x in scores[1:4]]
+            primitives = self._infer_primitives(g, e)
             return {
                 "gloss": g,
                 "images": imgs,
-                "description": e.get("description",""),
+                "description": e.get("description", ""),
                 "page": e.get("page"),
                 "confidence": float(min(0.69, max(0.0, sc))),
                 "alternatives": alts,
                 "match_type": "Semantic",
-                "variants": int(e.get("variants") or 0)
+                "variants": int(e.get("variants") or 0),
+                "primitives": primitives,
             }
+        primitives = self._infer_primitives("", {})
         return {
             "gloss": None,
             "images": [],
@@ -220,6 +360,7 @@ class TextToSignService:
             "confidence": 0.0,
             "alternatives": [],
             "match_type": "None",
-            "variants": 0
+            "variants": 0,
+            "primitives": primitives,
         }
 
