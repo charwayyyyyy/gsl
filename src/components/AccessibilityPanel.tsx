@@ -1,15 +1,17 @@
 import React from 'react'
-import { useAppStore } from '../stores/appStore'
+import { useAccessibilitySettings } from '../stores/appStore'
 import { Settings, Palette, Eye, Volume2 } from 'lucide-react'
 
 const AccessibilityPanel: React.FC = () => {
-  const { accessibility, updateAccessibility } = useAppStore()
+  const { updateAccessibility, ...accessibility } = useAccessibilitySettings()
 
   const handleToggle = (setting: keyof typeof accessibility) => {
-    updateAccessibility({ [setting]: !accessibility[setting] })
+    if (typeof accessibility[setting] === 'boolean') {
+      updateAccessibility({ [setting]: !accessibility[setting] })
+    }
   }
 
-  const handleColorBlindChange = (mode: typeof accessibility.colorBlindMode) => {
+  const handleColorBlindChange = (mode: any) => {
     updateAccessibility({ colorBlindMode: mode })
   }
 

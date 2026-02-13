@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { useAppStore } from '@/stores/appStore';
+import { useAppStore, useAccessibilitySettings } from '@/stores/appStore';
 
 interface AvatarRendererProps {
   signSequence: string[];
@@ -30,7 +30,7 @@ const AvatarRenderer: React.FC<AvatarRendererProps> = ({
   const rightHandRef = useRef<THREE.Group | null>(null);
   const animationRef = useRef<number | null>(null);
   
-  const { accessibility } = useAppStore();
+  const accessibility = useAccessibilitySettings();
   const [isLoading, setIsLoading] = useState(true);
   const [currentSign, setCurrentSign] = useState('');
 
@@ -389,17 +389,15 @@ const AvatarRenderer: React.FC<AvatarRendererProps> = ({
       );
 
       // Interpolate rotations
-      leftHandRef.current!.rotation.slerp(
-        new THREE.Quaternion().setFromEuler(startLeftRot),
-        new THREE.Quaternion().setFromEuler(defaultHandRotations.left),
-        eased
-      );
+      const startLeftQuat = new THREE.Quaternion().setFromEuler(startLeftRot);
+      const endLeftQuat = new THREE.Quaternion().setFromEuler(defaultHandRotations.left);
+      startLeftQuat.slerp(endLeftQuat, eased);
+      leftHandRef.current!.rotation.setFromQuaternion(startLeftQuat);
 
-      rightHandRef.current!.rotation.slerp(
-        new THREE.Quaternion().setFromEuler(startRightRot),
-        new THREE.Quaternion().setFromEuler(defaultHandRotations.right),
-        eased
-      );
+      const startRightQuat = new THREE.Quaternion().setFromEuler(startRightRot);
+      const endRightQuat = new THREE.Quaternion().setFromEuler(defaultHandRotations.right);
+      startRightQuat.slerp(endRightQuat, eased);
+      rightHandRef.current!.rotation.setFromQuaternion(startRightQuat);
 
       if (progress < 1) {
         requestAnimationFrame(animate);

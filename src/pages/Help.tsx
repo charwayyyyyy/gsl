@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { HelpCircle, Video, Mic, Settings, AlertTriangle, BookOpen, Users, Eye, Ear } from 'lucide-react';
-import { useAppStore } from '@/stores/appStore';
+import { useAccessibilitySettings } from '@/stores/appStore';
 
 const Help: React.FC = () => {
   const [activeTab, setActiveTab] = useState('getting-started');
-  const { accessibility, setAccessibility } = useAppStore();
+  const accessibility = useAccessibilitySettings();
 
   const tabs = [
     { id: 'getting-started', label: 'Getting Started', icon: BookOpen },

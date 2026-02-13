@@ -284,7 +284,7 @@ const Avatar3D: React.FC<Avatar3DProps> = ({
     // Head
     const headGeometry = new THREE.SphereGeometry(0.15, 16, 16);
     const headMaterial = new THREE.MeshPhongMaterial({ 
-      color: settings.highContrast ? 0xffff00 : 0xffdbac 
+      color: settings.accessibility.highContrast ? 0xffff00 : 0xffdbac 
     });
     const head = new THREE.Mesh(headGeometry, headMaterial);
     head.position.set(0, 1.6, 0);
@@ -306,7 +306,7 @@ const Avatar3D: React.FC<Avatar3DProps> = ({
     // Body
     const bodyGeometry = new THREE.CylinderGeometry(0.12, 0.15, 0.8, 8);
     const bodyMaterial = new THREE.MeshPhongMaterial({ 
-      color: settings.highContrast ? 0x0000ff : 0x4169e1 
+      color: settings.accessibility.highContrast ? 0x0000ff : 0x4169e1 
     });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.set(0, 1.0, 0);
@@ -315,7 +315,7 @@ const Avatar3D: React.FC<Avatar3DProps> = ({
     // Arms
     const armGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.6, 8);
     const armMaterial = new THREE.MeshPhongMaterial({ 
-      color: settings.highContrast ? 0xffff00 : 0xffdbac 
+      color: settings.accessibility.highContrast ? 0xffff00 : 0xffdbac 
     });
     
     // Left arm
@@ -333,7 +333,7 @@ const Avatar3D: React.FC<Avatar3DProps> = ({
     // Hands
     const handGeometry = new THREE.SphereGeometry(0.06, 8, 8);
     const handMaterial = new THREE.MeshPhongMaterial({ 
-      color: settings.highContrast ? 0xffff00 : 0xffdbac 
+      color: settings.accessibility.highContrast ? 0xffff00 : 0xffdbac 
     });
     
     // Left hand
@@ -357,7 +357,7 @@ const Avatar3D: React.FC<Avatar3DProps> = ({
 
     // Scene setup
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(settings.highContrast ? 0x000000 : 0xf0f0f0);
+    scene.background = new THREE.Color(settings.accessibility.highContrast ? 0x000000 : 0xf0f0f0);
     sceneRef.current = scene;
 
     // Camera setup
@@ -395,10 +395,10 @@ const Avatar3D: React.FC<Avatar3DProps> = ({
     avatarRef.current = avatar;
     scene.add(avatar);
 
-    // Ground plane
+    // Add ground plane
     const groundGeometry = new THREE.PlaneGeometry(10, 10);
-    const groundMaterial = new THREE.MeshLambertMaterial({ 
-      color: settings.highContrast ? 0x333333 : 0xcccccc 
+    const groundMaterial = new THREE.MeshStandardMaterial({ 
+      color: settings.accessibility.highContrast ? 0x333333 : 0xcccccc 
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
@@ -439,7 +439,7 @@ const Avatar3D: React.FC<Avatar3DProps> = ({
       }
       renderer.dispose();
     };
-  }, [isVisible, settings.highContrast]);
+  }, [isVisible, settings.accessibility.highContrast]);
 
   // Handle sign animations
   useEffect(() => {
@@ -474,7 +474,7 @@ const Avatar3D: React.FC<Avatar3DProps> = ({
     <div 
       ref={mountRef} 
       className={`w-full h-96 rounded-lg border-2 ${
-        settings.highContrast 
+        settings.accessibility.highContrast 
           ? 'border-yellow-400 bg-black' 
           : 'border-gray-300 bg-white'
       }`}

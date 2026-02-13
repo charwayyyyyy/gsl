@@ -167,8 +167,9 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
 
       // Apply accessibility settings
       if (settings.accessibility.largeText) {
+        const videoConstraints = typeof constraints.video === 'object' ? constraints.video : {}
         constraints.video = {
-          ...constraints.video,
+          ...videoConstraints,
           width: { ideal: 1280, min: 640 },
           height: { ideal: 720, min: 480 }
         }

@@ -517,7 +517,7 @@ const Interpreter: React.FC = () => {
   const speakText = useCallback((text: string) => {
     if ('speechSynthesis' in window && !isMuted) {
       const utterance = new SpeechSynthesisUtterance(text)
-      const rate = Number.isFinite(audio.speechSpeed) ? Math.min(2, Math.max(0.1, audio.speechSpeed)) : 1
+      const rate = Number.isFinite(settings.translation.speechSpeed) ? Math.min(2, Math.max(0.1, settings.translation.speechSpeed)) : 1
       const volume = Number.isFinite(audio.volumeLevel) ? Math.min(1, Math.max(0, audio.volumeLevel)) : 1
       const pitch = 1
       utterance.rate = rate
@@ -542,7 +542,7 @@ const Interpreter: React.FC = () => {
       
       speechSynthesis.speak(utterance)
     }
-  }, [audio.speechSpeed, audio.volumeLevel, audio.ghanaianAccent, isMuted])
+  }, [settings.translation.speechSpeed, audio.volumeLevel, audio.ghanaianAccent, isMuted])
 
   // Auto-speak translations for sign-to-speech
   useEffect(() => {

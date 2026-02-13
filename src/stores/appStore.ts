@@ -7,6 +7,7 @@ export interface AccessibilitySettings {
   dyslexiaFriendlyFont: boolean
   reducedMotion: boolean
   focusIndicators: boolean
+  colorBlindMode: 'none' | 'protanopia' | 'deuteranopia' | 'tritanopia'
 }
 
 export interface TranslationSettings {
@@ -96,7 +97,8 @@ const defaultSettings: AppSettings = {
     largeText: true, // Default to large text for accessibility
     dyslexiaFriendlyFont: false,
     reducedMotion: false,
-    focusIndicators: true
+    focusIndicators: true,
+    colorBlindMode: 'none'
   },
   translation: {
     signSpeed: 1.0,
@@ -148,23 +150,23 @@ export const useAppStore = create<AppState>()(
             accessibility: {
               ...state.settings.accessibility,
               ...(newSettings.accessibility || {})
-            },
+            } as AccessibilitySettings,
             translation: {
               ...state.settings.translation,
               ...(newSettings.translation || {})
-            },
+            } as TranslationSettings,
             audio: {
               ...state.settings.audio,
               ...(newSettings.audio || {})
-            },
+            } as AudioSettings,
             visual: {
               ...state.settings.visual,
               ...(newSettings.visual || {})
-            },
+            } as VisualSettings,
             ghana: {
               ...state.settings.ghana,
               ...(newSettings.ghana || {})
-            }
+            } as GhanaSpecificSettings
           }
         }))
       },
@@ -235,7 +237,7 @@ export const useAccessibilitySettings = () => {
   return {
     ...settings,
     updateAccessibility: (accessibility: Partial<AccessibilitySettings>) => {
-      updateSettings({ accessibility })
+      updateSettings({ accessibility: accessibility as any })
     }
   }
 }
@@ -247,7 +249,7 @@ export const useTranslationSettings = () => {
   return {
     ...settings,
     updateTranslation: (translation: Partial<TranslationSettings>) => {
-      updateSettings({ translation })
+      updateSettings({ translation: translation as any })
     }
   }
 }
@@ -259,7 +261,7 @@ export const useAudioSettings = () => {
   return {
     ...settings,
     updateAudio: (audio: Partial<AudioSettings>) => {
-      updateSettings({ audio })
+      updateSettings({ audio: audio as any })
     }
   }
 }
@@ -271,7 +273,7 @@ export const useVisualSettings = () => {
   return {
     ...settings,
     updateVisual: (visual: Partial<VisualSettings>) => {
-      updateSettings({ visual })
+      updateSettings({ visual: visual as any })
     }
   }
 }
@@ -283,7 +285,7 @@ export const useGhanaSettings = () => {
   return {
     ...settings,
     updateGhana: (ghana: Partial<GhanaSpecificSettings>) => {
-      updateSettings({ ghana })
+      updateSettings({ ghana: ghana as any })
     }
   }
 }
