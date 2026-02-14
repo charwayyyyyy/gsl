@@ -9,7 +9,6 @@ import {
   Save,
   RotateCcw,
   Palette,
-  User,
   Globe,
   BookOpen
 } from 'lucide-react'
@@ -36,15 +35,96 @@ const Settings: React.FC = () => {
   const [hasChanges, setHasChanges] = useState(false)
   
   const { accessibility: accessibilitySettings } = settings
-  
-  const getTextSize = () => {
-    return accessibilitySettings.largeText ? 'text-xl' : 'text-lg'
+
+  const isActive = (tabId: string) => activeTab === tabId
+
+  const getTextSize = () => accessibilitySettings.largeText ? 'text-3xl' : 'text-2xl'
+
+  const renderTabButton = (tab: { id: string, label: string, icon: any }) => {
+    const Icon = tab.icon
+    const active = isActive(tab.id)
+    
+    return (
+      <button
+        key={tab.id}
+        onClick={() => setActiveTab(tab.id)}
+        className={`
+          flex items-center space-x-3 px-8 py-4 rounded-2xl transition-all duration-500
+          ${active 
+            ? 'bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] scale-105 z-10' 
+            : 'glass-card text-slate-400 hover:text-white hover:scale-105'
+          }
+          ${accessibilitySettings.largeText ? 'text-2xl' : 'text-lg font-medium'}
+          backdrop-blur-xl
+        `}
+      >
+        <Icon className={accessibilitySettings.largeText ? 'w-7 h-7' : 'w-6 h-6'} />
+        <span>{tab.label}</span>
+      </button>
+    )
   }
-  
-  const getButtonSize = () => {
-    return accessibilitySettings.largeText ? 'w-16 h-16' : 'w-12 h-12'
-  }
-  
+
+  const renderToggle = (label: string, desc: string, icon: any, checked: boolean, onChange: (val: boolean) => void, emoji?: string) => (
+    <label className="glass-card p-8 flex items-center justify-between cursor-pointer hover:shadow-glass-hover transition-all duration-500 group relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-[50px] -mr-16 -mt-16 rounded-full group-hover:bg-blue-500/10 transition-all duration-500" />
+      <div className="flex items-center gap-6 relative z-10">
+        <div className="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 group-hover:bg-blue-500/20 group-hover:scale-110 transition-all duration-500 shadow-inner">
+          {emoji ? (
+            <span className="text-3xl">{emoji}</span>
+          ) : (
+            <icon.type {...icon.props} className={`${accessibilitySettings.largeText ? 'w-9 h-9' : 'w-7 h-7'} text-blue-400`} />
+          )}
+        </div>
+        <div>
+          <div className={`font-bold text-white mb-1 ${accessibilitySettings.largeText ? 'text-2xl' : 'text-xl'}`}>
+            {label}
+          </div>
+          <div className={`text-slate-400 leading-relaxed ${accessibilitySettings.largeText ? 'text-xl' : 'text-lg'}`}>
+            {desc}
+          </div>
+        </div>
+      </div>
+      <div className="relative inline-flex items-center cursor-pointer z-10">
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="sr-only peer"
+        />
+        <div className="w-16 h-8 bg-slate-700/50 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:start-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-7 after:transition-all peer-checked:bg-blue-600 shadow-inner"></div>
+      </div>
+    </label>
+  )
+
+  const renderSlider = (label: string, value: number, min: number, max: number, step: number, onChange: (val: number) => void, unit: string = '') => (
+    <div className="glass-card p-10 relative overflow-hidden group">
+      <div className="absolute bottom-0 right-0 w-32 h-32 bg-blue-500/5 blur-[50px] -mr-16 -mb-16 rounded-full group-hover:bg-blue-500/10 transition-all duration-500" />
+      <div className="flex justify-between items-center mb-8 relative z-10">
+        <label className={`font-bold text-white ${accessibilitySettings.largeText ? 'text-2xl' : 'text-xl'}`}>
+          {label}
+        </label>
+        <span className="px-6 py-2 rounded-2xl bg-blue-600/20 text-blue-400 font-bold border border-blue-500/30 backdrop-blur-md shadow-glass">
+          {value}{unit}
+        </span>
+      </div>
+      <div className="relative z-10 px-2">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(parseFloat(e.target.value))}
+          className="w-full h-2.5 bg-slate-700/50 rounded-full appearance-none cursor-pointer accent-blue-500 transition-all hover:accent-blue-400"
+        />
+        <div className="flex justify-between mt-6 text-slate-500 font-bold tracking-wider text-sm uppercase">
+          <span>Min</span>
+          <span>Max</span>
+        </div>
+      </div>
+    </div>
+  )
+
   const tabs = [
     { id: 'accessibility', label: 'Accessibility', icon: Accessibility },
     { id: 'translation', label: 'Translation', icon: Globe },
@@ -52,510 +132,320 @@ const Settings: React.FC = () => {
     { id: 'visual', label: 'Visual', icon: Eye },
     { id: 'ghana', label: 'Ghana', icon: BookOpen }
   ]
-  
+
   const handleSave = () => {
-    // Settings are automatically saved via Zustand persist
     setHasChanges(false)
-    // Show success feedback
     const event = new CustomEvent('settings-saved', { detail: { success: true } })
     window.dispatchEvent(event)
   }
-  
+
   const handleReset = () => {
     if (window.confirm('Are you sure you want to reset all settings to defaults?')) {
       resetSettings()
       setHasChanges(false)
     }
   }
-  
+
   const renderAccessibilityTab = () => (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-fade-in">
       <div>
-        <h3 className={`${getTextSize()} font-bold mb-6 ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
+        <h3 className={`${getTextSize()} font-bold mb-8 text-white flex items-center gap-3`}>
+          <div className="w-2 h-8 bg-blue-500 rounded-full" />
           Visual Accessibility
         </h3>
         
-        <div className="space-y-6">
-          <label className="flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer hover:bg-gray-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <Palette className={`${accessibilitySettings.largeText ? 'w-8 h-8' : 'w-6 h-6'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-blue-600'}`} />
-              <div>
-                <div className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  High Contrast Mode
-                </div>
-                <div className={`${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Increase contrast for better visibility
-                </div>
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={accessibilitySettings.highContrast}
-              onChange={(e) => {
-                accessibility.updateAccessibility({ highContrast: e.target.checked })
-                setHasChanges(true)
-              }}
-              className="w-6 h-6 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {renderToggle(
+            'High Contrast Mode',
+            'Increase contrast for better visibility',
+            <Palette />,
+            accessibilitySettings.highContrast,
+            (val) => {
+              accessibility.updateAccessibility({ highContrast: val })
+              setHasChanges(true)
+            }
+          )}
           
-          <label className="flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer hover:bg-gray-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className={`${accessibilitySettings.largeText ? 'w-8 h-8' : 'w-6 h-6'} flex items-center justify-center ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-blue-600'}`}>
-                <span className={`${accessibilitySettings.largeText ? 'text-2xl' : 'text-xl'} font-bold`}>A</span>
-              </div>
-              <div>
-                <div className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Large Text
-                </div>
-                <div className={`${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Increase text size throughout the app
-                </div>
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={accessibilitySettings.largeText}
-              onChange={(e) => {
-                accessibility.updateAccessibility({ largeText: e.target.checked })
-                setHasChanges(true)
-              }}
-              className="w-6 h-6 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </label>
+          {renderToggle(
+            'Large Text',
+            'Increase text size throughout the app',
+            <span className="font-bold">A</span>,
+            accessibilitySettings.largeText,
+            (val) => {
+              accessibility.updateAccessibility({ largeText: val })
+              setHasChanges(true)
+            }
+          )}
           
-          <label className="flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer hover:bg-gray-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <BookOpen className={`${accessibilitySettings.largeText ? 'w-8 h-8' : 'w-6 h-6'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-blue-600'}`} />
-              <div>
-                <div className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Dyslexia-Friendly Font
-                </div>
-                <div className={`${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Use fonts optimized for dyslexic users
-                </div>
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={accessibilitySettings.dyslexiaFriendlyFont}
-              onChange={(e) => {
-                accessibility.updateAccessibility({ dyslexiaFriendlyFont: e.target.checked })
-                setHasChanges(true)
-              }}
-              className="w-6 h-6 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </label>
+          {renderToggle(
+            'Dyslexia-Friendly Font',
+            'Use fonts optimized for dyslexic users',
+            <BookOpen />,
+            accessibilitySettings.dyslexiaFriendlyFont,
+            (val) => {
+              accessibility.updateAccessibility({ dyslexiaFriendlyFont: val })
+              setHasChanges(true)
+            }
+          )}
           
-          <label className="flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer hover:bg-gray-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className={`${accessibilitySettings.largeText ? 'w-8 h-8' : 'w-6 h-6'} flex items-center justify-center ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-blue-600'}`}>
-                <span className={`${accessibilitySettings.largeText ? 'text-xl' : 'text-lg'} font-bold`}>○</span>
-              </div>
-              <div>
-                <div className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Focus Indicators
-                </div>
-                <div className={`${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Highlight focused elements clearly
-                </div>
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={accessibilitySettings.focusIndicators}
-              onChange={(e) => {
-                accessibility.updateAccessibility({ focusIndicators: e.target.checked })
-                setHasChanges(true)
-              }}
-              className="w-6 h-6 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </label>
+          {renderToggle(
+            'Focus Indicators',
+            'Highlight focused elements clearly',
+            <span className="font-bold">○</span>,
+            accessibilitySettings.focusIndicators,
+            (val) => {
+              accessibility.updateAccessibility({ focusIndicators: val })
+              setHasChanges(true)
+            }
+          )}
         </div>
       </div>
     </div>
   )
   
   const renderTranslationTab = () => (
-    <div className="space-y-8">
+    <div className="space-y-10 animate-fade-in">
       <div>
-        <h3 className={`${getTextSize()} font-bold mb-6 ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
+        <h3 className={`${getTextSize()} font-bold mb-8 text-white flex items-center gap-3`}>
+          <div className="w-2 h-8 bg-indigo-500 rounded-full" />
           Translation Speed
         </h3>
         
-        <div className="space-y-6">
-          <div>
-            <label className={`block font-semibold mb-3 ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-              Sign Language Speed
-            </label>
-            <div className="flex items-center gap-4">
-              <input
-                type="range"
-                min="0.5"
-                max="2.0"
-                step="0.1"
-                value={translation.signSpeed}
-                onChange={(e) => {
-                  translation.updateTranslation({ signSpeed: parseFloat(e.target.value) })
-                  setHasChanges(true)
-                }}
-                className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-              />
-              <span className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                {translation.signSpeed.toFixed(1)}x
-              </span>
-            </div>
-            <div className={`flex justify-between mt-2 ${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-              <span>Slower</span>
-              <span>Faster</span>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {renderSlider(
+            'Sign Language Speed',
+            translation.signSpeed,
+            0.5,
+            2.0,
+            0.1,
+            (val) => {
+              translation.updateTranslation({ signSpeed: val })
+              setHasChanges(true)
+            },
+            'x'
+          )}
           
-          <div>
-            <label className={`block font-semibold mb-3 ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-              Speech Speed
-            </label>
-            <div className="flex items-center gap-4">
-              <input
-                type="range"
-                min="0.5"
-                max="2.0"
-                step="0.1"
-                value={translation.speechSpeed}
-                onChange={(e) => {
-                  translation.updateTranslation({ speechSpeed: parseFloat(e.target.value) })
-                  setHasChanges(true)
-                }}
-                className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-              />
-              <span className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                {translation.speechSpeed.toFixed(1)}x
-              </span>
-            </div>
-            <div className={`flex justify-between mt-2 ${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-              <span>Slower</span>
-              <span>Faster</span>
-            </div>
-          </div>
+          {renderSlider(
+            'Speech Speed',
+            translation.speechSpeed,
+            0.5,
+            2.0,
+            0.1,
+            (val) => {
+              translation.updateTranslation({ speechSpeed: val })
+              setHasChanges(true)
+            },
+            'x'
+          )}
         </div>
       </div>
       
       <div>
-        <h3 className={`${getTextSize()} font-bold mb-6 ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
+        <h3 className={`${getTextSize()} font-bold mb-8 text-white flex items-center gap-3`}>
+          <div className="w-2 h-8 bg-purple-500 rounded-full" />
           Avatar Settings
         </h3>
         
-        <div className="space-y-6">
-          <div>
-            <label className={`block font-semibold mb-3 ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-              Avatar Mode
-            </label>
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                onClick={() => {
-                  translation.updateTranslation({ avatarMode: '3d_avatar' })
-                  setHasChanges(true)
-                }}
-                className={`p-4 rounded-xl border-2 transition-all ${
-                  translation.avatarMode === '3d_avatar'
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  3D Avatar
-                </div>
-                <div className={`${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Realistic 3D signing character
-                </div>
-              </button>
-              
-              <button
-                onClick={() => {
-                  translation.updateTranslation({ avatarMode: 'video_clips' })
-                  setHasChanges(true)
-                }}
-                className={`p-4 rounded-xl border-2 transition-all ${
-                  translation.avatarMode === 'video_clips'
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Video Clips
-                </div>
-                <div className={`${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Pre-recorded sign videos
-                </div>
-              </button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <button
+            onClick={() => {
+              translation.updateTranslation({ avatarMode: '3d_avatar' })
+              setHasChanges(true)
+            }}
+            className={`p-8 rounded-[2rem] border-2 transition-all duration-500 text-left relative overflow-hidden group ${
+              translation.avatarMode === '3d_avatar'
+                ? 'bg-blue-600/20 border-blue-500 shadow-glass-hover'
+                : 'glass-card border-white/10 hover:border-white/20'
+            }`}
+          >
+            <div className="relative z-10">
+              <div className={`font-bold text-white mb-2 ${accessibilitySettings.largeText ? 'text-2xl' : 'text-xl'}`}>
+                3D Avatar
+              </div>
+              <div className={`text-slate-400 ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'}`}>
+                Realistic 3D signing character
+              </div>
             </div>
-          </div>
+            {translation.avatarMode === '3d_avatar' && (
+              <div className="absolute top-4 right-4 w-3 h-3 bg-blue-400 rounded-full animate-pulse" />
+            )}
+          </button>
           
-          <label className="flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer hover:bg-gray-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className={`${accessibilitySettings.largeText ? 'w-8 h-8' : 'w-6 h-6'} flex items-center justify-center ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-blue-600'}`}>
-                <span className={`${accessibilitySettings.largeText ? 'text-xl' : 'text-lg'} font-bold`}>😊</span>
+          <button
+            onClick={() => {
+              translation.updateTranslation({ avatarMode: 'video_clips' })
+              setHasChanges(true)
+            }}
+            className={`p-8 rounded-[2rem] border-2 transition-all duration-500 text-left relative overflow-hidden group ${
+              translation.avatarMode === 'video_clips'
+                ? 'bg-blue-600/20 border-blue-500 shadow-glass-hover'
+                : 'glass-card border-white/10 hover:border-white/20'
+            }`}
+          >
+            <div className="relative z-10">
+              <div className={`font-bold text-white mb-2 ${accessibilitySettings.largeText ? 'text-2xl' : 'text-xl'}`}>
+                Video Clips
               </div>
-              <div>
-                <div className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Facial Expressions
-                </div>
-                <div className={`${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Include facial expressions in avatar
-                </div>
+              <div className={`text-slate-400 ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'}`}>
+                Pre-recorded sign videos
               </div>
             </div>
-            <input
-              type="checkbox"
-              checked={translation.facialExpressions}
-              onChange={(e) => {
-                translation.updateTranslation({ facialExpressions: e.target.checked })
-                setHasChanges(true)
-              }}
-              className="w-6 h-6 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </label>
+            {translation.avatarMode === 'video_clips' && (
+              <div className="absolute top-4 right-4 w-3 h-3 bg-blue-400 rounded-full animate-pulse" />
+            )}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {renderToggle(
+            'Facial Expressions',
+            'Include facial expressions in avatar',
+            <span className="text-2xl">😊</span>,
+            translation.facialExpressions,
+            (val) => {
+              translation.updateTranslation({ facialExpressions: val })
+              setHasChanges(true)
+            }
+          )}
           
-          <label className="flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer hover:bg-gray-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className={`${accessibilitySettings.largeText ? 'w-8 h-8' : 'w-6 h-6'} flex items-center justify-center ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-blue-600'}`}>
-                <span className={`${accessibilitySettings.largeText ? 'text-xl' : 'text-lg'} font-bold`}>~</span>
-              </div>
-              <div>
-                <div className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Gesture Smoothing
-                </div>
-                <div className={`${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Smooth transitions between signs
-                </div>
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={translation.gestureSmoothing}
-              onChange={(e) => {
-                translation.updateTranslation({ gestureSmoothing: e.target.checked })
-                setHasChanges(true)
-              }}
-              className="w-6 h-6 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </label>
+          {renderToggle(
+            'Gesture Smoothing',
+            'Smooth transitions between signs',
+            <span className="text-2xl">~</span>,
+            translation.gestureSmoothing,
+            (val) => {
+              translation.updateTranslation({ gestureSmoothing: val })
+              setHasChanges(true)
+            }
+          )}
         </div>
       </div>
     </div>
   )
   
   const renderAudioTab = () => (
-    <div className="space-y-8">
+    <div className="space-y-10 animate-fade-in">
       <div>
-        <h3 className={`${getTextSize()} font-bold mb-6 ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
+        <h3 className={`${getTextSize()} font-bold mb-8 text-white flex items-center gap-3`}>
+          <div className="w-2 h-8 bg-rose-500 rounded-full" />
           Volume & Feedback
         </h3>
         
-        <div className="space-y-6">
-          <div>
-            <label className={`block font-semibold mb-3 ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-              Volume Level
-            </label>
-            <div className="flex items-center gap-4">
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.1"
-                value={audio.volumeLevel}
-                onChange={(e) => {
-                  audio.updateAudio({ volumeLevel: parseFloat(e.target.value) })
-                  setHasChanges(true)
-                }}
-                className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-              />
-              <span className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                {Math.round(audio.volumeLevel * 100)}%
-              </span>
-            </div>
-            <div className={`flex justify-between mt-2 ${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-              <span>Mute</span>
-              <span>Max</span>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {renderSlider(
+            'Volume Level',
+            Math.round(audio.volumeLevel * 100),
+            0,
+            100,
+            1,
+            (val) => {
+              audio.updateAudio({ volumeLevel: val / 100 })
+              setHasChanges(true)
+            },
+            '%'
+          )}
           
-          <label className="flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer hover:bg-gray-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <Volume2 className={`${accessibilitySettings.largeText ? 'w-8 h-8' : 'w-6 h-6'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-blue-600'}`} />
-              <div>
-                <div className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Audio Feedback
-                </div>
-                <div className={`${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Play sounds for user actions
-                </div>
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={audio.audioFeedback}
-              onChange={(e) => {
-                audio.updateAudio({ audioFeedback: e.target.checked })
-                setHasChanges(true)
-              }}
-              className="w-6 h-6 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </label>
+          {renderToggle(
+            'Audio Feedback',
+            'Play sounds for user actions',
+            <Volume2 />,
+            audio.audioFeedback,
+            (val) => {
+              audio.updateAudio({ audioFeedback: val })
+              setHasChanges(true)
+            }
+          )}
         </div>
       </div>
       
       <div>
-        <h3 className={`${getTextSize()} font-bold mb-6 ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
+        <h3 className={`${getTextSize()} font-bold mb-8 text-white flex items-center gap-3`}>
+          <div className="w-2 h-8 bg-emerald-500 rounded-full" />
           Speech Recognition
         </h3>
         
-        <div className="space-y-6">
-          <label className="flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer hover:bg-gray-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="text-2xl">🇬🇭</div>
-              <div>
-                <div className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Ghanaian Accent Recognition
-                </div>
-                <div className={`${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Optimize for Ghanaian English pronunciation
-                </div>
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={audio.ghanaianAccent}
-              onChange={(e) => {
-                audio.updateAudio({ ghanaianAccent: e.target.checked })
-                setHasChanges(true)
-              }}
-              className="w-6 h-6 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {renderToggle(
+            'Ghanaian Accent Recognition',
+            'Optimize for Ghanaian English pronunciation',
+            <span className="text-2xl">🇬🇭</span>,
+            audio.ghanaianAccent,
+            (val) => {
+              audio.updateAudio({ ghanaianAccent: val })
+              setHasChanges(true)
+            }
+          )}
           
-          <label className="flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer hover:bg-gray-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className={`${accessibilitySettings.largeText ? 'w-8 h-8' : 'w-6 h-6'} flex items-center justify-center ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-blue-600'}`}>
-                <span className={`${accessibilitySettings.largeText ? 'text-xl' : 'text-lg'} font-bold`}>🔧</span>
-              </div>
-              <div>
-                <div className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Background Noise Reduction
-                </div>
-                <div className={`${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Filter out ambient noise for clearer recognition
-                </div>
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={audio.backgroundNoiseReduction}
-              onChange={(e) => {
-                audio.updateAudio({ backgroundNoiseReduction: e.target.checked })
-                setHasChanges(true)
-              }}
-              className="w-6 h-6 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </label>
+          {renderToggle(
+            'Background Noise Reduction',
+            'Filter out ambient noise for clearer recognition',
+            <span className="text-2xl">🔧</span>,
+            audio.backgroundNoiseReduction,
+            (val) => {
+              audio.updateAudio({ backgroundNoiseReduction: val })
+              setHasChanges(true)
+            }
+          )}
         </div>
       </div>
     </div>
   )
   
   const renderVisualTab = () => (
-    <div className="space-y-8">
+    <div className="space-y-10 animate-fade-in">
       <div>
-        <h3 className={`${getTextSize()} font-bold mb-6 ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
+        <h3 className={`${getTextSize()} font-bold mb-8 text-white flex items-center gap-3`}>
+          <div className="w-2 h-8 bg-amber-500 rounded-full" />
           Display Options
         </h3>
         
-        <div className="space-y-6">
-          <label className="flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer hover:bg-gray-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <Eye className={`${accessibilitySettings.largeText ? 'w-8 h-8' : 'w-6 h-6'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-blue-600'}`} />
-              <div>
-                <div className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Show Confidence Score
-                </div>
-                <div className={`${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Display recognition confidence percentage
-                </div>
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={visual.showConfidence}
-              onChange={(e) => {
-                visual.updateVisual({ showConfidence: e.target.checked })
-                setHasChanges(true)
-              }}
-              className="w-6 h-6 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {renderToggle(
+            'Show Confidence Score',
+            'Display recognition confidence percentage',
+            <Eye />,
+            visual.showConfidence,
+            (val) => {
+              visual.updateVisual({ showConfidence: val })
+              setHasChanges(true)
+            }
+          )}
           
-          <label className="flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer hover:bg-gray-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className={`${accessibilitySettings.largeText ? 'w-8 h-8' : 'w-6 h-6'} flex items-center justify-center ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-blue-600'}`}>
-                <span className={`${accessibilitySettings.largeText ? 'text-xl' : 'text-lg'} font-bold`}>📍</span>
-              </div>
-              <div>
-                <div className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Show Landmarks
-                </div>
-                <div className={`${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Display hand and body tracking guides
-                </div>
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={visual.showLandmarks}
-              onChange={(e) => {
-                visual.updateVisual({ showLandmarks: e.target.checked })
-                setHasChanges(true)
-              }}
-              className="w-6 h-6 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </label>
+          {renderToggle(
+            'Show Landmarks',
+            'Display hand and body tracking guides',
+            <span className="text-2xl">📍</span>,
+            visual.showLandmarks,
+            (val) => {
+              visual.updateVisual({ showLandmarks: val })
+              setHasChanges(true)
+            }
+          )}
           
-          <label className="flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer hover:bg-gray-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className={`${accessibilitySettings.largeText ? 'w-8 h-8' : 'w-6 h-6'} flex items-center justify-center ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-blue-600'}`}>
-                <span className={`${accessibilitySettings.largeText ? 'text-xl' : 'text-lg'} font-bold`}>📐</span>
-              </div>
-              <div>
-                <div className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Signing Space Overlay
-                </div>
-                <div className={`${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Show optimal signing area guidelines
-                </div>
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={visual.signingSpaceOverlay}
-              onChange={(e) => {
-                visual.updateVisual({ signingSpaceOverlay: e.target.checked })
-                setHasChanges(true)
-              }}
-              className="w-6 h-6 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </label>
+          {renderToggle(
+            'Signing Space Overlay',
+            'Show optimal signing area guidelines',
+            <span className="text-2xl">📐</span>,
+            visual.signingSpaceOverlay,
+            (val) => {
+              visual.updateVisual({ signingSpaceOverlay: val })
+              setHasChanges(true)
+            }
+          )}
         </div>
       </div>
       
       <div>
-        <h3 className={`${getTextSize()} font-bold mb-6 ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
+        <h3 className={`${getTextSize()} font-bold mb-8 text-white flex items-center gap-3`}>
+          <div className="w-2 h-8 bg-cyan-500 rounded-full" />
           Animation Quality
         </h3>
         
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
-            { value: 'low', label: 'Low', desc: 'Faster performance' },
-            { value: 'medium', label: 'Medium', desc: 'Balanced quality' },
-            { value: 'high', label: 'High', desc: 'Best visual quality' }
+            { value: 'low', label: 'Low', desc: 'Faster performance', color: 'slate' },
+            { value: 'medium', label: 'Medium', desc: 'Balanced quality', color: 'blue' },
+            { value: 'high', label: 'High', desc: 'Best visual quality', color: 'indigo' }
           ].map((option) => (
             <button
               key={option.value}
@@ -563,17 +453,19 @@ const Settings: React.FC = () => {
                 visual.updateVisual({ animationQuality: option.value as any })
                 setHasChanges(true)
               }}
-              className={`p-4 rounded-xl border-2 transition-all ${
+              className={`p-8 rounded-[2rem] border-2 transition-all duration-500 text-left relative overflow-hidden group ${
                 visual.animationQuality === option.value
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
+                  ? `bg-${option.color}-600/20 border-${option.color}-500 shadow-glass-hover`
+                  : 'glass-card border-white/10 hover:border-white/20'
               }`}
             >
-              <div className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                {option.label}
-              </div>
-              <div className={`${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                {option.desc}
+              <div className="relative z-10">
+                <div className={`font-bold text-white mb-2 ${accessibilitySettings.largeText ? 'text-2xl' : 'text-xl'}`}>
+                  {option.label}
+                </div>
+                <div className={`text-slate-400 ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'}`}>
+                  {option.desc}
+                </div>
               </div>
             </button>
           ))}
@@ -583,232 +475,136 @@ const Settings: React.FC = () => {
   )
   
   const renderGhanaTab = () => (
-    <div className="space-y-8">
-      <div className={`p-6 rounded-2xl border-2 ${accessibilitySettings.highContrast ? 'bg-gray-900 border-yellow-400' : 'bg-blue-50 border-blue-200'}`}>
-        <div className="flex items-center gap-3 mb-4">
-          <div className="text-3xl">🇬🇭</div>
-          <h3 className={`${getTextSize()} font-bold ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-blue-900'}`}>
-            Ghana Sign Language Features
-          </h3>
+    <div className="space-y-10 animate-fade-in">
+      <div className="glass-card p-10 border-blue-500/30 relative overflow-hidden group">
+        <div className="absolute inset-0 bg-blue-600/5 group-hover:bg-blue-600/10 transition-colors duration-500" />
+        <div className="relative z-10 flex items-center gap-8">
+          <div className="w-20 h-20 rounded-[1.5rem] bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-5xl shadow-inner backdrop-blur-xl">
+            🇬🇭
+          </div>
+          <div>
+            <h3 className={`${getTextSize()} font-bold text-white mb-2`}>
+              Ghana Sign Language Features
+            </h3>
+            <p className={`text-slate-400 leading-relaxed ${accessibilitySettings.largeText ? 'text-xl' : 'text-lg'}`}>
+              These settings are specifically designed for Ghanaian users and cultural context, 
+              ensuring an authentic and localized experience.
+            </p>
+          </div>
         </div>
-        <p className={`${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-blue-800'}`}>
-          These settings are specifically designed for Ghanaian users and cultural context.
-        </p>
       </div>
       
       <div>
-        <h3 className={`${getTextSize()} font-bold mb-6 ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
+        <h3 className={`${getTextSize()} font-bold mb-8 text-white flex items-center gap-3`}>
+          <div className="w-2 h-8 bg-red-500 rounded-full" />
           Cultural Settings
         </h3>
         
-        <div className="space-y-6">
-          <label className="flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer hover:bg-gray-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="text-2xl">🗣️</div>
-              <div>
-                <div className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Local Dialects
-                </div>
-                <div className={`${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Support for Ghanaian English variations
-                </div>
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={ghana.localDialects}
-              onChange={(e) => {
-                ghana.updateGhana({ localDialects: e.target.checked })
-                setHasChanges(true)
-              }}
-              className="w-6 h-6 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </label>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {renderToggle(
+            'Local Dialects',
+            'Support for Ghanaian English variations',
+            <span className="text-2xl">🗣️</span>,
+            ghana.localDialects,
+            (val) => {
+              ghana.updateGhana({ localDialects: val })
+              setHasChanges(true)
+            }
+          )}
           
-          <label className="flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer hover:bg-gray-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="text-2xl">🌍</div>
-              <div>
-                <div className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Cultural Context
-                </div>
-                <div className={`${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Include Ghanaian cultural references
-                </div>
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={ghana.culturalContext}
-              onChange={(e) => {
-                ghana.updateGhana({ culturalContext: e.target.checked })
-                setHasChanges(true)
-              }}
-              className="w-6 h-6 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </label>
+          {renderToggle(
+            'Cultural Context',
+            'Include Ghanaian cultural references',
+            <span className="text-2xl">🌍</span>,
+            ghana.culturalContext,
+            (val) => {
+              ghana.updateGhana({ culturalContext: val })
+              setHasChanges(true)
+            }
+          )}
           
-          <label className="flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer hover:bg-gray-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="text-2xl">🤝</div>
-              <div>
-                <div className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Traditional Signs
-                </div>
-                <div className={`${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Include traditional Ghanaian signs
-                </div>
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={ghana.traditionalSigns}
-              onChange={(e) => {
-                ghana.updateGhana({ traditionalSigns: e.target.checked })
-                setHasChanges(true)
-              }}
-              className="w-6 h-6 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </label>
+          {renderToggle(
+            'Traditional Signs',
+            'Include traditional Ghanaian signs',
+            <span className="text-2xl">🤝</span>,
+            ghana.traditionalSigns,
+            (val) => {
+              ghana.updateGhana({ traditionalSigns: val })
+              setHasChanges(true)
+            }
+          )}
           
-          <label className="flex items-center justify-between p-4 rounded-xl border-2 cursor-pointer hover:bg-gray-50 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="text-2xl">📚</div>
-              <div>
-                <div className={`font-semibold ${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Educational Mode
-                </div>
-                <div className={`${accessibilitySettings.largeText ? 'text-sm' : 'text-xs'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Show learning aids and explanations
-                </div>
-              </div>
-            </div>
-            <input
-              type="checkbox"
-              checked={ghana.educationalMode}
-              onChange={(e) => {
-                ghana.updateGhana({ educationalMode: e.target.checked })
-                setHasChanges(true)
-              }}
-              className="w-6 h-6 text-blue-600 rounded focus:ring-blue-500"
-            />
-          </label>
+          {renderToggle(
+            'Educational Mode',
+            'Show learning aids and explanations',
+            <span className="text-2xl">📚</span>,
+            ghana.educationalMode,
+            (val) => {
+              ghana.updateGhana({ educationalMode: val })
+              setHasChanges(true)
+            }
+          )}
         </div>
       </div>
     </div>
   )
-  
+
   return (
-    <div className={`min-h-screen ${accessibilitySettings.highContrast ? 'bg-black text-yellow-400' : 'bg-gray-50'}`}>
-      {/* Header */}
-      <div className={`${accessibilitySettings.highContrast ? 'bg-gray-900 border-yellow-400' : 'bg-white'} shadow-lg border-b-2`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate('/')}
-                className={`
-                  ${getButtonSize()} rounded-full flex items-center justify-center
-                  ${accessibilitySettings.highContrast 
-                    ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400 border-2 border-yellow-400' 
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                  }
-                  transform hover:scale-110 active:scale-95 transition-all duration-200
-                  focus:outline-none focus:ring-4 focus:ring-blue-300
-                `}
-                aria-label="Go back to home"
-              >
-                <ArrowLeft className={`${accessibilitySettings.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
-              </button>
-              
-              <div>
-                <h1 className={`${getTextSize()} font-bold ${accessibilitySettings.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Settings
-                </h1>
-                <p className={`${accessibilitySettings.largeText ? 'text-lg' : 'text-base'} ${accessibilitySettings.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Customize your experience
-                </p>
+    <div className={`min-h-screen relative overflow-hidden p-4 md:p-8 ${
+      accessibilitySettings.highContrast ? 'bg-black' : 'bg-[#050505]'
+    }`}>
+      {/* Background Orbs */}
+      {!accessibilitySettings.highContrast && (
+        <>
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full animate-pulse-slow" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/10 blur-[120px] rounded-full animate-pulse-slow" style={{ animationDelay: '2s' }} />
+        </>
+      )}
+
+      <div className="max-w-6xl mx-auto relative z-10">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-16 gap-8 animate-fade-in">
+          <div>
+            <button 
+              onClick={() => navigate(-1)}
+              className="flex items-center space-x-3 text-slate-400 hover:text-white transition-all mb-6 group bg-white/5 px-4 py-2 rounded-xl border border-white/10 backdrop-blur-md w-fit"
+            >
+              <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+              <span className="font-medium">Go Back</span>
+            </button>
+            <div className="flex items-center gap-6">
+              <div className="w-16 h-16 rounded-[1.5rem] bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shadow-glass backdrop-blur-xl">
+                <SettingsIcon className={`text-blue-400 ${accessibilitySettings.largeText ? 'w-10 h-10' : 'w-8 h-8'}`} />
               </div>
-            </div>
-            
-            <div className="flex items-center gap-3">
-              {hasChanges && (
-                <button
-                  onClick={handleSave}
-                  className={`
-                    flex items-center gap-2 px-6 py-3 rounded-full font-semibold
-                    ${accessibilitySettings.highContrast 
-                      ? 'bg-yellow-400 text-black hover:bg-yellow-500' 
-                      : 'bg-green-600 text-white hover:bg-green-700'
-                    }
-                    transform hover:scale-105 active:scale-95 transition-all duration-200
-                    focus:outline-none focus:ring-4 focus:ring-green-300
-                  `}
-                >
-                  <Save className={`${accessibilitySettings.largeText ? 'w-6 h-6' : 'w-5 h-5'}`} />
-                  <span className={accessibilitySettings.largeText ? 'text-lg' : 'text-base'}>Save</span>
-                </button>
-              )}
-              
-              <button
-                onClick={handleReset}
-                className={`
-                  flex items-center gap-2 px-6 py-3 rounded-full font-semibold
-                  ${accessibilitySettings.highContrast 
-                    ? 'bg-gray-800 text-yellow-400 border-2 border-yellow-400 hover:bg-gray-700' 
-                    : 'bg-gray-600 text-white hover:bg-gray-700'
-                  }
-                  transform hover:scale-105 active:scale-95 transition-all duration-200
-                  focus:outline-none focus:ring-4 focus:ring-gray-300
-                `}
-              >
-                <RotateCcw className={`${accessibilitySettings.largeText ? 'w-6 h-6' : 'w-5 h-5'}`} />
-                <span className={accessibilitySettings.largeText ? 'text-lg' : 'text-base'}>Reset</span>
-              </button>
+              <h1 className={`font-bold text-white ${accessibilitySettings.largeText ? 'text-6xl' : 'text-5xl'}`}>
+                Settings
+              </h1>
             </div>
           </div>
-        </div>
-      </div>
-      
-      {/* Tab Navigation */}
-      <div className={`${accessibilitySettings.highContrast ? 'bg-gray-900 border-yellow-400' : 'bg-white'} border-b-2`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-1 overflow-x-auto">
-            {tabs.map((tab) => {
-              const Icon = tab.icon
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`
-                    flex items-center gap-2 px-6 py-4 font-semibold whitespace-nowrap transition-all
-                    ${activeTab === tab.id
-                      ? accessibilitySettings.highContrast
-                        ? 'text-yellow-400 border-b-4 border-yellow-400 bg-gray-800'
-                        : 'text-blue-600 border-b-4 border-blue-600 bg-blue-50'
-                      : accessibilitySettings.highContrast
-                        ? 'text-yellow-300 hover:text-yellow-400 hover:bg-gray-800'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                    }
-                  `}
-                >
-                  <Icon className={`${accessibilitySettings.largeText ? 'w-6 h-6' : 'w-5 h-5'}`} />
-                  <span className={accessibilitySettings.largeText ? 'text-lg' : 'text-base'}>{tab.label}</span>
-                </button>
-              )
-            })}
+
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleReset}
+              className="flex items-center space-x-3 px-8 py-4 rounded-2xl glass-card text-slate-400 hover:text-white transition-all duration-300 hover:bg-white/10"
+            >
+              <RotateCcw className="w-5 h-5" />
+              <span className={`font-bold ${accessibilitySettings.largeText ? 'text-xl' : 'text-lg'}`}>Reset All</span>
+            </button>
           </div>
         </div>
-      </div>
-      
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className={`${accessibilitySettings.highContrast ? 'bg-gray-900 border-yellow-400' : 'bg-white'} rounded-2xl shadow-xl p-8 border-2`}>
-          {activeTab === 'accessibility' && renderAccessibilityTab()}
-          {activeTab === 'translation' && renderTranslationTab()}
-          {activeTab === 'audio' && renderAudioTab()}
-          {activeTab === 'visual' && renderVisualTab()}
-          {activeTab === 'ghana' && renderGhanaTab()}
+
+        <div className="flex flex-wrap justify-center md:justify-start gap-4 mb-16 animate-slide-up">
+          {tabs.map(renderTabButton)}
+        </div>
+
+        <div className="glass-card p-10 md:p-16 mb-16 min-h-[500px] relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 blur-[80px] -mr-32 -mt-32 rounded-full" />
+          <div className="relative z-10">
+            {activeTab === 'accessibility' && renderAccessibilityTab()}
+            {activeTab === 'translation' && renderTranslationTab()}
+            {activeTab === 'audio' && renderAudioTab()}
+            {activeTab === 'visual' && renderVisualTab()}
+            {activeTab === 'ghana' && renderGhanaTab()}
+          </div>
         </div>
       </div>
     </div>

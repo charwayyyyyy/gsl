@@ -11,42 +11,44 @@ const DirectionSelection: React.FC<DirectionSelectionProps> = ({ onDirectionSele
   const { accessibility } = useAppStore(state => state.settings)
   
   const textSizeClass = accessibility.largeText ? 'text-2xl' : 'text-xl'
-  const buttonSizeClass = accessibility.largeText ? 'w-80 h-80' : 'w-64 h-64'
+  const buttonSizeClass = accessibility.largeText ? 'w-full md:w-80 h-80' : 'w-full md:w-72 h-72'
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-blue-800 to-yellow-600 flex flex-col items-center justify-center p-8">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 md:p-12 relative overflow-hidden">
+      {/* Background Orbs for iOS feel */}
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/20 blur-[120px] rounded-full animate-pulse-slow" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-400/20 blur-[120px] rounded-full animate-pulse-slow" />
+      
       {/* Header */}
-      <div className="text-center mb-12">
-        <h1 className={`${textSizeClass} font-bold text-white mb-4`}>
-          Ghana Sign Language Interpreter
+      <div className="text-center mb-16 relative z-10 animate-fade-in">
+        <h1 className={`${accessibility.largeText ? 'text-5xl' : 'text-4xl'} font-bold tracking-tight text-slate-900 dark:text-white mb-6`}>
+          Ghana Sign Language <span className="text-blue-600 dark:text-blue-400">Interpreter</span>
         </h1>
-        <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} text-blue-100 max-w-2xl mx-auto`}>
-          Real-time bidirectional translation between Ghana Sign Language and spoken English
+        <p className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} text-slate-600 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed`}>
+          Empowering communication through real-time bidirectional translation.
         </p>
       </div>
 
       {/* Main Direction Selection */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-16 w-full max-w-5xl relative z-10">
         {/* Sign to Speech */}
         <button
           onClick={() => onDirectionSelect('sign_to_speech')}
           className={`
-            ${buttonSizeClass} rounded-full flex flex-col items-center justify-center
-            bg-white hover:bg-blue-50 active:bg-blue-100
-            border-4 border-white hover:border-blue-200
-            shadow-2xl hover:shadow-3xl transform hover:scale-105 active:scale-95
-            transition-all duration-300 ease-in-out
-            focus:outline-none focus:ring-8 focus:ring-blue-300
-            ${accessibility.highContrast ? 'bg-black border-yellow-400' : ''}
+            ${buttonSizeClass} glass-card flex flex-col items-center justify-center p-8
+            hover:border-blue-400/50 group
+            ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}
           `}
           aria-label="Sign Language to Speech - I am Deaf/Hard of Hearing"
         >
-          <Hand className={`${accessibility.largeText ? 'w-24 h-24' : 'w-20 h-20'} text-blue-600 mb-6`} />
+          <div className="w-24 h-24 rounded-3xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-8 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
+            <Hand className={`${accessibility.largeText ? 'w-14 h-14' : 'w-12 h-12'} text-blue-600 dark:text-blue-400`} />
+          </div>
           <div className="text-center">
-            <h2 className={`${textSizeClass} font-bold text-gray-800 mb-2`}>
+            <h2 className={`${textSizeClass} font-bold text-slate-900 dark:text-white mb-3`}>
               Sign → Speech
             </h2>
-            <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} text-gray-600`}>
+            <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} text-slate-500 dark:text-slate-400 font-medium`}>
               I am Deaf/Hard of Hearing
             </p>
           </div>
@@ -56,184 +58,109 @@ const DirectionSelection: React.FC<DirectionSelectionProps> = ({ onDirectionSele
         <button
           onClick={() => onDirectionSelect('speech_to_sign')}
           className={`
-            ${buttonSizeClass} rounded-full flex flex-col items-center justify-center
-            bg-white hover:bg-green-50 active:bg-green-100
-            border-4 border-white hover:border-green-200
-            shadow-2xl hover:shadow-3xl transform hover:scale-105 active:scale-95
-            transition-all duration-300 ease-in-out
-            focus:outline-none focus:ring-8 focus:ring-green-300
-            ${accessibility.highContrast ? 'bg-black border-yellow-400' : ''}
+            ${buttonSizeClass} glass-card flex flex-col items-center justify-center p-8
+            hover:border-emerald-400/50 group
+            ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}
           `}
           aria-label="Speech to Sign Language - I am Hearing"
         >
-          <Mic className={`${accessibility.largeText ? 'w-24 h-24' : 'w-20 h-20'} text-green-600 mb-6`} />
+          <div className="w-24 h-24 rounded-3xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-8 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[-3deg]">
+            <Mic className={`${accessibility.largeText ? 'w-14 h-14' : 'w-12 h-12'} text-emerald-600 dark:text-emerald-400`} />
+          </div>
           <div className="text-center">
-            <h2 className={`${textSizeClass} font-bold text-gray-800 mb-2`}>
+            <h2 className={`${textSizeClass} font-bold text-slate-900 dark:text-white mb-3`}>
               Speech → Sign
             </h2>
-            <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} text-gray-600`}>
+            <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} text-slate-500 dark:text-slate-400 font-medium`}>
               I am Hearing
             </p>
           </div>
         </button>
       </div>
 
-      {/* Quick Actions */}
-      <div className="flex flex-wrap gap-6 justify-center mb-12">
+      {/* Quick Actions Bar */}
+      <div className="glass p-2 rounded-[2.5rem] flex flex-wrap gap-2 justify-center mb-16 relative z-10 max-w-4xl mx-auto">
         <button
           onClick={() => window.location.href = '/dictionary'}
-          className={`
-            flex items-center gap-3 px-8 py-4 rounded-full
-            bg-white hover:bg-gray-50 active:bg-gray-100
-            border-2 border-white hover:border-gray-200
-            shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95
-            transition-all duration-200 ease-in-out
-            focus:outline-none focus:ring-4 focus:ring-blue-300
-            ${accessibility.highContrast ? 'bg-black border-yellow-400 text-yellow-400' : 'text-gray-700'}
-          `}
-          aria-label="Text to Sign Search"
+          className="ios-button-secondary flex items-center gap-3"
         >
-          <Book className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
-          <span className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-semibold`}>
-            Text → Sign
-          </span>
+          <Book className="w-5 h-5 text-blue-500" />
+          <span className="font-semibold">Dictionary</span>
         </button>
+        
         <button
           onClick={toggleAccessibilityPanel}
-          className={`
-            flex items-center gap-3 px-8 py-4 rounded-full
-            bg-white hover:bg-gray-50 active:bg-gray-100
-            border-2 border-white hover:border-gray-200
-            shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95
-            transition-all duration-200 ease-in-out
-            focus:outline-none focus:ring-4 focus:ring-blue-300
-            ${accessibility.highContrast ? 'bg-black border-yellow-400 text-yellow-400' : 'text-gray-700'}
-          `}
-          aria-label="Accessibility Settings"
+          className="ios-button-secondary flex items-center gap-3"
         >
-          <Accessibility className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
-          <span className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-semibold`}>
-            Accessibility
-          </span>
+          <Accessibility className="w-5 h-5 text-purple-500" />
+          <span className="font-semibold">Accessibility</span>
         </button>
 
         <button
           onClick={() => window.location.href = '/settings'}
-          className={`
-            flex items-center gap-3 px-8 py-4 rounded-full
-            bg-white hover:bg-gray-50 active:bg-gray-100
-            border-2 border-white hover:border-gray-200
-            shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95
-            transition-all duration-200 ease-in-out
-            focus:outline-none focus:ring-4 focus:ring-blue-300
-            ${accessibility.highContrast ? 'bg-black border-yellow-400 text-yellow-400' : 'text-gray-700'}
-          `}
-          aria-label="Settings"
+          className="ios-button-secondary flex items-center gap-3"
         >
-          <Settings className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
-          <span className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-semibold`}>
-            Settings
-          </span>
+          <Settings className="w-5 h-5 text-slate-500" />
+          <span className="font-semibold">Settings</span>
         </button>
 
         <button
           onClick={() => window.location.href = '/help'}
-          className={`
-            flex items-center gap-3 px-8 py-4 rounded-full
-            bg-white hover:bg-gray-50 active:bg-gray-100
-            border-2 border-white hover:border-gray-200
-            shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95
-            transition-all duration-200 ease-in-out
-            focus:outline-none focus:ring-4 focus:ring-blue-300
-            ${accessibility.highContrast ? 'bg-black border-yellow-400 text-yellow-400' : 'text-gray-700'}
-          `}
-          aria-label="Help and Tutorial"
+          className="ios-button-secondary flex items-center gap-3"
         >
-          <HelpCircle className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
-          <span className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-semibold`}>
-            Help
-          </span>
+          <HelpCircle className="w-5 h-5 text-orange-500" />
+          <span className="font-semibold">Help</span>
         </button>
       </div>
 
       {/* Accessibility Panel */}
       {showAccessibilityPanel && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-slate-900/20 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className={`
-            bg-white rounded-2xl p-8 max-w-md w-full
+            glass rounded-[2.5rem] p-10 max-w-md w-full shadow-2xl
             ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}
           `}>
-            <h3 className={`${textSizeClass} font-bold mb-6 text-gray-800 ${accessibility.highContrast ? 'text-yellow-400' : ''}`}>
+            <h3 className={`${textSizeClass} font-bold mb-8 text-slate-900 dark:text-white`}>
               Accessibility Options
             </h3>
             
-            <div className="space-y-6">
-              <label className="flex items-center justify-between">
-                <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-700'}`}>
-                  High Contrast Mode
-                </span>
-                <input
-                  type="checkbox"
-                  checked={accessibility.highContrast}
-                  onChange={(e) => useAppStore.getState().updateSettings({
-                    accessibility: { ...accessibility, highContrast: e.target.checked }
-                  })}
-                  className="w-6 h-6 text-blue-600 rounded focus:ring-blue-500"
-                />
-              </label>
-
-              <label className="flex items-center justify-between">
-                <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-700'}`}>
-                  Large Text
-                </span>
-                <input
-                  type="checkbox"
-                  checked={accessibility.largeText}
-                  onChange={(e) => useAppStore.getState().updateSettings({
-                    accessibility: { ...accessibility, largeText: e.target.checked }
-                  })}
-                  className="w-6 h-6 text-blue-600 rounded focus:ring-blue-500"
-                />
-              </label>
-
-              <label className="flex items-center justify-between">
-                <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-700'}`}>
-                  Dyslexia-Friendly Font
-                </span>
-                <input
-                  type="checkbox"
-                  checked={accessibility.dyslexiaFriendlyFont}
-                  onChange={(e) => useAppStore.getState().updateSettings({
-                    accessibility: { ...accessibility, dyslexiaFriendlyFont: e.target.checked }
-                  })}
-                  className="w-6 h-6 text-blue-600 rounded focus:ring-blue-500"
-                />
-              </label>
+            <div className="space-y-4">
+              {[
+                { label: 'High Contrast Mode', key: 'highContrast' },
+                { label: 'Large Text', key: 'largeText' },
+                { label: 'Dyslexia Font', key: 'dyslexiaFriendlyFont' }
+              ].map((item) => (
+                <label key={item.key} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors cursor-pointer">
+                  <span className="font-medium text-slate-700 dark:text-slate-200">{item.label}</span>
+                  <input
+                    type="checkbox"
+                    checked={accessibility[item.key as keyof typeof accessibility] as boolean}
+                    onChange={(e) => useAppStore.getState().updateSettings({
+                      accessibility: { ...accessibility, [item.key]: e.target.checked }
+                    })}
+                    className="w-6 h-6 rounded-full text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-600"
+                  />
+                </label>
+              ))}
             </div>
 
             <button
               onClick={toggleAccessibilityPanel}
-              className={`
-                w-full mt-8 py-4 rounded-full font-semibold
-                bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white
-                transform hover:scale-105 active:scale-95 transition-all duration-200
-                focus:outline-none focus:ring-4 focus:ring-blue-300
-                ${accessibility.highContrast ? 'bg-yellow-400 text-black hover:bg-yellow-500' : ''}
-              `}
+              className="w-full mt-10 ios-button-primary"
             >
-              Close
+              Done
             </button>
           </div>
         </div>
       )}
 
       {/* Footer */}
-      <div className="text-center text-blue-100">
-        <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} mb-2`}>
-          🇬🇭 Built for Ghana's Deaf Community
+      <div className="text-center relative z-10 animate-fade-in opacity-70 hover:opacity-100 transition-opacity">
+        <p className="text-slate-600 dark:text-slate-400 font-medium mb-1">
+          🇬🇭 Ghanaian Sign Language Interpreter
         </p>
-        <p className={`${accessibility.largeText ? 'text-base' : 'text-sm'} opacity-80`}>
-          Powered by AI • Designed for Accessibility
+        <p className="text-xs tracking-widest uppercase text-slate-400">
+          Powered by AI • Designed for Inclusion
         </p>
       </div>
     </div>

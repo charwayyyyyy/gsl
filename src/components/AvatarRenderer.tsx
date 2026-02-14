@@ -412,40 +412,62 @@ const AvatarRenderer: React.FC<AvatarRendererProps> = ({
   };
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full group">
       <div 
         ref={mountRef} 
-        className="w-full h-full rounded-lg overflow-hidden"
+        className={`w-full h-full rounded-3xl overflow-hidden transition-all duration-700 ${
+          accessibility.highContrast 
+            ? 'border-4 border-yellow-400 bg-black' 
+            : 'glass shadow-glass border border-white/20'
+        }`}
         style={{ 
           minHeight: '400px',
-          background: accessibility.highContrast ? '#000000' : 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)'
+          background: accessibility.highContrast 
+            ? '#000000' 
+            : 'linear-gradient(135deg, rgba(26, 26, 46, 0.4) 0%, rgba(22, 33, 62, 0.4) 100%)'
         }}
       />
       
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
-          <div className="text-center text-white">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
-            <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} opacity-80`}>
-              Loading 3D Avatar...
+        <div className="absolute inset-0 flex items-center justify-center bg-slate-900/60 backdrop-blur-md rounded-3xl z-10">
+          <div className="text-center">
+            <div className="relative w-16 h-16 mx-auto mb-6">
+              <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full"></div>
+              <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <p className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} text-white font-medium animate-pulse`}>
+              Preparing 3D Avatar
             </p>
           </div>
         </div>
       )}
       
       {currentSign && isActive && (
-        <div className="absolute top-4 left-4 bg-black bg-opacity-70 text-white px-3 py-2 rounded-lg">
-          <p className={`${accessibility.largeText ? 'text-base' : 'text-sm'} font-medium`}>
-            Current Sign: {currentSign.replace('_', ' ')}
-          </p>
+        <div className="absolute top-4 left-4 animate-fade-in z-20">
+          <div className="glass px-4 py-2 rounded-2xl border-white/20 shadow-lg">
+            <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} font-bold text-white tracking-wide`}>
+              {currentSign.replace('_', ' ')}
+            </p>
+          </div>
         </div>
       )}
       
       {!isActive && !isLoading && (
-        <div className="absolute bottom-4 left-4 bg-blue-600 bg-opacity-80 text-white px-3 py-2 rounded-lg">
-          <p className={`${accessibility.largeText ? 'text-sm' : 'text-xs'}`}>
-            Avatar Ready - Waiting for signs
-          </p>
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 animate-slide-up z-20">
+          <div className="glass px-6 py-2 rounded-full border-white/20 shadow-xl flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+            <p className={`${accessibility.largeText ? 'text-base' : 'text-xs'} text-white font-bold uppercase tracking-widest`}>
+              System Ready
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Background Glow */}
+      {!accessibility.highContrast && (
+        <div className="absolute -z-10 inset-0 pointer-events-none overflow-hidden rounded-3xl">
+          <div className="absolute top-1/4 -left-1/4 w-1/2 h-1/2 bg-blue-500/10 blur-[100px] animate-pulse-slow" />
+          <div className="absolute bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-purple-500/10 blur-[100px] animate-pulse-slow" />
         </div>
       )}
     </div>

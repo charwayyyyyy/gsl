@@ -157,26 +157,27 @@ const Help: React.FC = () => {
     switch (activeTab) {
       case 'getting-started':
         return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className={`font-bold text-${accessibility.largeText ? '3xl' : '2xl'} mb-4`}>
-                Getting Started with GSL Interpreter
+          <div className="space-y-8 animate-fade-in">
+            <div className="text-center mb-12">
+              <h2 className={`font-bold text-white mb-4 ${accessibility.largeText ? 'text-4xl' : 'text-3xl'}`}>
+                Getting Started
               </h2>
-              <p className={`text-${accessibility.largeText ? 'lg' : 'base'} opacity-80`}>
-                Follow these simple steps to start communicating with the Ghana Sign Language interpreter
+              <p className={`text-slate-400 max-w-2xl mx-auto ${accessibility.largeText ? 'text-xl' : 'text-lg'}`}>
+                Follow these simple steps to start communicating with the GSL interpreter.
               </p>
             </div>
-            <div className="grid gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {getStartedSteps.map((step, index) => (
-                <div key={index} className="flex items-start space-x-4 p-4 bg-white bg-opacity-5 rounded-lg">
-                  <div className="flex-shrink-0 w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-2xl">
+                <div key={index} className="glass-card group p-8 flex items-start space-x-6 hover:shadow-glass-hover transition-all duration-500 hover:-translate-y-1">
+                  <div className="flex-shrink-0 w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center text-3xl shadow-glass border border-blue-500/20 group-hover:scale-110 transition-transform duration-500">
                     {step.visual}
                   </div>
                   <div>
-                    <h3 className={`font-semibold text-${accessibility.largeText ? 'lg' : 'base'} mb-2`}>
-                      Step {index + 1}: {step.title}
+                    <h3 className={`font-bold text-white mb-3 ${accessibility.largeText ? 'text-2xl' : 'text-xl'}`}>
+                      <span className="text-blue-500 mr-2">{index + 1}.</span>
+                      {step.title}
                     </h3>
-                    <p className={`text-${accessibility.largeText ? 'base' : 'sm'} opacity-70`}>
+                    <p className={`text-slate-400 leading-relaxed ${accessibility.largeText ? 'text-lg' : 'text-base'}`}>
                       {step.description}
                     </p>
                   </div>
@@ -188,26 +189,26 @@ const Help: React.FC = () => {
 
       case 'sign-language':
         return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className={`font-bold text-${accessibility.largeText ? '3xl' : '2xl'} mb-4`}>
-                Sign Language Recognition Tips
+          <div className="space-y-8 animate-fade-in">
+            <div className="text-center mb-12">
+              <h2 className={`font-bold text-white mb-4 ${accessibility.largeText ? 'text-4xl' : 'text-3xl'}`}>
+                Sign Language Guide
               </h2>
-              <p className={`text-${accessibility.largeText ? 'lg' : 'base'} opacity-80`}>
-                Optimize your signing for better recognition accuracy
+              <p className={`text-slate-400 max-w-2xl mx-auto ${accessibility.largeText ? 'text-xl' : 'text-lg'}`}>
+                Optimize your signing environment for the highest recognition accuracy.
               </p>
             </div>
-            <div className="grid gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {signLanguageTips.map((tip, index) => (
-                <div key={index} className="flex items-start space-x-4 p-4 bg-white bg-opacity-5 rounded-lg">
-                  <div className="flex-shrink-0 w-12 h-12 bg-green-500 rounded-full flex items-center justify-center text-2xl">
+                <div key={index} className="glass-card group p-8 flex items-start space-x-6 hover:shadow-glass-hover transition-all duration-500 hover:-translate-y-1">
+                  <div className="flex-shrink-0 w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-3xl shadow-glass border border-emerald-500/20 group-hover:scale-110 transition-transform duration-500">
                     {tip.visual}
                   </div>
                   <div>
-                    <h3 className={`font-semibold text-${accessibility.largeText ? 'lg' : 'base'} mb-2`}>
+                    <h3 className={`font-bold text-white mb-3 ${accessibility.largeText ? 'text-2xl' : 'text-xl'}`}>
                       {tip.title}
                     </h3>
-                    <p className={`text-${accessibility.largeText ? 'base' : 'sm'} opacity-70`}>
+                    <p className={`text-slate-400 leading-relaxed ${accessibility.largeText ? 'text-lg' : 'text-base'}`}>
                       {tip.description}
                     </p>
                   </div>
@@ -219,26 +220,26 @@ const Help: React.FC = () => {
 
       case 'speech-recognition':
         return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className={`font-bold text-${accessibility.largeText ? '3xl' : '2xl'} mb-4`}>
-                Speech Recognition Tips
+          <div className="space-y-8 animate-fade-in">
+            <div className="text-center mb-12">
+              <h2 className={`font-bold text-white mb-4 ${accessibility.largeText ? 'text-4xl' : 'text-3xl'}`}>
+                Speech Recognition
               </h2>
-              <p className={`text-${accessibility.largeText ? 'lg' : 'base'} opacity-80`}>
-                Improve speech recognition accuracy for better translation
+              <p className={`text-slate-400 max-w-2xl mx-auto ${accessibility.largeText ? 'text-xl' : 'text-lg'}`}>
+                Ensure your voice is captured clearly for accurate real-time translation.
               </p>
             </div>
-            <div className="grid gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {speechTips.map((tip, index) => (
-                <div key={index} className="flex items-start space-x-4 p-4 bg-white bg-opacity-5 rounded-lg">
-                  <div className="flex-shrink-0 w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center text-2xl">
+                <div key={index} className="glass-card group p-8 flex items-start space-x-6 hover:shadow-glass-hover transition-all duration-500 hover:-translate-y-1">
+                  <div className="flex-shrink-0 w-16 h-16 bg-purple-500/10 rounded-2xl flex items-center justify-center text-3xl shadow-glass border border-purple-500/20 group-hover:scale-110 transition-transform duration-500">
                     {tip.visual}
                   </div>
                   <div>
-                    <h3 className={`font-semibold text-${accessibility.largeText ? 'lg' : 'base'} mb-2`}>
+                    <h3 className={`font-bold text-white mb-3 ${accessibility.largeText ? 'text-2xl' : 'text-xl'}`}>
                       {tip.title}
                     </h3>
-                    <p className={`text-${accessibility.largeText ? 'base' : 'sm'} opacity-70`}>
+                    <p className={`text-slate-400 leading-relaxed ${accessibility.largeText ? 'text-lg' : 'text-base'}`}>
                       {tip.description}
                     </p>
                   </div>
@@ -250,26 +251,26 @@ const Help: React.FC = () => {
 
       case 'accessibility':
         return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className={`font-bold text-${accessibility.largeText ? '3xl' : '2xl'} mb-4`}>
+          <div className="space-y-8 animate-fade-in">
+            <div className="text-center mb-12">
+              <h2 className={`font-bold text-white mb-4 ${accessibility.largeText ? 'text-4xl' : 'text-3xl'}`}>
                 Accessibility Features
               </h2>
-              <p className={`text-${accessibility.largeText ? 'lg' : 'base'} opacity-80`}>
-                Built-in features to make the system accessible to all users
+              <p className={`text-slate-400 max-w-2xl mx-auto ${accessibility.largeText ? 'text-xl' : 'text-lg'}`}>
+                We believe in inclusive communication for everyone.
               </p>
             </div>
-            <div className="grid gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {accessibilityFeatures.map((feature, index) => (
-                <div key={index} className="flex items-start space-x-4 p-4 bg-white bg-opacity-5 rounded-lg">
-                  <div className="flex-shrink-0 w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center text-2xl">
+                <div key={index} className="glass-card group p-8 flex items-start space-x-6 hover:shadow-glass-hover transition-all duration-500 hover:-translate-y-1">
+                  <div className="flex-shrink-0 w-16 h-16 bg-orange-500/10 rounded-2xl flex items-center justify-center text-3xl shadow-glass border border-orange-500/20 group-hover:scale-110 transition-transform duration-500">
                     {feature.visual}
                   </div>
                   <div>
-                    <h3 className={`font-semibold text-${accessibility.largeText ? 'lg' : 'base'} mb-2`}>
+                    <h3 className={`font-bold text-white mb-3 ${accessibility.largeText ? 'text-2xl' : 'text-xl'}`}>
                       {feature.title}
                     </h3>
-                    <p className={`text-${accessibility.largeText ? 'base' : 'sm'} opacity-70`}>
+                    <p className={`text-slate-400 leading-relaxed ${accessibility.largeText ? 'text-lg' : 'text-base'}`}>
                       {feature.description}
                     </p>
                   </div>
@@ -281,27 +282,32 @@ const Help: React.FC = () => {
 
       case 'troubleshooting':
         return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className={`font-bold text-${accessibility.largeText ? '3xl' : '2xl'} mb-4`}>
-                Troubleshooting Guide
+          <div className="space-y-8 animate-fade-in">
+            <div className="text-center mb-12">
+              <h2 className={`font-bold text-white mb-4 ${accessibility.largeText ? 'text-4xl' : 'text-3xl'}`}>
+                Troubleshooting
               </h2>
-              <p className={`text-${accessibility.largeText ? 'lg' : 'base'} opacity-80`}>
-                Solutions to common issues you might encounter
+              <p className={`text-slate-400 max-w-2xl mx-auto ${accessibility.largeText ? 'text-xl' : 'text-lg'}`}>
+                Quick fixes for common technical issues.
               </p>
             </div>
-            <div className="grid gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {troubleshootingSteps.map((issue, index) => (
-                <div key={index} className="p-4 bg-white bg-opacity-5 rounded-lg">
-                  <h3 className={`font-semibold text-${accessibility.largeText ? 'lg' : 'base'} mb-2 text-red-400`}>
+                <div key={index} className="glass-card group p-8 hover:shadow-glass-hover transition-all duration-500 hover:-translate-y-1 border-l-4 border-l-rose-500/30">
+                  <h3 className={`font-bold text-rose-400 mb-4 flex items-center gap-3 ${accessibility.largeText ? 'text-2xl' : 'text-xl'}`}>
+                    <AlertTriangle className="w-6 h-6" />
                     {issue.title}
                   </h3>
-                  <p className={`text-${accessibility.largeText ? 'base' : 'sm'} opacity-70 mb-2`}>
+                  <p className={`text-slate-400 mb-6 leading-relaxed ${accessibility.largeText ? 'text-lg' : 'text-base'}`}>
                     {issue.description}
                   </p>
-                  <p className={`text-${accessibility.largeText ? 'base' : 'sm'} text-green-400`}>
-                    <strong>Solution:</strong> {issue.solution}
-                  </p>
+                  <div className="bg-emerald-500/5 rounded-2xl p-6 border border-emerald-500/10 group-hover:bg-emerald-500/10 transition-colors">
+                    <p className={`text-emerald-400 ${accessibility.largeText ? 'text-lg' : 'text-base'}`}>
+                      <span className="font-bold mr-2 uppercase text-xs tracking-widest opacity-70">Solution:</span>
+                      <br />
+                      {issue.solution}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>
@@ -310,26 +316,26 @@ const Help: React.FC = () => {
 
       case 'settings-help':
         return (
-          <div className="space-y-6">
-            <div className="text-center mb-8">
-              <h2 className={`font-bold text-${accessibility.largeText ? '3xl' : '2xl'} mb-4`}>
+          <div className="space-y-8 animate-fade-in">
+            <div className="text-center mb-12">
+              <h2 className={`font-bold text-white mb-4 ${accessibility.largeText ? 'text-4xl' : 'text-3xl'}`}>
                 Settings Guide
               </h2>
-              <p className={`text-${accessibility.largeText ? 'lg' : 'base'} opacity-80`}>
-                Learn how to customize your translation experience
+              <p className={`text-slate-400 max-w-2xl mx-auto ${accessibility.largeText ? 'text-xl' : 'text-lg'}`}>
+                Tailor your experience with powerful customization options.
               </p>
             </div>
-            <div className="grid gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {settingsGuide.map((setting, index) => (
-                <div key={index} className="flex items-start space-x-4 p-4 bg-white bg-opacity-5 rounded-lg">
-                  <div className="flex-shrink-0 w-12 h-12 bg-indigo-500 rounded-full flex items-center justify-center text-2xl">
+                <div key={index} className="glass-card group p-8 flex items-start space-x-6 hover:shadow-glass-hover transition-all duration-500 hover:-translate-y-1">
+                  <div className="flex-shrink-0 w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-3xl shadow-glass border border-indigo-500/20 group-hover:scale-110 transition-transform duration-500">
                     {setting.visual}
                   </div>
                   <div>
-                    <h3 className={`font-semibold text-${accessibility.largeText ? 'lg' : 'base'} mb-2`}>
+                    <h3 className={`font-bold text-white mb-3 ${accessibility.largeText ? 'text-2xl' : 'text-xl'}`}>
                       {setting.title}
                     </h3>
-                    <p className={`text-${accessibility.largeText ? 'base' : 'sm'} opacity-70`}>
+                    <p className={`text-slate-400 leading-relaxed ${accessibility.largeText ? 'text-lg' : 'text-base'}`}>
                       {setting.description}
                     </p>
                   </div>
@@ -345,51 +351,78 @@ const Help: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 ${accessibility.highContrast ? 'contrast-125' : ''}`}>
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8 text-center">
-          <div className="flex items-center justify-center mb-4">
-            <HelpCircle className={`w-${accessibility.largeText ? '16' : '12'} h-${accessibility.largeText ? '16' : '12'} text-blue-400`} />
+    <div className={`min-h-screen relative overflow-hidden p-4 md:p-8 ${
+      accessibility.highContrast ? 'bg-black' : 'bg-[#050505]'
+    }`}>
+      {/* Background Orbs */}
+      {!accessibility.highContrast && (
+        <>
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full animate-pulse-slow" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 blur-[120px] rounded-full animate-pulse-slow" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-indigo-600/5 blur-[100px] rounded-full animate-pulse-slow" style={{ animationDelay: '4s' }} />
+        </>
+      )}
+
+      <div className="max-w-6xl mx-auto relative z-10">
+        <div className="mb-16 text-center animate-fade-in">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-[2rem] bg-blue-500/10 border border-blue-500/20 mb-8 shadow-glass-hover backdrop-blur-xl relative group">
+            <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full group-hover:bg-blue-500/30 transition-all duration-500 opacity-50" />
+            <HelpCircle className={`text-blue-400 relative z-10 ${accessibility.largeText ? 'w-14 h-14' : 'w-12 h-12'}`} />
           </div>
-          <h1 className={`font-bold text-${accessibility.largeText ? '4xl' : '3xl'} text-white mb-2`}>
-            Help & Tutorial
+          <h1 className={`font-bold text-white mb-6 leading-tight ${accessibility.largeText ? 'text-6xl' : 'text-5xl'}`}>
+            Help & <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Tutorial</span>
           </h1>
-          <p className={`text-${accessibility.largeText ? 'lg' : 'base'} text-blue-200 opacity-80`}>
-            Learn how to use the Ghana Sign Language interpreter effectively
+          <p className={`max-w-2xl mx-auto text-slate-400 leading-relaxed ${accessibility.largeText ? 'text-2xl' : 'text-xl'}`}>
+            Master the art of sign language translation with our comprehensive guide and resources.
           </p>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-2 mb-8">
+        <div className="flex flex-wrap justify-center gap-4 mb-16 animate-slide-up">
           {tabs.map((tab) => {
             const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${
-                  activeTab === tab.id
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white bg-opacity-10 text-blue-200 hover:bg-opacity-20'
-                } ${accessibility.largeText ? 'text-lg' : 'text-sm'}`}
+                className={`
+                  flex items-center space-x-3 px-8 py-4 rounded-2xl transition-all duration-500
+                  ${isActive 
+                    ? 'bg-blue-600 text-white shadow-[0_0_30px_rgba(37,99,235,0.3)] scale-105 z-10' 
+                    : 'glass-card text-slate-400 hover:text-white hover:scale-105 hover:bg-white/10'
+                  }
+                  ${accessibility.largeText ? 'text-2xl' : 'text-lg font-medium'}
+                  backdrop-blur-xl
+                `}
               >
-                <Icon className="w-4 h-4" />
+                <Icon className={accessibility.largeText ? 'w-7 h-7' : 'w-6 h-6'} />
                 <span>{tab.label}</span>
               </button>
             );
           })}
         </div>
 
-        <div className="bg-white bg-opacity-10 backdrop-blur-lg rounded-xl p-8">
-          {renderContent()}
+        <div className="glass-card p-10 md:p-16 mb-16 min-h-[500px] relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 blur-[80px] -mr-32 -mt-32 rounded-full" />
+          <div className="relative z-10">
+            {renderContent()}
+          </div>
         </div>
 
-        <div className="mt-8 text-center">
-          <div className="flex items-center justify-center space-x-2 text-blue-200">
-            <Ear className="w-5 h-5" />
-            <span className={accessibility.largeText ? 'text-lg' : 'text-sm'}>
-              Need additional help? Contact our support team
-            </span>
-          </div>
+        <div className="text-center animate-fade-in pb-12">
+          <button className="glass-card group px-10 py-5 inline-flex items-center space-x-4 hover:shadow-glass-hover hover:bg-white/10 transition-all duration-500 hover:-translate-y-1">
+            <div className="w-12 h-12 bg-blue-500/20 rounded-2xl flex items-center justify-center group-hover:bg-blue-500/30 transition-colors shadow-inner">
+              <Ear className="w-6 h-6 text-blue-400" />
+            </div>
+            <div className="text-left">
+              <span className={`block text-white font-bold ${accessibility.largeText ? 'text-2xl' : 'text-xl'}`}>
+                Still need help?
+              </span>
+              <span className={`text-slate-400 group-hover:text-blue-300 transition-colors ${accessibility.largeText ? 'text-lg' : 'text-base'}`}>
+                Contact our support team anytime
+              </span>
+            </div>
+          </button>
         </div>
       </div>
     </div>

@@ -13,9 +13,14 @@ const HealthBanner = () => {
   if (isLoading || isHealthy) return null;
 
   return (
-    <div className="bg-red-600 text-white px-4 py-2 text-sm font-medium flex items-center justify-center gap-2 animate-in slide-in-from-top">
-      <AlertTriangle size={16} />
-      <span>System Offline: Backend services are unreachable. Some features may not work.</span>
+    <div className="fixed top-0 inset-x-0 z-[100] p-4 flex justify-center animate-slide-up">
+      <div className="glass px-6 py-3 rounded-2xl flex items-center gap-3 border-red-500/20 shadow-lg shadow-red-500/10">
+        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+        <AlertTriangle size={18} className="text-red-500" />
+        <span className="text-sm font-semibold text-slate-900 dark:text-white">
+          System Offline: Backend services are unreachable
+        </span>
+      </div>
     </div>
   );
 };

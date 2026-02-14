@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX, ChevronLeft, ChevronRight, Play, Pause, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX, ChevronLeft, ChevronRight, Play, Pause, AlertTriangle, BookOpen, User } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useWebRTC, useWebSocket } from '../hooks/useWebRTC'
 import VideoCapture from '../components/VideoCapture'
@@ -589,22 +589,30 @@ const Interpreter: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen ${accessibility.highContrast ? 'bg-black text-yellow-400' : 'bg-gray-50'}`}>
+    <div className={`min-h-screen relative overflow-hidden ${accessibility.highContrast ? 'bg-black text-yellow-400' : 'bg-slate-50 dark:bg-slate-950'}`}>
+      {/* Background Orbs - Only if not high contrast */}
+      {!accessibility.highContrast && (
+        <>
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/20 dark:bg-blue-600/10 rounded-full blur-[120px] animate-pulse-slow" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-400/20 dark:bg-indigo-600/10 rounded-full blur-[120px] animate-pulse-slow" style={{ animationDelay: '-2s' }} />
+        </>
+      )}
+
       {/* Header */}
-      <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400' : 'bg-white'} shadow-lg border-b-2`}>
+      <div className={`sticky top-0 z-50 ${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-b-2' : 'glass border-b border-white/20'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between h-20">
+            <div className="flex items-center gap-6">
               <button
                 onClick={() => navigate('/')}
                 className={`
-                  ${getButtonSize()} rounded-full flex items-center justify-center
+                  ${getButtonSize()} rounded-2xl flex items-center justify-center
                   ${accessibility.highContrast 
                     ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400 border-2 border-yellow-400' 
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                    : 'bg-white/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-white/40 dark:border-white/10'
                   }
-                  transform hover:scale-110 active:scale-95 transition-all duration-200
-                  focus:outline-none focus:ring-4 focus:ring-blue-300
+                  transform hover:scale-110 active:scale-95 transition-all duration-300
+                  focus:outline-none focus:ring-4 focus:ring-blue-300/50
                 `}
                 aria-label="Go back to home"
               >
@@ -612,140 +620,111 @@ const Interpreter: React.FC = () => {
               </button>
               
               <div>
-                <h1 className={`${getTextSize()} font-bold ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
+                <h1 className={`${getTextSize()} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
                   {currentSession.direction === 'sign_to_speech' ? 'Sign → Speech' : 'Speech → Sign'}
                 </h1>
-                <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                  Real-time translation session
+                <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} font-medium ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500 dark:text-slate-400'}`}>
+                  Premium Translation Experience
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Mute/Unmute */}
-              <button
-                onClick={() => setIsMuted(!isMuted)}
-                className={`
-                  ${getButtonSize()} rounded-full flex items-center justify-center
-                  ${isMuted 
-                    ? 'bg-red-600 hover:bg-red-700 text-white' 
-                    : accessibility.highContrast 
-                      ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400 border-2 border-yellow-400'
-                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                  }
-                  transform hover:scale-110 active:scale-95 transition-all duration-200
-                  focus:outline-none focus:ring-4 focus:ring-blue-300
-                `}
-                aria-label={isMuted ? 'Unmute audio output' : 'Mute audio output'}
-              >
-                {isMuted ? (
-                  <VolumeX className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
-                ) : (
-                  <Volume2 className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
-                )}
-              </button>
-
-              {/* Avatar Toggle */}
-              <button
-                onClick={() => setShowAvatar(!showAvatar)}
-                className={`
-                  ${getButtonSize()} rounded-full flex items-center justify-center
-                  ${showAvatar 
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                    : accessibility.highContrast 
-                      ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400 border-2 border-yellow-400'
-                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                  }
-                  transform hover:scale-110 active:scale-95 transition-all duration-200
-                  focus:outline-none focus:ring-4 focus:ring-blue-300
-                `}
-                aria-label={showAvatar ? 'Hide signing avatar' : 'Show signing avatar'}
-              >
-                {showAvatar ? (
-                  <EyeOff className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
-                ) : (
-                  <Eye className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
-                )}
-              </button>
-
-              {/* Settings */}
-              <button
-                onClick={() => navigate('/settings')}
-                className={`
-                  ${getButtonSize()} rounded-full flex items-center justify-center
-                  ${accessibility.highContrast 
-                    ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400 border-2 border-yellow-400' 
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                  }
-                  transform hover:scale-110 active:scale-95 transition-all duration-200
-                  focus:outline-none focus:ring-4 focus:ring-blue-300
-                `}
-                aria-label="Open settings"
-              >
-                <Settings className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
-              </button>
-
-              {/* Help */}
-              <button
-                onClick={() => navigate('/help')}
-                className={`
-                  ${getButtonSize()} rounded-full flex items-center justify-center
-                  ${accessibility.highContrast 
-                    ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400 border-2 border-yellow-400' 
-                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                  }
-                  transform hover:scale-110 active:scale-95 transition-all duration-200
-                  focus:outline-none focus:ring-4 focus:ring-blue-300
-                `}
-                aria-label="Open help"
-              >
-                <HelpCircle className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
-              </button>
+              {[
+                { 
+                  icon: isMuted ? VolumeX : Volume2, 
+                  onClick: () => setIsMuted(!isMuted),
+                  active: isMuted,
+                  label: isMuted ? 'Unmute' : 'Mute',
+                  activeClass: 'bg-rose-500 text-white shadow-rose-500/20'
+                },
+                { 
+                  icon: showAvatar ? EyeOff : Eye, 
+                  onClick: () => setShowAvatar(!showAvatar),
+                  active: showAvatar,
+                  label: showAvatar ? 'Hide Avatar' : 'Show Avatar',
+                  activeClass: 'bg-indigo-500 text-white shadow-indigo-500/20'
+                },
+                { 
+                  icon: Settings, 
+                  onClick: () => navigate('/settings'),
+                  label: 'Settings'
+                },
+                { 
+                  icon: HelpCircle, 
+                  onClick: () => navigate('/help'),
+                  label: 'Help'
+                }
+              ].map((item, idx) => (
+                <button
+                  key={idx}
+                  onClick={item.onClick}
+                  className={`
+                    ${getButtonSize()} rounded-2xl flex items-center justify-center transition-all duration-300
+                    ${item.active && item.activeClass ? item.activeClass : 
+                      accessibility.highContrast 
+                        ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400 border-2 border-yellow-400'
+                        : 'bg-white/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-white/40 dark:border-white/10'
+                    }
+                    transform hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-blue-300/30
+                  `}
+                  aria-label={item.label}
+                >
+                  <item.icon className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
+                </button>
+              ))}
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 animate-fade-in">
           {/* Left Panel - Input */}
-          <div className="space-y-6">
-            <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400' : 'bg-white'} rounded-2xl shadow-xl p-6 border-2`}>
-              <h2 className={`${getTextSize()} font-bold mb-4 ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                {currentSession.direction === 'sign_to_speech' ? 'Sign Language Input' : 'Speech Input'}
-              </h2>
+          <div className="space-y-8">
+            <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card p-8'} overflow-hidden`}>
+              <div className="flex items-center gap-3 mb-6">
+                <div className={`w-3 h-3 rounded-full animate-pulse ${currentSession.direction === 'sign_to_speech' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
+                <h2 className={`${getTextSize()} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                  {currentSession.direction === 'sign_to_speech' ? 'Sign Language Input' : 'Speech Input'}
+                </h2>
+              </div>
               
-              {currentSession.direction === 'sign_to_speech' ? (
-                <VideoCapture
-                  onFrameCapture={handleVideoFrame}
-                  showLandmarks={visual.showLandmarks}
-                  showConfidence={visual.showConfidence}
-                  className="w-full h-96"
-                />
-              ) : (
-                <AudioCapture
-                  onAudioData={handleAudioData}
-                  showLevel={true}
-                  className="w-full"
-                />
-              )}
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-slate-900">
+                {currentSession.direction === 'sign_to_speech' ? (
+                  <VideoCapture
+                    onFrameCapture={handleVideoFrame}
+                    showLandmarks={visual.showLandmarks}
+                    showConfidence={visual.showConfidence}
+                    className="w-full h-[400px] object-cover"
+                  />
+                ) : (
+                  <div className="p-10">
+                    <AudioCapture
+                      onAudioData={handleAudioData}
+                      showLevel={true}
+                      className="w-full"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             {visual.showConfidence && (
-              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400' : 'bg-white'} rounded-2xl shadow-xl p-6 border-2`}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                    Recognition Confidence
+              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card p-8'}`}>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                    System Confidence
                   </h3>
                   {(() => {
                     const effective = silenceMessage ? 0 : Math.max(0.01, confidence || 0)
                     return (
                       <div className="text-right">
-                        <div className={`text-2xl font-bold ${getConfidenceColor(effective)}`}>
+                        <div className={`text-3xl font-bold ${getConfidenceColor(effective)}`}>
                           {Math.round(effective * 100)}%
                         </div>
-                        <div className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
+                        <div className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} font-medium ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500'}`}>
                           {getConfidenceLabel(effective)}
                         </div>
                       </div>
@@ -753,11 +732,12 @@ const Interpreter: React.FC = () => {
                   })()}
                 </div>
                 
-                <div className={`w-full ${accessibility.largeText ? 'h-4' : 'h-3'} bg-gray-200 rounded-full overflow-hidden ${accessibility.highContrast ? 'bg-gray-700' : ''}`}>
+                <div className={`w-full ${accessibility.largeText ? 'h-5' : 'h-4'} bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden p-1 shadow-inner`}>
                   <div
-                    className={`h-full transition-all duration-300 ease-out ${
-                      (!silenceMessage && confidence >= 0.7) ? 'bg-green-500' :
-                      (!silenceMessage && confidence >= 0.4) ? 'bg-yellow-500' : 'bg-red-500'
+                    className={`h-full rounded-full transition-all duration-700 ease-out shadow-sm ${
+                      (!silenceMessage && confidence >= 0.7) ? 'bg-gradient-to-r from-emerald-400 to-emerald-600' :
+                      (!silenceMessage && confidence >= 0.4) ? 'bg-gradient-to-r from-amber-400 to-amber-600' : 
+                      'bg-gradient-to-r from-rose-400 to-rose-600'
                     }`}
                     style={{
                       width: `${Math.min(
@@ -768,61 +748,57 @@ const Interpreter: React.FC = () => {
                   />
                 </div>
                 
-                <div className="mt-3 grid grid-cols-1 gap-1">
-                  <div className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                    Speech recognition: {Math.round((sttConfidence || 0) * 100)}%
-                  </div>
-                  <div className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                    Dictionary match: {Math.round((dictConfidence || 0) * 100)}%
-                  </div>
-                </div>
-
-                <div className="flex justify-between mt-2">
-                  <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                    Poor
-                  </span>
-                  <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                    Good
-                  </span>
-                  <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                    Excellent
-                  </span>
+                <div className="mt-6 grid grid-cols-2 gap-4">
+                  {[
+                    { label: 'Speech Recognition', value: sttConfidence },
+                    { label: 'Dictionary Match', value: dictConfidence }
+                  ].map((stat, idx) => (
+                    <div key={idx} className="p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
+                      <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{stat.label}</div>
+                      <div className="text-lg font-bold text-slate-900 dark:text-white">{Math.round((stat.value || 0) * 100)}%</div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
 
             {currentSession.direction === 'speech_to_sign' && (
-              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400' : 'bg-white'} rounded-2xl shadow-xl p-6 border-2`}>
-                <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold mb-4 ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Speech Controls & Text Fallback
-                </h3>
+              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card p-8'}`}>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-500">
+                    <Volume2 size={24} />
+                  </div>
+                  <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                    Speech Controls & Fallback
+                  </h3>
+                </div>
 
                 {speechError && (
-                  <div className={`mb-4 flex items-start gap-3 rounded-xl p-3 ${
-                    accessibility.highContrast ? 'bg-black border border-yellow-400' : 'bg-red-50 border border-red-200'
+                  <div className={`mb-6 flex items-start gap-3 rounded-2xl p-4 ${
+                    accessibility.highContrast ? 'bg-black border border-yellow-400' : 'bg-rose-50/50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20'
                   }`}>
-                    <AlertTriangle className={`${accessibility.largeText ? 'w-7 h-7' : 'w-5 h-5'} ${accessibility.highContrast ? 'text-yellow-400' : 'text-red-500'} mt-0.5`} />
-                    <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} ${accessibility.highContrast ? 'text-yellow-200' : 'text-red-700'}`}>
+                    <AlertTriangle className={`${accessibility.largeText ? 'w-7 h-7' : 'w-5 h-5'} ${accessibility.highContrast ? 'text-yellow-400' : 'text-rose-500'} mt-0.5`} />
+                    <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-rose-700 dark:text-rose-300'}`}>
                       {speechError}
                     </p>
                   </div>
                 )}
 
                 {silenceMessage && (
-                  <div className={`mb-4 flex items-start gap-3 rounded-xl p-3 ${
-                    accessibility.highContrast ? 'bg-black border border-yellow-400' : 'bg-yellow-50 border border-yellow-200'
+                  <div className={`mb-6 flex items-start gap-3 rounded-2xl p-4 ${
+                    accessibility.highContrast ? 'bg-black border border-yellow-400' : 'bg-amber-50/50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20'
                   }`}>
-                    <AlertTriangle className={`${accessibility.largeText ? 'w-7 h-7' : 'w-5 h-5'} ${accessibility.highContrast ? 'text-yellow-400' : 'text-yellow-500'} mt-0.5`} />
-                    <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} ${accessibility.highContrast ? 'text-yellow-200' : 'text-yellow-800'}`}>
+                    <AlertTriangle className={`${accessibility.largeText ? 'w-7 h-7' : 'w-5 h-5'} ${accessibility.highContrast ? 'text-yellow-400' : 'text-amber-500'} mt-0.5`} />
+                    <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-amber-800 dark:text-amber-300'}`}>
                       {silenceMessage}
                     </p>
                   </div>
                 )}
 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <label
                     htmlFor="manual-speech-input"
-                    className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-800'}`}
+                    className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider`}
                   >
                     Manual Text Input
                   </label>
@@ -832,18 +808,18 @@ const Interpreter: React.FC = () => {
                     onChange={e => setManualInput(e.target.value)}
                     rows={accessibility.largeText ? 4 : 3}
                     className={`
-                      w-full rounded-xl border-2 px-4 py-3
+                      w-full rounded-2xl border-2 px-5 py-4 transition-all duration-300
                       ${accessibility.highContrast
                         ? 'bg-black border-yellow-400 text-yellow-200 placeholder-yellow-500'
-                        : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'
+                        : 'bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:border-blue-500 dark:focus:border-blue-400'
                       }
-                      focus:outline-none focus:ring-4 focus:ring-blue-300
+                      focus:outline-none focus:ring-4 focus:ring-blue-500/20
                       ${accessibility.largeText ? 'text-lg' : 'text-base'}
                     `}
                     placeholder="Type what was said here if the microphone has trouble..."
                   />
 
-                  <div className="flex flex-wrap gap-3 mt-2">
+                  <div className="flex flex-wrap gap-4 mt-2">
                     <button
                       type="button"
                       onClick={() => {
@@ -855,13 +831,13 @@ const Interpreter: React.FC = () => {
                         runTextToSignPipeline(text, 'manual', 0.9)
                       }}
                       className={`
-                        inline-flex items-center justify-center px-5 py-2.5 rounded-full font-semibold
+                        inline-flex items-center justify-center px-8 py-3.5 rounded-2xl font-bold shadow-lg
                         ${accessibility.highContrast
                           ? 'bg-yellow-400 text-black hover:bg-yellow-500'
-                          : 'bg-blue-600 text-white hover:bg-blue-700'
+                          : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20'
                         }
-                        transform hover:scale-105 active:scale-95 transition-all duration-200
-                        focus:outline-none focus:ring-4 focus:ring-blue-300
+                        transform hover:scale-105 active:scale-95 transition-all duration-300
+                        focus:outline-none focus:ring-4 focus:ring-blue-300/50
                         ${accessibility.largeText ? 'text-lg' : 'text-base'}
                       `}
                     >
@@ -877,17 +853,17 @@ const Interpreter: React.FC = () => {
                           startBrowserRecognition()
                         }}
                         className={`
-                          inline-flex items-center justify-center px-5 py-2.5 rounded-full font-semibold
+                          inline-flex items-center justify-center px-8 py-3.5 rounded-2xl font-bold
                           ${accessibility.highContrast
-                            ? 'bg-gray-800 text-yellow-300 border border-yellow-400 hover:bg-gray-700'
-                            : 'bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200'
+                            ? 'bg-gray-800 text-yellow-300 border-2 border-yellow-400 hover:bg-gray-700'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm'
                           }
-                          transform hover:scale-105 active:scale-95 transition-all duration-200
-                          focus:outline-none focus:ring-4 focus:ring-blue-300
+                          transform hover:scale-105 active:scale-95 transition-all duration-300
+                          focus:outline-none focus:ring-4 focus:ring-blue-300/20
                           ${accessibility.largeText ? 'text-lg' : 'text-base'}
                         `}
                       >
-                        Use Browser Speech Recognition
+                        Use Browser Speech
                       </button>
                     )}
                   </div>
@@ -897,52 +873,78 @@ const Interpreter: React.FC = () => {
           </div>
 
           {/* Right Panel - Output */}
-          <div className="space-y-6">
-            <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400' : 'bg-white'} rounded-2xl shadow-xl p-6 border-2`}>
-              <h2 className={`${getTextSize()} font-bold mb-4 ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                Translation Output
-              </h2>
+          <div className="space-y-8">
+            <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card p-8'}`}>
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-2xl bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center text-blue-500">
+                  <Play size={24} />
+                </div>
+                <h2 className={`${getTextSize()} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                  Translation Output
+                </h2>
+              </div>
               
-              <div className={`min-h-32 p-4 rounded-xl border-2 ${
+              <div className={`min-h-[160px] p-6 rounded-2xl border-2 transition-all duration-500 ${
                 accessibility.highContrast 
                   ? 'bg-black border-yellow-400 text-yellow-200' 
-                  : 'bg-gray-50 border-gray-200 text-gray-900'
+                  : 'bg-slate-50/50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white shadow-inner'
               }`}>
                 {translationText ? (
-                  <p className={`${getTextSize()} font-medium leading-relaxed`}>
+                  <p className={`${getTextSize()} font-semibold leading-relaxed animate-fade-in`}>
                     {translationText}
                   </p>
                 ) : (
-                  <p className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} italic ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-500'}`}>
-                    {currentSession.direction === 'sign_to_speech' 
-                      ? 'Sign to begin translation...' 
-                      : 'Speak to begin translation...'
-                    }
-                  </p>
+                  <div className="flex flex-col items-center justify-center h-full space-y-3 py-6 opacity-40">
+                    <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-800 animate-pulse" />
+                    <p className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-medium italic ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500'}`}>
+                      {currentSession.direction === 'sign_to_speech' 
+                        ? 'Sign to begin translation...' 
+                        : 'Speak to begin translation...'
+                      }
+                    </p>
+                  </div>
                 )}
               </div>
             </div>
 
             {currentSession.direction === 'speech_to_sign' && (
-              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400' : 'bg-white'} rounded-2xl shadow-xl p-6 border-2`}>
-                <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold mb-4 ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Sign Playback
-                </h3>
+              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card p-8'}`}>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-500">
+                      <Eye size={24} />
+                    </div>
+                    <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                      Sign Playback
+                    </h3>
+                  </div>
+                  {signSequence.length > 0 && (
+                    <div className="px-4 py-1.5 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider">
+                      Word {currentSignIndex + 1} of {signSequence.length}
+                    </div>
+                  )}
+                </div>
 
                 {dictionaryOffline && (
-                  <div className={`mb-4 rounded-xl p-3 ${
-                    accessibility.highContrast ? 'bg-black border border-yellow-400' : 'bg-yellow-50 border border-yellow-200'
+                  <div className={`mb-6 rounded-2xl p-4 flex items-center gap-3 ${
+                    accessibility.highContrast ? 'bg-black border border-yellow-400' : 'bg-amber-50/50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20'
                   }`}>
-                    <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} ${accessibility.highContrast ? 'text-yellow-200' : 'text-yellow-800'}`}>
-                      Dictionary server is offline. Using cached dictionary results only.
+                    <AlertTriangle size={20} className="text-amber-500" />
+                    <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-amber-800 dark:text-amber-300'}`}>
+                      Using cached results (Offline Mode)
                     </p>
                   </div>
                 )}
 
                 {signSequence.length === 0 ? (
-                  <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} italic ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-500'}`}>
-                    After speech or text is processed, signs will appear here one by one.
-                  </p>
+                  <div className="py-12 flex flex-col items-center justify-center space-y-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl opacity-40">
+                    <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                      <Play size={32} />
+                    </div>
+                    <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium italic ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500 text-center px-10'}`}>
+                      Signs will appear here as you speak or type.
+                    </p>
+                  </div>
                 ) : (
                   <>
                     {(() => {
@@ -960,196 +962,176 @@ const Interpreter: React.FC = () => {
                           : null
                       const statusText =
                         current.status === 'matched'
-                          ? 'Dictionary match'
-                          : 'Unknown word, showing fallback'
+                          ? 'Dictionary Match'
+                          : 'Unknown Word (Fallback)'
 
                       return (
-                        <>
+                        <div className="animate-fade-in">
                           {imageSrc ? (
-                            <div className="mb-4">
-                              <div className={`w-full h-64 rounded-xl border-2 overflow-hidden flex items-center justify-center ${
+                            <div className="space-y-6">
+                              <div className={`relative group w-full aspect-video rounded-3xl border-2 overflow-hidden flex items-center justify-center shadow-2xl transition-all duration-500 ${
                                 accessibility.highContrast
                                   ? 'bg-black border-yellow-400'
-                                  : 'bg-gray-100 border-gray-200'
+                                  : 'bg-slate-900 border-slate-200 dark:border-slate-800'
                               }`}>
                                 <img
                                   src={imageSrc}
                                   alt={`${glossKey} sign ${clampedFrame + 1}`}
-                                  className="max-h-full max-w-full object-contain"
+                                  className="max-h-full max-w-full object-contain transform transition-transform duration-700 group-hover:scale-105"
                                   onError={e => {
                                     const el = e.target as HTMLImageElement
                                     el.style.display = 'none'
                                   }}
                                 />
+                                <div className="absolute top-4 left-4 px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-md text-white text-sm font-bold border border-white/20">
+                                  {glossKey}
+                                </div>
                               </div>
+
                               {frameCount > 1 && (
-                                <div className="flex items-center justify-between mt-3">
+                                <div className="flex items-center justify-between p-2 rounded-2xl bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      setCurrentFrameIndex(prev =>
-                                        prev > 0 ? prev - 1 : frameCount - 1
-                                      )
-                                    }}
+                                    onClick={() => setCurrentFrameIndex(prev => prev > 0 ? prev - 1 : frameCount - 1)}
                                     className={`
-                                      inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold
+                                      p-3 rounded-xl transition-all duration-300
                                       ${accessibility.highContrast
-                                        ? 'bg-gray-800 text-yellow-300 border border-yellow-400 hover:bg-gray-700'
-                                        : 'bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200'
+                                        ? 'bg-gray-800 text-yellow-300 border border-yellow-400'
+                                        : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600'
                                       }
-                                      transform hover:scale-105 active:scale-95 transition-all duration-200
-                                      ${accessibility.largeText ? 'text-lg' : 'text-sm'}
                                     `}
                                   >
-                                    <ChevronLeft className={`${accessibility.largeText ? 'w-6 h-6' : 'w-4 h-4'}`} />
-                                    Previous frame
+                                    <ChevronLeft size={24} />
                                   </button>
-                                  <div className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-700'}`}>
-                                    Frame {clampedFrame + 1} of {frameCount}
+                                  <div className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} font-bold text-slate-700 dark:text-slate-300`}>
+                                    Frame <span className="text-blue-500">{clampedFrame + 1}</span> of {frameCount}
                                   </div>
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      setCurrentFrameIndex(prev =>
-                                        prev + 1 < frameCount ? prev + 1 : 0
-                                      )
-                                    }}
+                                    onClick={() => setCurrentFrameIndex(prev => prev + 1 < frameCount ? prev + 1 : 0)}
                                     className={`
-                                      inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold
+                                      p-3 rounded-xl transition-all duration-300
                                       ${accessibility.highContrast
-                                        ? 'bg-gray-800 text-yellow-300 border border-yellow-400 hover:bg-gray-700'
-                                        : 'bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200'
+                                        ? 'bg-gray-800 text-yellow-300 border border-yellow-400'
+                                        : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600'
                                       }
-                                      transform hover:scale-105 active:scale-95 transition-all duration-200
-                                      ${accessibility.largeText ? 'text-lg' : 'text-sm'}
                                     `}
                                   >
-                                    Next frame
-                                    <ChevronRight className={`${accessibility.largeText ? 'w-6 h-6' : 'w-4 h-4'}`} />
+                                    <ChevronRight size={24} />
                                   </button>
                                 </div>
                               )}
                             </div>
                           ) : (
-                            <div className={`mb-4 p-4 rounded-xl border-2 ${
+                            <div className={`p-8 rounded-3xl border-2 shadow-xl ${
                               accessibility.highContrast
                                 ? 'bg-black border-yellow-400 text-yellow-200'
-                                : 'bg-gray-50 border-gray-200 text-gray-900'
+                                : 'bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white'
                             }`}>
-                              <div className={`${getTextSize()} font-bold mb-2`}>
-                                {(current.gloss || current.word || '').toUpperCase() || 'UNKNOWN'}
+                              <div className="flex items-center gap-3 mb-4">
+                                <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500">
+                                  <BookOpen size={18} />
+                                </div>
+                                <div className={`${getTextSize()} font-extrabold tracking-tight`}>
+                                  {(current.gloss || current.word || '').toUpperCase() || 'UNKNOWN'}
+                                </div>
                               </div>
                               {current.description && (
-                                <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} mb-1`}>
+                                <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium leading-relaxed mb-4 opacity-80`}>
                                   {current.description}
                                 </p>
                               )}
                               {current.page && (
-                                <p className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                                  See Ghanaian Sign Language Dictionary, page {current.page}
-                                </p>
+                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/50 dark:bg-black/20 border border-white/20">
+                                  <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} font-bold text-slate-500 dark:text-slate-400`}>
+                                    GSL Dictionary Page {current.page}
+                                  </span>
+                                </div>
                               )}
                             </div>
                           )}
 
-                          <div className="flex items-center justify-between mt-2">
-                            <div className="flex flex-wrap gap-3">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setCurrentSignIndex(prev => Math.max(0, prev - 1))
-                                  setCurrentFrameIndex(0)
-                                }}
-                                disabled={currentSignIndex === 0}
-                                className={`
-                                  inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold
-                                  ${currentSignIndex === 0
-                                    ? 'opacity-50 cursor-not-allowed'
-                                    : 'transform hover:scale-105 active:scale-95 transition-all duration-200'
-                                  }
-                                  ${accessibility.highContrast
-                                    ? 'bg-gray-800 text-yellow-300 border border-yellow-400 hover:bg-gray-700'
-                                    : 'bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200'
-                                  }
-                                  ${accessibility.largeText ? 'text-lg' : 'text-sm'}
-                                `}
-                              >
-                                <ChevronLeft className={`${accessibility.largeText ? 'w-6 h-6' : 'w-4 h-4'}`} />
-                                Previous word
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setCurrentSignIndex(prev =>
-                                    prev + 1 < signSequence.length ? prev + 1 : prev
-                                  )
-                                  setCurrentFrameIndex(0)
-                                }}
-                                disabled={currentSignIndex >= signSequence.length - 1}
-                                className={`
-                                  inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold
-                                  ${currentSignIndex >= signSequence.length - 1
-                                    ? 'opacity-50 cursor-not-allowed'
-                                    : 'transform hover:scale-105 active:scale-95 transition-all duration-200'
-                                  }
-                                  ${accessibility.highContrast
-                                    ? 'bg-gray-800 text-yellow-300 border border-yellow-400 hover:bg-gray-700'
-                                    : 'bg-gray-100 text-gray-800 border border-gray-300 hover:bg-gray-200'
-                                  }
-                                  ${accessibility.largeText ? 'text-lg' : 'text-sm'}
-                                `}
-                              >
-                                Next word
-                                <ChevronRight className={`${accessibility.largeText ? 'w-6 h-6' : 'w-4 h-4'}`} />
-                              </button>
-                            </div>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-8">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCurrentSignIndex(prev => Math.max(0, prev - 1))
+                                setCurrentFrameIndex(0)
+                              }}
+                              disabled={currentSignIndex === 0}
+                              className={`
+                                flex items-center justify-center gap-2 p-4 rounded-2xl font-bold transition-all duration-300
+                                ${currentSignIndex === 0
+                                  ? 'opacity-30 grayscale'
+                                  : 'hover:scale-105 active:scale-95 shadow-lg'
+                                }
+                                ${accessibility.highContrast
+                                  ? 'bg-gray-800 text-yellow-300 border-2 border-yellow-400'
+                                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700'
+                                }
+                                ${accessibility.largeText ? 'text-lg' : 'text-sm'}
+                              `}
+                            >
+                              <ChevronLeft size={20} />
+                              Previous
+                            </button>
+                            
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCurrentSignIndex(prev => prev + 1 < signSequence.length ? prev + 1 : prev)
+                                setCurrentFrameIndex(0)
+                              }}
+                              disabled={currentSignIndex >= signSequence.length - 1}
+                              className={`
+                                flex items-center justify-center gap-2 p-4 rounded-2xl font-bold transition-all duration-300
+                                ${currentSignIndex >= signSequence.length - 1
+                                  ? 'opacity-30 grayscale'
+                                  : 'hover:scale-105 active:scale-95 shadow-lg'
+                                }
+                                ${accessibility.highContrast
+                                  ? 'bg-gray-800 text-yellow-300 border-2 border-yellow-400'
+                                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700'
+                                }
+                                ${accessibility.largeText ? 'text-lg' : 'text-sm'}
+                              `}
+                            >
+                              Next
+                              <ChevronRight size={20} />
+                            </button>
 
                             <button
                               type="button"
                               onClick={() => setAutoPlay(prev => !prev)}
                               className={`
-                                inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold
+                                flex items-center justify-center gap-2 p-4 rounded-2xl font-bold shadow-lg transition-all duration-300 col-span-2 sm:col-span-1
                                 ${autoPlay
-                                  ? accessibility.highContrast
-                                    ? 'bg-red-600 text-white hover:bg-red-700'
-                                    : 'bg-red-600 text-white hover:bg-red-700'
-                                  : accessibility.highContrast
-                                    ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                                  ? 'bg-rose-500 text-white shadow-rose-500/20'
+                                  : 'bg-indigo-600 text-white shadow-indigo-500/20'
                                 }
-                                transform hover:scale-105 active:scale-95 transition-all duration-200
+                                transform hover:scale-105 active:scale-95
                                 ${accessibility.largeText ? 'text-lg' : 'text-sm'}
                               `}
                             >
-                              {autoPlay ? (
-                                <>
-                                  <Pause className={`${accessibility.largeText ? 'w-6 h-6' : 'w-4 h-4'}`} />
-                                  Stop auto-play
-                                </>
-                              ) : (
-                                <>
-                                  <Play className={`${accessibility.largeText ? 'w-6 h-6' : 'w-4 h-4'}`} />
-                                  Auto-play signs
-                                </>
-                              )}
+                              {autoPlay ? <Pause size={20} /> : <Play size={20} />}
+                              {autoPlay ? 'Stop' : 'Play All'}
                             </button>
                           </div>
 
-                          <div className="mt-4 space-y-1">
-                            <div className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-800'}`}>
-                              Current word:{' '}
-                              <span className="font-semibold">
-                                {current.word || (current.gloss || '').toLowerCase()}
+                          <div className="mt-8 p-6 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Translation Info</span>
+                              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${
+                                current.status === 'matched' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'
+                              }`}>
+                                {statusText}
                               </span>
                             </div>
-                            <div className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                              Status: {statusText}
-                            </div>
-                            <div className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                              Word {currentSignIndex + 1} of {signSequence.length}
+                            <div className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-bold text-slate-900 dark:text-white`}>
+                              Current word: <span className="text-blue-500">{current.word || (current.gloss || '').toLowerCase()}</span>
                             </div>
                           </div>
-                        </>
+                        </div>
                       )
                     })()}
                   </>
@@ -1158,13 +1140,18 @@ const Interpreter: React.FC = () => {
             )}
 
             {currentSession.direction === 'speech_to_sign' && showAvatar && (
-              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400' : 'bg-white'} rounded-2xl shadow-xl p-6 border-2`}>
-                <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold mb-4 ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                  Signing Avatar
-                </h3>
+              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card p-8'}`}>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-2xl bg-purple-500/10 dark:bg-purple-500/20 flex items-center justify-center text-purple-500">
+                    <User size={24} />
+                  </div>
+                  <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                    Signing Avatar
+                  </h3>
+                </div>
                 
-                <div className="space-y-4">
-                  <div className="h-96">
+                <div className="space-y-6">
+                  <div className="h-96 relative rounded-3xl overflow-hidden bg-slate-900 shadow-2xl border border-white/10">
                     <Avatar3D
                       isVisible={avatarStatus === 'ready' && !!avatarKeyframes && avatarKeyframes.length > 0}
                       signSequence={
@@ -1183,7 +1170,7 @@ const Interpreter: React.FC = () => {
                   </div>
 
                   {avatarStatus === 'loading' && (
-                    <div className="rounded-xl p-3 flex items-center justify-between bg-blue-50 border border-blue-200">
+                    <div className="rounded-2xl p-4 flex items-center justify-between bg-blue-50/50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20">
                       <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-blue-800'}`}>
                         Preparing signing sequence from dictionary...
                       </p>

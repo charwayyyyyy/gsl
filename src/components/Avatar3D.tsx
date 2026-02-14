@@ -473,10 +473,10 @@ const Avatar3D: React.FC<Avatar3DProps> = ({
   return (
     <div 
       ref={mountRef} 
-      className={`w-full h-96 rounded-lg border-2 ${
+      className={`w-full h-96 rounded-3xl overflow-hidden transition-all duration-500 ${
         settings.accessibility.highContrast 
-          ? 'border-yellow-400 bg-black' 
-          : 'border-gray-300 bg-white'
+          ? 'border-4 border-yellow-400 bg-black' 
+          : 'glass shadow-glass border border-white/20'
       }`}
       style={{ minHeight: '384px' }}
     />

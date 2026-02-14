@@ -114,29 +114,23 @@ const AudioCapture: React.FC<AudioCaptureProps> = ({
   if (error) {
     return (
       <div className={`
-        flex flex-col items-center justify-center p-8 rounded-2xl
+        glass-card flex flex-col items-center justify-center p-8
         ${accessibility.highContrast 
           ? 'bg-black border-4 border-yellow-400 text-yellow-400' 
-          : 'bg-red-50 border-2 border-red-200 text-red-800'
+          : 'border-red-500/20'
         }
         ${className}
       `}>
-        <AlertCircle className={`${accessibility.largeText ? 'w-16 h-16' : 'w-12 h-12'} mb-4`} />
-        <h3 className={`${getTextSize()} font-bold mb-2`}>Audio Error</h3>
-        <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} text-center mb-4`}>
+        <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mb-6 shadow-glass border border-red-500/20">
+          <AlertCircle className={`${accessibility.largeText ? 'w-10 h-10' : 'w-8 h-8'} text-red-500`} />
+        </div>
+        <h3 className={`${getTextSize()} font-bold mb-2 text-slate-900 dark:text-white`}>Audio Error</h3>
+        <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} text-slate-500 dark:text-slate-400 text-center mb-8`}>
           {error}
         </p>
         <button
           onClick={toggleAudio}
-          className={`
-            px-6 py-3 rounded-full font-semibold
-            ${accessibility.highContrast 
-              ? 'bg-yellow-400 text-black hover:bg-yellow-500' 
-              : 'bg-red-600 text-white hover:bg-red-700'
-            }
-            transform hover:scale-105 active:scale-95 transition-all duration-200
-            focus:outline-none focus:ring-4 focus:ring-red-300
-          `}
+          className="ios-button-primary w-full max-w-xs"
         >
           Retry Microphone
         </button>
@@ -146,19 +140,21 @@ const AudioCapture: React.FC<AudioCaptureProps> = ({
 
   return (
     <div className={`
-      flex flex-col items-center p-6 rounded-2xl shadow-2xl
+      glass-card flex flex-col items-center p-6 shadow-2xl
       ${accessibility.highContrast 
         ? 'bg-black border-4 border-white' 
-        : 'bg-white'
+        : ''
       }
       ${className}
     `}>
       {/* Header */}
-      <div className="flex items-center justify-between w-full mb-6">
-        <div className="flex items-center gap-3">
-          <Volume2 className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'} text-blue-600`} />
-          <h3 className={`${getTextSize()} font-bold text-gray-800 ${accessibility.highContrast ? 'text-yellow-400' : ''}`}>
-            Audio Capture
+      <div className="flex items-center justify-between w-full mb-8 pb-4 border-b border-white/10">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center border border-blue-500/20">
+            <Volume2 className={`${accessibility.largeText ? 'w-6 h-6' : 'w-5 h-5'} text-blue-500`} />
+          </div>
+          <h3 className={`${getTextSize()} font-bold text-slate-900 dark:text-white`}>
+            Audio
           </h3>
         </div>
         
@@ -167,148 +163,140 @@ const AudioCapture: React.FC<AudioCaptureProps> = ({
           onClick={toggleAudio}
           disabled={disabled || micState === 'requesting_permission'}
           className={`
-            ${getButtonSize()} rounded-full flex items-center justify-center
+            ${getButtonSize()} rounded-2xl flex items-center justify-center
             ${isListening 
-              ? 'bg-green-600 hover:bg-green-700 text-white' 
+              ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/30' 
               : isProcessing
-                ? 'bg-blue-600 text-white animate-pulse' 
-                : 'bg-red-600 hover:bg-red-700 text-white'
+                ? 'bg-blue-500 text-white animate-pulse' 
+                : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30'
             }
-            shadow-lg transform ${disabled ? '' : 'hover:scale-110 active:scale-95'} transition-all duration-200
-            focus:outline-none focus:ring-4 focus:ring-white/50
+            transition-all duration-300 transform ${disabled ? '' : 'hover:scale-105 active:scale-95'}
             ${disabled ? 'opacity-50 cursor-not-allowed transform-none' : ''}
           `}
           aria-label={isListening ? 'Mute microphone' : 'Unmute microphone'}
         >
           {isListening ? (
-            <MicOff className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
+            <MicOff className={`${accessibility.largeText ? 'w-7 h-7' : 'w-6 h-6'}`} />
           ) : (
-            <Mic className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
+            <Mic className={`${accessibility.largeText ? 'w-7 h-7' : 'w-6 h-6'}`} />
           )}
         </button>
-
-        {/* Permission Status */}
-        <div className={`
-          flex items-center gap-2 px-3 py-2 rounded-full
-          ${accessibility.highContrast ? 'bg-black border-2 border-white text-yellow-400' : 'bg-white/80'}
-        `}>
-          <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} font-medium`}>
-            {!isSupported
-              ? 'Mic: unsupported'
-              : micState === 'requesting_permission'
-                ? 'Mic: requesting permission'
-                : micState === 'processing'
-                  ? 'Mic: processing'
-                  : isListening
-                    ? 'Mic: listening'
-                    : 'Mic: idle'}
-          </span>
-          <div
-            className={`w-2 h-2 rounded-full ${
-              !isSupported
-                ? 'bg-red-500'
-                : isListening
-                  ? 'bg-green-500'
-                  : isProcessing || isRequesting
-                    ? 'bg-yellow-500'
-                    : 'bg-red-500'
-            }`}
-          />
-        </div>
       </div>
 
-      {/* Audio Level Visualization */}
-      {showLevel && (
-        <div className="w-full mb-6">
-          <div className="flex items-center gap-4 mb-3">
-            <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium text-gray-700 ${accessibility.highContrast ? 'text-yellow-400' : ''}`}>
-              Audio Level
+      <div className="w-full space-y-6">
+        {/* Status Indicator */}
+        <div className={`
+          flex items-center justify-between px-4 py-3 rounded-2xl
+          ${accessibility.highContrast ? 'bg-black border-2 border-white text-yellow-400' : 'bg-slate-100 dark:bg-slate-800/50'}
+        `}>
+          <span className={`${accessibility.largeText ? 'text-base' : 'text-sm'} font-semibold text-slate-700 dark:text-slate-300`}>
+            Status
+          </span>
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${isListening ? 'bg-green-500 animate-pulse' : 'bg-slate-400'}`} />
+            <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} font-bold uppercase tracking-wider text-slate-500`}>
+              {!isSupported
+                ? 'Unsupported'
+                : micState === 'requesting_permission'
+                  ? 'Requesting...'
+                  : isListening ? 'Listening' : 'Ready'}
             </span>
-            <div className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-bold text-blue-600`}>
-              {Math.round(displayLevel * 100)}%
+          </div>
+        </div>
+
+        {/* Audio Level Visualization */}
+        {showLevel && (
+          <div className="w-full mb-6">
+            <div className="flex items-center gap-4 mb-3">
+              <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium text-gray-700 ${accessibility.highContrast ? 'text-yellow-400' : ''}`}>
+                Audio Level
+              </span>
+              <div className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-bold text-blue-600`}>
+                {Math.round(displayLevel * 100)}%
+              </div>
+            </div>
+            
+            {/* Level Bar */}
+            <div className={`w-full ${accessibility.largeText ? 'h-6' : 'h-4'} bg-gray-200 rounded-full overflow-hidden ${accessibility.highContrast ? 'bg-gray-800' : ''}`}>
+              <div
+                className={`h-full transition-all duration-150 ease-out ${getVolumeColor(displayLevel)}`}
+                style={{ width: `${Math.min(100, displayLevel * 100)}%` }}
+              />
+            </div>
+            
+            {/* Level Indicators */}
+            <div className="flex justify-between mt-2">
+              <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} text-gray-500 ${accessibility.highContrast ? 'text-yellow-400' : ''}`}>
+                Quiet
+              </span>
+              <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} text-gray-500 ${accessibility.highContrast ? 'text-yellow-400' : ''}`}>
+                Good
+              </span>
+              <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} text-gray-500 ${accessibility.highContrast ? 'text-yellow-400' : ''}`}>
+                Loud
+              </span>
             </div>
           </div>
-          
-          {/* Level Bar */}
-          <div className={`w-full ${accessibility.largeText ? 'h-6' : 'h-4'} bg-gray-200 rounded-full overflow-hidden ${accessibility.highContrast ? 'bg-gray-800' : ''}`}>
-            <div
-              className={`h-full transition-all duration-150 ease-out ${getVolumeColor(displayLevel)}`}
-              style={{ width: `${Math.min(100, displayLevel * 100)}%` }}
-            />
-          </div>
-          
-          {/* Level Indicators */}
-          <div className="flex justify-between mt-2">
-            <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} text-gray-500 ${accessibility.highContrast ? 'text-yellow-400' : ''}`}>
-              Quiet
-            </span>
-            <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} text-gray-500 ${accessibility.highContrast ? 'text-yellow-400' : ''}`}>
-              Good
-            </span>
-            <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} text-gray-500 ${accessibility.highContrast ? 'text-yellow-400' : ''}`}>
-              Loud
-            </span>
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* Audio Status */}
-      <div className="flex items-center gap-3">
-        <div className={`
-          w-3 h-3 rounded-full ${
-            isListening ? 'bg-green-500' : micState === 'processing' ? 'bg-yellow-500' : 'bg-red-500'
-          }
-          ${isListening ? 'animate-pulse' : ''}
-        `} />
-        <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-700'}`}>
-          {isListening
-            ? 'Listening for speech'
-            : micState === 'processing'
-              ? 'Processing speech'
-              : micState === 'requesting_permission'
-                ? 'Waiting for microphone access'
-                : 'Microphone Off'}
-        </span>
-      </div>
+        {/* Audio Status */}
+        <div className="flex items-center gap-3">
+          <div className={`
+            w-3 h-3 rounded-full ${
+              isListening ? 'bg-green-500' : micState === 'processing' ? 'bg-yellow-500' : 'bg-red-500'
+            }
+            ${isListening ? 'animate-pulse' : ''}
+          `} />
+          <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-700'}`}>
+            {isListening
+              ? 'Listening for speech'
+              : micState === 'processing'
+                ? 'Processing speech'
+                : micState === 'requesting_permission'
+                  ? 'Waiting for microphone access'
+                  : 'Microphone Off'}
+          </span>
+        </div>
 
-      {/* Ghana-specific audio settings */}
-      {audio.ghanaianAccent && (
-        <div className={`mt-4 p-3 rounded-lg ${accessibility.highContrast ? 'bg-gray-900 border border-yellow-400' : 'bg-blue-50'}`}>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="text-2xl">🇬🇭</div>
-            <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} font-medium ${accessibility.highContrast ? 'text-yellow-400' : 'text-blue-800'}`}>
-              Ghanaian Accent Recognition Active
-            </span>
+        {/* Ghana-specific audio settings */}
+        {audio.ghanaianAccent && (
+          <div className={`mt-4 p-3 rounded-lg ${accessibility.highContrast ? 'bg-gray-900 border border-yellow-400' : 'bg-blue-50'}`}>
+            <div className="flex items-center gap-2 mb-2">
+              <div className="text-2xl">🇬🇭</div>
+              <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} font-medium ${accessibility.highContrast ? 'text-yellow-400' : 'text-blue-800'}`}>
+                Ghanaian Accent Recognition Active
+              </span>
+            </div>
+            <p className={`${accessibility.largeText ? 'text-xs' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-blue-600'}`}>
+              Optimized for Ghanaian English pronunciation and speech patterns
+            </p>
           </div>
-          <p className={`${accessibility.largeText ? 'text-xs' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-blue-600'}`}>
-            Optimized for Ghanaian English pronunciation and speech patterns
-          </p>
-        </div>
-      )}
+        )}
 
-      {/* Audio Quality Indicator */}
-      <div className="mt-4 flex items-center gap-2">
-        <div className="flex gap-1">
-          {[...Array(5)].map((_, i) => (
-            <div
-              key={i}
-              className={`
-                ${accessibility.largeText ? 'w-2 h-6' : 'w-1 h-4'} rounded-full transition-all duration-200
-                ${audioLevel > (i * 0.2) 
-                  ? getVolumeColor(audioLevel) 
-                  : 'bg-gray-300'
-                }
-              `}
-              style={{
-                height: `${Math.max(40, (i + 1) * 20)}%`,
-                alignSelf: 'flex-end'
-              }}
-            />
-          ))}
+        {/* Audio Quality Indicator */}
+        <div className="mt-4 flex items-center gap-2">
+          <div className="flex gap-1">
+            {[...Array(5)].map((_, i) => (
+              <div
+                key={i}
+                className={`
+                  ${accessibility.largeText ? 'w-2 h-6' : 'w-1 h-4'} rounded-full transition-all duration-200
+                  ${audioLevel > (i * 0.2) 
+                    ? getVolumeColor(audioLevel) 
+                    : 'bg-gray-300'
+                  }
+                `}
+                style={{
+                  height: `${Math.max(40, (i + 1) * 20)}%`,
+                  alignSelf: 'flex-end'
+                }}
+              />
+            ))}
+          </div>
+          <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} font-medium ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-600'}`}>
+            Quality
+          </span>
         </div>
-        <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} font-medium ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-600'}`}>
-          Quality
-        </span>
       </div>
     </div>
   )

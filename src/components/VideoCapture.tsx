@@ -134,29 +134,23 @@ const VideoCapture: React.FC<VideoCaptureProps> = ({
   if (error) {
     return (
       <div className={`
-        flex flex-col items-center justify-center p-8 rounded-2xl
+        glass-card flex flex-col items-center justify-center p-8
         ${accessibility.highContrast 
           ? 'bg-black border-4 border-yellow-400 text-yellow-400' 
-          : 'bg-red-50 border-2 border-red-200 text-red-800'
+          : 'border-red-500/20'
         }
         ${className}
       `}>
-        <AlertCircle className={`${accessibility.largeText ? 'w-16 h-16' : 'w-12 h-12'} mb-4`} />
-        <h3 className={`${getTextSize()} font-bold mb-2`}>Video Error</h3>
-        <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} text-center mb-4`}>
+        <div className="w-16 h-16 bg-red-500/10 rounded-2xl flex items-center justify-center mb-6 shadow-glass border border-red-500/20">
+          <AlertCircle className={`${accessibility.largeText ? 'w-10 h-10' : 'w-8 h-8'} text-red-500`} />
+        </div>
+        <h3 className={`${getTextSize()} font-bold mb-2 text-slate-900 dark:text-white`}>Video Error</h3>
+        <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} text-slate-500 dark:text-slate-400 text-center mb-8`}>
           {error}
         </p>
         <button
           onClick={toggleVideo}
-          className={`
-            px-6 py-3 rounded-full font-semibold
-            ${accessibility.highContrast 
-              ? 'bg-yellow-400 text-black hover:bg-yellow-500' 
-              : 'bg-red-600 text-white hover:bg-red-700'
-            }
-            transform hover:scale-105 active:scale-95 transition-all duration-200
-            focus:outline-none focus:ring-4 focus:ring-red-300
-          `}
+          className="ios-button-primary w-full max-w-xs"
         >
           Retry Camera
         </button>
@@ -166,8 +160,8 @@ const VideoCapture: React.FC<VideoCaptureProps> = ({
 
   return (
     <div className={`
-      relative rounded-2xl overflow-hidden shadow-2xl
-      ${accessibility.highContrast ? 'border-4 border-white' : ''}
+      relative rounded-3xl overflow-hidden shadow-2xl group
+      ${accessibility.highContrast ? 'border-4 border-white' : 'border border-white/20 shadow-glass'}
       ${className}
     `}>
       {/* Video Element */}
@@ -176,132 +170,69 @@ const VideoCapture: React.FC<VideoCaptureProps> = ({
         autoPlay
         muted
         playsInline
-        className="w-full h-full object-cover bg-black"
+        className="w-full h-full object-cover bg-slate-950 transition-all duration-700 group-hover:scale-105"
         style={{
           filter: accessibility.highContrast ? 'contrast(1.5) brightness(1.2)' : undefined
         }}
       />
 
-      {/* Video Controls Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+      {/* Overlays */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none transition-opacity duration-500 group-hover:opacity-40" />
       
-      {/* Top Controls */}
-      <div className="absolute top-4 left-4 right-4 flex justify-between items-start pointer-events-auto">
+      {/* Top Status Bar */}
+      <div className="absolute top-4 inset-x-4 flex justify-between items-center pointer-events-auto">
+        <div className="glass px-4 py-2 rounded-2xl flex items-center gap-3 animate-fade-in border-white/20">
+          <div className={`w-2 h-2 rounded-full ${isVideoEnabled ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
+          <span className="text-xs font-bold text-white uppercase tracking-widest">
+            {isVideoEnabled ? 'Live Feed' : 'Camera Off'}
+          </span>
+        </div>
+
         <button
           onClick={toggleVideo}
           className={`
-            ${getButtonSize()} rounded-full flex items-center justify-center
+            ${getButtonSize()} rounded-2xl flex items-center justify-center backdrop-blur-md transition-all duration-300 transform hover:scale-105 active:scale-95
             ${isVideoEnabled 
-              ? 'bg-red-600 hover:bg-red-700 text-white' 
-              : 'bg-green-600 hover:bg-green-700 text-white'
+              ? 'bg-red-500/80 hover:bg-red-500 text-white' 
+              : 'bg-blue-600/80 hover:bg-blue-600 text-white shadow-lg shadow-blue-500/30'
             }
-            shadow-lg transform hover:scale-110 active:scale-95 transition-all duration-200
-            focus:outline-none focus:ring-4 focus:ring-white/50
           `}
           aria-label={isVideoEnabled ? 'Stop video' : 'Start video'}
         >
           {isVideoEnabled ? (
-            <CameraOff className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
+            <CameraOff className={`${accessibility.largeText ? 'w-7 h-7' : 'w-6 h-6'}`} />
           ) : (
-            <Camera className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
+            <Camera className={`${accessibility.largeText ? 'w-7 h-7' : 'w-6 h-6'}`} />
           )}
         </button>
-
-        {/* Confidence Indicator */}
-        {showConfidence && (
-          <div className={`
-            flex items-center gap-2 px-4 py-2 rounded-full
-            ${accessibility.highContrast 
-              ? 'bg-black/80 border-2 border-yellow-400 text-yellow-400' 
-              : 'bg-black/70 text-white'
-            }
-          `}>
-            <div className={`w-3 h-3 rounded-full ${getConfidenceColor(confidence)}`} />
-            <span className={`${accessibility.largeText ? 'text-base' : 'text-sm'} font-semibold`}>
-              {Math.round(confidence * 100)}%
-            </span>
-          </div>
-        )}
-
-        {/* Permission Status */}
-        <div className={`
-          flex items-center gap-2 px-3 py-2 rounded-full
-          ${accessibility.highContrast ? 'bg-black border-2 border-white text-yellow-400' : 'bg-white/80'}
-        `}>
-          <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} font-medium`}>
-            {isSupported ? (isVideoEnabled ? 'Camera: granted' : 'Camera: pending') : 'Camera: unsupported'}
-          </span>
-          <div className={`w-2 h-2 rounded-full ${isVideoEnabled ? 'bg-green-500' : (isSupported ? 'bg-yellow-500' : 'bg-red-500')}`} />
-        </div>
       </div>
 
-      {/* Bottom Status */}
-      <div className="absolute bottom-4 left-4 right-4">
-        <div className="flex items-center justify-between">
-          {/* Video Level Indicator */}
-          <div className="flex items-center gap-2">
-            <div className={`
-              flex gap-1 ${accessibility.largeText ? 'h-6' : 'h-4'}
-            `}>
-              {[...Array(5)].map((_, i) => (
-                <div
-                  key={i}
-                  className={`
-                    ${accessibility.largeText ? 'w-2' : 'w-1'} rounded-full transition-all duration-200
-                    ${videoLevel > (i * 0.2) 
-                      ? 'bg-green-400' 
-                      : 'bg-gray-600'
-                    }
-                  `}
-                  style={{
-                    height: `${Math.max(20, (i + 1) * 20)}%`,
-                    alignSelf: 'flex-end'
-                  }}
-                />
-              ))}
+      {/* Confidence Overlay */}
+      {showConfidence && isVideoEnabled && (
+        <div className="absolute bottom-4 left-4 right-4 pointer-events-none animate-slide-up">
+          <div className="glass p-4 rounded-2xl border-white/20 space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-bold text-white/70 uppercase tracking-[0.2em]">Detection Confidence</span>
+              <span className={`text-xs font-mono font-bold px-2 py-0.5 rounded-lg ${getConfidenceColor(confidence)} text-white`}>
+                {Math.round(confidence * 100)}%
+              </span>
             </div>
-            <span className={`
-              ${accessibility.largeText ? 'text-sm' : 'text-xs'} text-white font-medium
-            `}>
-              Video
-            </span>
+            <div className="h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+              <div 
+                className={`h-full transition-all duration-500 ${getConfidenceColor(confidence)}`}
+                style={{ width: `${confidence * 100}%` }}
+              />
+            </div>
           </div>
-
-          {/* Status Text */}
-          <div className={`
-            ${accessibility.largeText ? 'text-sm' : 'text-xs'} text-white font-medium
-          `}>
-            {isVideoEnabled ? 'Camera Active' : 'Camera Off'}
-          </div>
-        </div>
-      </div>
-
-      {/* Signing Space Guidelines */}
-      {visual.showLandmarks && isVideoEnabled && (
-        <div className="absolute inset-0 pointer-events-none">
-          {/* Center crosshair */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className={`
-              ${accessibility.highContrast ? 'border-yellow-400' : 'border-white/50'}
-              border-2 border-dashed rounded-full w-64 h-48
-            `} />
-          </div>
-          
-          {/* Corner markers */}
-          <div className="absolute top-1/4 left-1/4 w-4 h-4 border-t-2 border-l-2 border-white/50" />
-          <div className="absolute top-1/4 right-1/4 w-4 h-4 border-t-2 border-r-2 border-white/50" />
-          <div className="absolute bottom-1/4 left-1/4 w-4 h-4 border-b-2 border-l-2 border-white/50" />
-          <div className="absolute bottom-1/4 right-1/4 w-4 h-4 border-b-2 border-r-2 border-white/50" />
         </div>
       )}
 
-      {/* Hidden canvas for frame extraction */}
-      <canvas
-        ref={canvasRef}
-        className="hidden"
-        width={640}
-        height={480}
-      />
+      {/* Scanning Animation */}
+      {isVideoEnabled && (
+        <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30">
+          <div className="w-full h-[2px] bg-blue-400 absolute animate-scan" />
+        </div>
+      )}
     </div>
   )
 }
