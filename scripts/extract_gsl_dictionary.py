@@ -1,7 +1,7 @@
 import json
 import re
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 try:
     import pdfplumber
@@ -18,10 +18,48 @@ RAW_DIR = DATA_DIR / "raw"
 PROCESSED_DIR = DATA_DIR / "processed"
 IMAGES_DIR = PROCESSED_DIR / "images"
 
-ENTRY_PATTERNS = [
-    r"^([A-Z][A-Z\-\s]+)\s*$",
-    r"([A-Z][A-Z\s]+):\s*([^\n]+)",
-]
+# Constants for layout cropping
+# The dictionary layout seems to have 2 columns.
+# Column 1 x-range: approx 50 to 300
+# Column 2 x-range: approx 350 to 600
+# Header area top: approx 50-100
+# Row 1 top: approx 100-350
+# Row 2 top: approx 350-600
+# Row 3 top: approx 600-850
+
+def get_crop_box(word_info: dict, page_width: float, page_height: float) -> Tuple[float, float, float, float]:
+    """
+    Determines a reasonable crop box around a gloss.
+    The goal is to capture the images below/beside the gloss.
+    Returns (x0, y0, x1, y1) in PDF coordinates.
+    """
+    x0 = word_info['x0']
+    top = word_info['top']
+    
+    # Heuristic: 
+    # Width: approx half page width
+    # Height: approx 250 points (standard for these squares)
+    
+    crop_width = page_width / 2.2
+    crop_height = 280
+    
+    # Adjust x0 if it's in the second column
+    if x0 > page_width / 2:
+        cx0 = page_width / 2
+    else:
+        cx0 = 30 # Margin
+        
+    cy0 = top - 10 # Start slightly above the gloss
+    cx1 = cx0 + crop_width
+    cy1 = cy0 + crop_height
+    
+    # Constrain to page
+    cx0 = max(0, cx0)
+    cy0 = max(0, cy0)
+    cx1 = min(page_width, cx1)
+    cy1 = min(page_height, cy1)
+    
+    return (cx0, cy0, cx1, cy1)
 
 def ensure_dirs():
     for p in [DATA_DIR, RAW_DIR, PROCESSED_DIR, IMAGES_DIR]:
@@ -56,81 +94,63 @@ def normalize_text(s: Optional[str]) -> Optional[str]:
 def pdf_to_strict_json(pdf_path: Path) -> Dict[str, Dict]:
     ensure_dirs()
     entries: Dict[str, Dict] = {}
-    text_pages: List[str] = []
+    
+    if not pdfplumber or not fitz:
+        print("pdfplumber or fitz (PyMuPDF) not installed. Cannot proceed.")
+        return {}
 
-    if pdfplumber:
-        with pdfplumber.open(pdf_path) as pdf:
-            for p in pdf.pages:
-                t = p.extract_text() or ""
-                text_pages.append(t)
-
-    doc = fitz.open(pdf_path) if fitz else None
-
-    for page_idx, text in enumerate(text_pages):
-        images = extract_images_from_page(doc, page_idx)
-        # Fallback to page snapshot if no images extracted
-        if not images and fitz:
-            try:
-                page = fitz.open(pdf_path).load_page(page_idx)
-                pix = page.get_pixmap()
-                out_path = IMAGES_DIR / f"page{page_idx+1}.png"
-                pix.save(out_path)
-                images = [out_path.name]
-            except Exception:
-                images = []
-        
-        lines = [l for l in text.splitlines() if l.strip()]
-        
-        # Find ALL glosses on the page
-        page_glosses = []
-        for ln in lines:
-            clean_ln = ln.strip()
-            # Match All-Caps words, allowing hyphens and spaces, min length 2
-            # Avoid overly long sentences that happen to be all caps (e.g. headers)
-            # Heuristic: < 50 chars
-            if re.match(r"^[A-Z][A-Z\-\s]+$", clean_ln) and len(clean_ln) < 50 and len(clean_ln) > 1:
-                page_glosses.append(clean_ln)
-
-        if not page_glosses:
-            continue
-
-        for gloss in page_glosses:
-            description = normalize_text(text) # Store full page text as context
-            english = gloss.replace("-", " ").lower()
+    doc = fitz.open(pdf_path)
+    
+    with pdfplumber.open(pdf_path) as pdf:
+        for page_idx, page in enumerate(pdf.pages):
+            text = page.extract_text() or ""
+            words = page.extract_words()
             
-            # Ensure image directory exists for this gloss
-            per_gloss = IMAGES_DIR / gloss
-            try:
-                per_gloss.mkdir(parents=True, exist_ok=True)
-                # Copy page image to gloss folder
-                for img in images:
-                    src = IMAGES_DIR / img
-                    if src.exists():
-                        dst = per_gloss / src.name
-                        if not dst.exists():
-                            try:
-                                dst.write_bytes(src.read_bytes())
-                            except Exception:
-                                pass
-            except Exception:
-                pass
+            # Find glosses (all caps words)
+            page_glosses = [w for w in words if re.match(r"^[A-Z][A-Z\-\s]+$", w['text']) and len(w['text']) < 50 and len(w['text']) > 1]
+            
+            if not page_glosses:
+                continue
 
-            # Update entry - if exists, we might want to keep the one with better description or merge
-            # For now, simple overwrite or keep first? 
-            # If a word spans multiple pages, we might want the first occurrence.
-            if gloss not in entries:
-                entries[gloss] = {
-                    "english": english,
-                    "description": description,
-                    "images": images, # Point to the page snapshot(s)
-                    "page": page_idx + 1,
-                    "variants": len(images)
-                }
-            else:
-                # If already exists, maybe append images? 
-                # But UI expects single page context usually.
-                # Let's keep the existing one to avoid overwriting "FOOD" (header) with "FOOD" (header on next page)
-                pass
+            fitz_page = doc.load_page(page_idx)
+            
+            for gloss_info in page_glosses:
+                gloss = gloss_info['text'].strip()
+                
+                # Determine crop box for this specific gloss
+                crop_box = get_crop_box(gloss_info, page.width, page.height)
+                
+                # Use PyMuPDF to crop and save
+                # PyMuPDF uses (x0, y0, x1, y1) but might need scaling if DPI is different
+                # default is 72 DPI, same as pdfplumber
+                rect = fitz.Rect(crop_box)
+                pix = fitz_page.get_pixmap(clip=rect, matrix=fitz.Matrix(2, 2)) # 2x scale for better quality
+                
+                gloss_safe = re.sub(r"[^A-Z]", "_", gloss)
+                img_name = f"{gloss_safe}_p{page_idx+1}.png"
+                
+                per_gloss_dir = IMAGES_DIR / gloss
+                per_gloss_dir.mkdir(parents=True, exist_ok=True)
+                
+                out_path = per_gloss_dir / img_name
+                pix.save(out_path)
+                
+                description = normalize_text(text)
+                english = gloss.replace("-", " ").lower()
+                
+                if gloss not in entries:
+                    entries[gloss] = {
+                        "english": english,
+                        "description": description,
+                        "images": [img_name],
+                        "page": page_idx + 1,
+                        "variants": 1
+                    }
+                else:
+                    # If gloss appears multiple times, add the new image
+                    if img_name not in entries[gloss]["images"]:
+                        entries[gloss]["images"].append(img_name)
+                        entries[gloss]["variants"] = len(entries[gloss]["images"])
 
     return entries
 

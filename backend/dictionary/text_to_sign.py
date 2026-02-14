@@ -50,49 +50,90 @@ class TextToSignService:
         images = entry.get("images") or []
         out: List[str] = []
         base = PROCESSED / "images" / gloss
+        
+        # Check if the images actually exist in the gloss-specific folder
         for img in images:
             p = base / img
             if p.exists():
                 out.append(img)
+            else:
+                # If it doesn't exist in the gloss-specific folder, check the main images folder
+                # (for backward compatibility or if extraction logic changed)
+                p_main = PROCESSED / "images" / img
+                if p_main.exists():
+                    out.append(img)
+                    
         if out:
             return out
+        
+        # If no images found, fallback to page extraction (now with cropping)
         try:
             page = int(entry.get("page") or 0)
             if page <= 0:
                 page = self._find_page(gloss)
+            
             if page > 0:
                 import fitz
+                import pdfplumber
+                import re
 
                 src_pdf = Path("Ghanaian Sign Language Dictionary - 3rd Edition.pdf")
                 raw_pdf = Path("data") / "raw" / "gsl_dictionary.pdf"
                 pdf_path = src_pdf if src_pdf.exists() else raw_pdf
+                
                 if pdf_path.exists():
                     base.mkdir(parents=True, exist_ok=True)
-                    doc = fitz.open(pdf_path)
-                    pix = doc.load_page(page - 1).get_pixmap()
-                    fname = f"page{page}.png"
-                    dst = base / fname
-                    pix.save(dst)
-                    out.append(fname)
+                    
+                    # We need to find the gloss on the page to crop it correctly
+                    with pdfplumber.open(pdf_path) as pdf:
+                        p = pdf.pages[page - 1]
+                        words = p.extract_words()
+                        # Find the specific gloss coordinate
+                        gloss_matches = [w for w in words if w['text'].upper() == gloss.upper()]
+                        
+                        if gloss_matches:
+                            # Use the first match
+                            g_info = gloss_matches[0]
+                            
+                            # Determine crop box (same logic as extraction script)
+                            x0 = g_info['x0']
+                            top = g_info['top']
+                            page_width = p.width
+                            page_height = p.height
+                            
+                            crop_width = page_width / 2.2
+                            crop_height = 280
+                            
+                            if x0 > page_width / 2:
+                                cx0 = page_width / 2
+                            else:
+                                cx0 = 30
+                                
+                            cy0 = max(0, top - 10)
+                            cx1 = min(page_width, cx0 + crop_width)
+                            cy1 = min(page_height, cy0 + crop_height)
+                            
+                            # Crop using PyMuPDF
+                            doc = fitz.open(pdf_path)
+                            fitz_page = doc.load_page(page - 1)
+                            rect = fitz.Rect(cx0, cy0, cx1, cy1)
+                            pix = fitz_page.get_pixmap(clip=rect, matrix=fitz.Matrix(2, 2))
+                            
+                            gloss_safe = re.sub(r"[^A-Z]", "_", gloss.upper())
+                            fname = f"{gloss_safe}_p{page}.png"
+                            dst = base / fname
+                            pix.save(dst)
+                            out.append(fname)
+                        else:
+                            # Fallback to full page if gloss not found for cropping
+                            doc = fitz.open(pdf_path)
+                            pix = doc.load_page(page - 1).get_pixmap()
+                            fname = f"page{page}.png"
+                            dst = base / fname
+                            pix.save(dst)
+                            out.append(fname)
         except Exception:
             pass
-        if not out:
-            try:
-                import fitz
-
-                src_pdf = Path("Ghanaian Sign Language Dictionary - 3rd Edition.pdf")
-                raw_pdf = Path("data") / "raw" / "gsl_dictionary.pdf"
-                pdf_path = src_pdf if src_pdf.exists() else raw_pdf
-                if pdf_path.exists():
-                    base.mkdir(parents=True, exist_ok=True)
-                    doc = fitz.open(pdf_path)
-                    pix = doc.load_page(0).get_pixmap()
-                    fname = "page1.png"
-                    dst = base / fname
-                    pix.save(dst)
-                    out.append(fname)
-            except Exception:
-                pass
         return out
 
     def _find_page(self, gloss: str) -> int:
