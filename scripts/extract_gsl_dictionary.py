@@ -30,18 +30,19 @@ IMAGES_DIR = PROCESSED_DIR / "images"
 def get_crop_box(word_info: dict, page_width: float, page_height: float) -> Tuple[float, float, float, float]:
     """
     Determines a reasonable crop box around a gloss.
-    The goal is to capture the images below/beside the gloss.
+    The goal is to capture the images ABOVE the gloss.
     Returns (x0, y0, x1, y1) in PDF coordinates.
     """
     x0 = word_info['x0']
     top = word_info['top']
+    bottom = word_info['bottom']
     
     # Heuristic: 
     # Width: approx half page width
-    # Height: approx 250 points (standard for these squares)
+    # Height: approx 320 points (standard for these squares including the image above)
     
     crop_width = page_width / 2.2
-    crop_height = 280
+    crop_height = 320
     
     # Adjust x0 if it's in the second column
     if x0 > page_width / 2:
@@ -49,9 +50,12 @@ def get_crop_box(word_info: dict, page_width: float, page_height: float) -> Tupl
     else:
         cx0 = 30 # Margin
         
-    cy0 = top - 10 # Start slightly above the gloss
+    # Capture region ABOVE the gloss. 
+    # We set cy1 to slightly below the gloss text to include it at the bottom of the image.
+    cy1 = bottom + 10
+    cy0 = cy1 - crop_height
+    
     cx1 = cx0 + crop_width
-    cy1 = cy0 + crop_height
     
     # Constrain to page
     cx0 = max(0, cx0)

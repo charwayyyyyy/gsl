@@ -98,20 +98,23 @@ class TextToSignService:
                             # Determine crop box (same logic as extraction script)
                             x0 = g_info['x0']
                             top = g_info['top']
+                            bottom = g_info['bottom']
                             page_width = p.width
                             page_height = p.height
                             
                             crop_width = page_width / 2.2
-                            crop_height = 280
+                            crop_height = 320
                             
                             if x0 > page_width / 2:
                                 cx0 = page_width / 2
                             else:
                                 cx0 = 30
                                 
-                            cy0 = max(0, top - 10)
+                            # Capture region ABOVE the gloss
+                            cy1 = bottom + 10
+                            cy0 = max(0, cy1 - crop_height)
                             cx1 = min(page_width, cx0 + crop_width)
-                            cy1 = min(page_height, cy0 + crop_height)
+                            cy1 = min(page_height, cy1)
                             
                             # Crop using PyMuPDF
                             doc = fitz.open(pdf_path)
