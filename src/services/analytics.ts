@@ -22,7 +22,12 @@ class AnalyticsService {
   private getSessionId(): string {
     let sid = localStorage.getItem('gsl_session_id');
     if (!sid) {
-      sid = crypto.randomUUID();
+      // Fallback for environments where crypto.randomUUID() might not be available
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        sid = crypto.randomUUID();
+      } else {
+        sid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      }
       localStorage.setItem('gsl_session_id', sid);
     }
     return sid;

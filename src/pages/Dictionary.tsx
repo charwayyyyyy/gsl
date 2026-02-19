@@ -426,23 +426,30 @@ const Dictionary: React.FC = () => {
         
         {/* Alphabet Navigation */}
         {!q && (
-          <div className="glass p-4 rounded-[2rem] flex flex-wrap gap-2 justify-center mb-12 animate-fade-in">
-            {alphabet.map((a) => (
-              <button
-                key={a}
-                onClick={() => setLetter(a)}
-                className={`
-                  w-10 h-10 sm:w-12 sm:h-12 rounded-xl font-bold transition-all duration-300 flex items-center justify-center
-                  ${letter === a 
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-110' 
-                    : 'bg-white/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700'
-                  }
-                  ${accessibility.largeText ? 'text-xl' : 'text-base'}
-                `}
-              >
-                {a}
-              </button>
-            ))}
+          <div className="animate-fade-in space-y-4">
+            <div className="flex items-center gap-3 px-2 mb-2">
+              <Layers className="w-5 h-5 text-blue-500" />
+              <span className="text-xs font-black uppercase tracking-widest text-slate-400">Browse by letter</span>
+            </div>
+            <div className="glass p-4 rounded-[2.5rem] flex flex-wrap gap-2 justify-center mb-12 shadow-inner">
+              {alphabet.map((a) => (
+                <button
+                  key={a}
+                  onClick={() => setLetter(a)}
+                  className={`
+                    w-11 h-11 sm:w-14 sm:h-14 rounded-2xl font-bold transition-all duration-500 flex items-center justify-center
+                    ${letter === a 
+                      ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/40 scale-110 -translate-y-1' 
+                      : 'bg-white/40 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:scale-105'
+                    }
+                    ${accessibility.largeText ? 'text-2xl' : 'text-xl'}
+                    border border-white/20 dark:border-white/5
+                  `}
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

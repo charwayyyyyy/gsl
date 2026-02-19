@@ -15,8 +15,15 @@
 }
 
 @layer base {
+  html {
+    @apply scroll-smooth antialiased;
+    font-size: 16px;
+  }
+
   body {
-    @apply m-0 min-h-screen overflow-x-hidden bg-slate-50 text-slate-900 transition-colors duration-500;
+    @apply m-0 min-h-screen overflow-x-hidden bg-slate-50 text-slate-900 transition-colors duration-500 selection:bg-blue-500/30 selection:text-blue-900 dark:selection:text-blue-100;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.6;
     background: radial-gradient(circle at 0% 0%, #e0f2fe 0%, transparent 50%),
                 radial-gradient(circle at 100% 0%, #fef3c7 0%, transparent 50%),
                 radial-gradient(circle at 100% 100%, #dcfce7 0%, transparent 50%),
@@ -34,6 +41,19 @@
                 #020617;
     background-attachment: fixed;
   }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-bold tracking-tight text-slate-900 dark:text-white mb-[0.5em];
+    line-height: 1.2;
+  }
+
+  h1 { @apply text-4xl md:text-5xl lg:text-6xl; }
+  h2 { @apply text-3xl md:text-4xl; }
+  h3 { @apply text-2xl md:text-3xl; }
+
+  p {
+    @apply mb-4 leading-relaxed opacity-90;
+  }
 }
 
 @layer components {
@@ -42,11 +62,15 @@
   }
   
   .glass-card {
-    @apply glass rounded-3xl overflow-hidden transition-all duration-500 hover:shadow-glass-hover hover:scale-[1.02] active:scale-[0.98];
+    @apply glass rounded-[2rem] overflow-hidden transition-all duration-500 hover:shadow-glass-hover hover:scale-[1.01] active:scale-[0.99] p-6 md:p-8;
+  }
+
+  .section-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-20;
   }
 
   .ios-button {
-    @apply relative overflow-hidden rounded-2xl px-6 py-3 font-semibold transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+    @apply relative overflow-hidden rounded-2xl px-8 py-4 font-bold tracking-wide transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2;
   }
 
   .ios-button-primary {

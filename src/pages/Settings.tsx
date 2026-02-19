@@ -40,61 +40,51 @@ const Settings: React.FC = () => {
 
   const getTextSize = () => accessibilitySettings.largeText ? 'text-3xl' : 'text-2xl'
 
-  const renderTabButton = (tab: { id: string, label: string, icon: any }) => {
-    const Icon = tab.icon
-    const active = isActive(tab.id)
-    
+  const renderToggle = (label: string, desc: string, icon: any, checked: boolean, onChange: (val: boolean) => void, emoji?: string) => {
+    const renderIcon = () => {
+      if (emoji) return <span className="text-3xl">{emoji}</span>
+      if (!icon) return null
+      
+      // If it's a React element (like <Palette /> or <span>○</span>)
+      if (React.isValidElement(icon)) {
+        return React.cloneElement(icon as React.ReactElement, {
+          className: `${(icon.props as any).className || ''} ${accessibilitySettings.largeText ? 'w-9 h-9' : 'w-7 h-7'} text-blue-400`
+        })
+      }
+      
+      // If it's a component (like Palette)
+      const IconComponent = icon
+      return <IconComponent className={`${accessibilitySettings.largeText ? 'w-9 h-9' : 'w-7 h-7'} text-blue-400`} />
+    }
+
     return (
-      <button
-        key={tab.id}
-        onClick={() => setActiveTab(tab.id)}
-        className={`
-          flex items-center space-x-3 px-8 py-4 rounded-2xl transition-all duration-500
-          ${active 
-            ? 'bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)] scale-105 z-10' 
-            : 'glass-card text-slate-400 hover:text-white hover:scale-105'
-          }
-          ${accessibilitySettings.largeText ? 'text-2xl' : 'text-lg font-medium'}
-          backdrop-blur-xl
-        `}
-      >
-        <Icon className={accessibilitySettings.largeText ? 'w-7 h-7' : 'w-6 h-6'} />
-        <span>{tab.label}</span>
-      </button>
+      <label className="glass-card p-8 flex items-center justify-between cursor-pointer hover:shadow-glass-hover transition-all duration-500 group relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-[50px] -mr-16 -mt-16 rounded-full group-hover:bg-blue-500/10 transition-all duration-500" />
+        <div className="flex items-center gap-6 relative z-10">
+          <div className="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 group-hover:bg-blue-500/20 group-hover:scale-110 transition-all duration-500 shadow-inner">
+            {renderIcon()}
+          </div>
+          <div>
+            <div className={`font-bold text-white mb-1 ${accessibilitySettings.largeText ? 'text-2xl' : 'text-xl'}`}>
+              {label}
+            </div>
+            <div className={`text-slate-400 leading-relaxed ${accessibilitySettings.largeText ? 'text-xl' : 'text-lg'}`}>
+              {desc}
+            </div>
+          </div>
+        </div>
+        <div className="relative inline-flex items-center cursor-pointer z-10">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(e) => onChange(e.target.checked)}
+            className="sr-only peer"
+          />
+          <div className="w-16 h-8 bg-slate-700/50 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:start-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-7 after:transition-all peer-checked:bg-blue-600 shadow-inner"></div>
+        </div>
+      </label>
     )
   }
-
-  const renderToggle = (label: string, desc: string, icon: any, checked: boolean, onChange: (val: boolean) => void, emoji?: string) => (
-    <label className="glass-card p-8 flex items-center justify-between cursor-pointer hover:shadow-glass-hover transition-all duration-500 group relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-[50px] -mr-16 -mt-16 rounded-full group-hover:bg-blue-500/10 transition-all duration-500" />
-      <div className="flex items-center gap-6 relative z-10">
-        <div className="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 group-hover:bg-blue-500/20 group-hover:scale-110 transition-all duration-500 shadow-inner">
-          {emoji ? (
-            <span className="text-3xl">{emoji}</span>
-          ) : (
-            <icon.type {...icon.props} className={`${accessibilitySettings.largeText ? 'w-9 h-9' : 'w-7 h-7'} text-blue-400`} />
-          )}
-        </div>
-        <div>
-          <div className={`font-bold text-white mb-1 ${accessibilitySettings.largeText ? 'text-2xl' : 'text-xl'}`}>
-            {label}
-          </div>
-          <div className={`text-slate-400 leading-relaxed ${accessibilitySettings.largeText ? 'text-xl' : 'text-lg'}`}>
-            {desc}
-          </div>
-        </div>
-      </div>
-      <div className="relative inline-flex items-center cursor-pointer z-10">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={(e) => onChange(e.target.checked)}
-          className="sr-only peer"
-        />
-        <div className="w-16 h-8 bg-slate-700/50 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:start-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-7 after:transition-all peer-checked:bg-blue-600 shadow-inner"></div>
-      </div>
-    </label>
-  )
 
   const renderSlider = (label: string, value: number, min: number, max: number, step: number, onChange: (val: number) => void, unit: string = '') => (
     <div className="glass-card p-10 relative overflow-hidden group">
@@ -126,13 +116,45 @@ const Settings: React.FC = () => {
   )
 
   const tabs = [
-    { id: 'accessibility', label: 'Accessibility', icon: Accessibility },
-    { id: 'translation', label: 'Translation', icon: Globe },
-    { id: 'audio', label: 'Audio', icon: Volume2 },
-    { id: 'visual', label: 'Visual', icon: Eye },
-    { id: 'ghana', label: 'Ghana', icon: BookOpen }
+    { id: 'accessibility', label: 'Accessibility', icon: Accessibility, color: 'blue' },
+    { id: 'translation', label: 'Translation', icon: Globe, color: 'indigo' },
+    { id: 'audio', label: 'Audio', icon: Volume2, color: 'rose' },
+    { id: 'visual', label: 'Visual', icon: Eye, color: 'amber' },
+    { id: 'ghana', label: 'Ghana', icon: BookOpen, color: 'emerald' }
   ]
 
+  const renderTabButton = (tab: { id: string, label: string, icon: any, color: string }) => {
+    const Icon = tab.icon
+    const active = isActive(tab.id)
+    
+    return (
+      <button
+        key={tab.id}
+        onClick={() => setActiveTab(tab.id)}
+        className={`
+          flex items-center space-x-3 px-8 py-4 rounded-2xl transition-all duration-500 relative overflow-hidden group
+          ${active 
+            ? `bg-${tab.color}-600 text-white shadow-[0_10px_30px_rgba(0,0,0,0.3)] scale-105 z-10` 
+            : 'glass-card text-slate-400 hover:text-white hover:scale-105'
+          }
+          ${accessibilitySettings.largeText ? 'text-2xl' : 'text-lg font-bold'}
+          backdrop-blur-xl border-white/10
+        `}
+      >
+        <div className={`
+          p-2 rounded-xl transition-colors duration-500
+          ${active ? 'bg-white/20' : 'bg-slate-800/50 group-hover:bg-slate-700'}
+        `}>
+          <Icon className={accessibilitySettings.largeText ? 'w-7 h-7' : 'w-6 h-6'} />
+        </div>
+        <span>{tab.label}</span>
+        {active && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/40 animate-pulse" />
+        )}
+      </button>
+    )
+  }
+  
   const handleSave = () => {
     setHasChanges(false)
     const event = new CustomEvent('settings-saved', { detail: { success: true } })
@@ -202,7 +224,7 @@ const Settings: React.FC = () => {
       </div>
     </div>
   )
-  
+
   const renderTranslationTab = () => (
     <div className="space-y-10 animate-fade-in">
       <div>

@@ -874,53 +874,94 @@ const Interpreter: React.FC = () => {
 
           {/* Right Panel - Output */}
           <div className="space-y-8">
-            <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card p-8'}`}>
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-2xl bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center text-blue-500">
-                  <Play size={24} />
+            <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card'}`}>
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center text-blue-500 shadow-inner">
+                    <Play size={28} />
+                  </div>
+                  <div>
+                    <h2 className={`${getTextSize()} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'} mb-0`}>
+                      Live Translation
+                    </h2>
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
+                      Real-time output stream
+                    </p>
+                  </div>
                 </div>
-                <h2 className={`${getTextSize()} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
-                  Translation Output
-                </h2>
+                {lastUpdateTime && (
+                  <div className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest border border-slate-200/50 dark:border-slate-700/50">
+                    Updated {lastUpdateTime}
+                  </div>
+                )}
               </div>
               
-              <div className={`min-h-[160px] p-6 rounded-2xl border-2 transition-all duration-500 ${
+              <div className={`min-h-[200px] p-8 rounded-[1.5rem] border-2 transition-all duration-500 flex items-center justify-center ${
                 accessibility.highContrast 
                   ? 'bg-black border-yellow-400 text-yellow-200' 
-                  : 'bg-slate-50/50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800 text-slate-900 dark:text-white shadow-inner'
+                  : 'bg-white/40 dark:bg-slate-950/40 border-slate-100/50 dark:border-slate-800/50 text-slate-900 dark:text-white shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)] dark:shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)]'
               }`}>
                 {translationText ? (
-                  <p className={`${getTextSize()} font-semibold leading-relaxed animate-fade-in`}>
-                    {translationText}
-                  </p>
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full space-y-3 py-6 opacity-40">
-                    <div className="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-800 animate-pulse" />
-                    <p className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-medium italic ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500'}`}>
-                      {currentSession.direction === 'sign_to_speech' 
-                        ? 'Sign to begin translation...' 
-                        : 'Speak to begin translation...'
-                      }
+                  <div className="w-full">
+                    <p className={`${accessibility.largeText ? 'text-4xl' : 'text-3xl'} font-bold leading-tight animate-fade-in text-center bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent`}>
+                      {translationText}
                     </p>
+                    {confidence > 0 && (
+                      <div className="mt-6 flex items-center justify-center gap-2">
+                        <div className="h-1.5 w-32 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full transition-all duration-1000 ${
+                              confidence >= 0.7 ? 'bg-emerald-500' : confidence >= 0.4 ? 'bg-amber-500' : 'bg-rose-500'
+                            }`}
+                            style={{ width: `${confidence * 100}%` }}
+                          />
+                        </div>
+                        <span className={`text-xs font-black uppercase tracking-widest ${getConfidenceColor(confidence)}`}>
+                          {Math.round(confidence * 100)}% Match
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full space-y-4 py-10 opacity-40">
+                    <div className="w-16 h-16 rounded-full bg-slate-200 dark:bg-slate-800 animate-pulse flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-full bg-slate-300 dark:bg-slate-700 animate-ping" />
+                    </div>
+                    <div className="text-center">
+                      <p className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500'}`}>
+                        {currentSession.direction === 'sign_to_speech' 
+                          ? 'Waiting for sign...' 
+                          : 'Waiting for speech...'
+                        }
+                      </p>
+                      <p className="text-sm font-medium text-slate-400 dark:text-slate-600 mt-1">
+                        System is ready and listening
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
             </div>
 
             {currentSession.direction === 'speech_to_sign' && (
-              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card p-8'}`}>
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-500">
-                      <Eye size={24} />
+              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card'}`}>
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-500 shadow-inner">
+                      <Eye size={28} />
                     </div>
-                    <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
-                      Sign Playback
-                    </h3>
+                    <div>
+                      <h3 className={`${accessibility.largeText ? 'text-2xl' : 'text-xl'} font-bold ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'} mb-0`}>
+                        Sign Visualization
+                      </h3>
+                      <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
+                        GSL dictionary-based animation
+                      </p>
+                    </div>
                   </div>
                   {signSequence.length > 0 && (
-                    <div className="px-4 py-1.5 rounded-full bg-blue-100 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-wider">
-                      Word {currentSignIndex + 1} of {signSequence.length}
+                    <div className="px-4 py-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-black uppercase tracking-widest border border-blue-500/20">
+                      WORD {currentSignIndex + 1} / {signSequence.length}
                     </div>
                   )}
                 </div>
