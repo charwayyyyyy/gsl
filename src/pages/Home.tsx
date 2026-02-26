@@ -75,12 +75,12 @@ export default function Home() {
           </p>
 
           <div className="flex flex-wrap justify-center gap-4">
-            <div className="px-6 py-3 rounded-2xl glass-card text-blue-400 font-semibold flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+            <div className="px-6 py-3 rounded-2xl bg-blue-600 text-white font-semibold flex items-center gap-2 shadow-lg shadow-blue-500/30">
+              <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
               Live Translation
             </div>
-            <div className="px-6 py-3 rounded-2xl glass-card text-emerald-400 font-semibold flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="px-6 py-3 rounded-2xl bg-emerald-600 text-white font-semibold flex items-center gap-2 shadow-lg shadow-emerald-500/30">
+              <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
               Authentic GSL
             </div>
           </div>
@@ -104,16 +104,16 @@ export default function Home() {
                 <feature.icon className={`w-10 h-10 text-${feature.color}-400`} />
               </div>
               
-              <h3 className={`relative z-10 font-bold text-white mb-4 ${accessibility.largeText ? 'text-3xl' : 'text-2xl'}`}>
+              <h3 className={`relative z-10 font-bold text-slate-900 dark:text-white mb-4 ${accessibility.largeText ? 'text-3xl' : 'text-2xl'}`}>
                 {feature.title}
               </h3>
               
-              <p className={`relative z-10 text-slate-400 leading-relaxed ${accessibility.largeText ? 'text-xl' : 'text-lg'}`}>
+              <p className={`relative z-10 text-slate-700 dark:text-slate-200 leading-relaxed mb-0 ${accessibility.largeText ? 'text-xl' : 'text-base'}`}>
                 {feature.desc}
               </p>
 
-              <div className="mt-8 pt-8 border-t border-white/5 w-full relative z-10">
-                <span className="text-xs font-bold tracking-[0.2em] text-blue-500/50 uppercase group-hover:text-blue-400 transition-colors">
+              <div className="mt-8 pt-8 border-t border-slate-200 dark:border-white/10 w-full relative z-10">
+                <span className="text-xs font-bold tracking-[0.2em] text-blue-600 dark:text-blue-400 uppercase group-hover:text-blue-500 dark:group-hover:text-blue-300 transition-colors">
                   Enterprise Grade
                 </span>
               </div>
@@ -136,7 +136,7 @@ export default function Home() {
             </p>
           </div>
           
-          <div className="flex items-center gap-4 text-slate-500 text-sm font-bold tracking-widest uppercase">
+          <div className="flex items-center gap-4 text-slate-300 text-sm font-bold tracking-widest uppercase">
             <span>Privacy Focused</span>
             <span className="w-1 h-1 rounded-full bg-slate-700" />
             <span>Secure Data</span>

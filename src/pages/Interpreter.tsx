@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX, ChevronLeft, ChevronRight, Play, Pause, AlertTriangle, BookOpen, User } from 'lucide-react'
+import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX, ChevronLeft, ChevronRight, Play, Pause, AlertTriangle, BookOpen, User, Lightbulb } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useWebRTC, useWebSocket } from '../hooks/useWebRTC'
 import VideoCapture from '../components/VideoCapture'
 import AudioCapture from '../components/AudioCapture'
 import Avatar3D from '../components/Avatar3D'
+import SmartTipsOverlay from '../components/SmartTipsOverlay'
 
 interface SignPrimitives {
   direction: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT' | 'FORWARD' | 'CIRCULAR' | 'TAP' | 'HOLD' | 'NONE'
@@ -68,6 +69,13 @@ const Interpreter: React.FC = () => {
   const [avatarStatus, setAvatarStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null)
   const [avatarKeyframes, setAvatarKeyframes] = useState<any[] | null>(null)
+
+  // Smart Tips state
+  const [showSmartTips, setShowSmartTips] = useState(true)
+  const [livePredictedGloss, setLivePredictedGloss] = useState<string | null>(null)
+  const [livePredictedConf, setLivePredictedConf] = useState(0)
+  const [liveTopMatches, setLiveTopMatches] = useState<Array<{ gloss: string; confidence: number }>>([])
+  const [livePrimitives, setLivePrimitives] = useState<SignPrimitives | null>(null)
   
   const { startTranslationSession, endTranslationSession, setLastTranslation } = useAppStore.getState()
   
@@ -377,17 +385,60 @@ const Interpreter: React.FC = () => {
       if (message.type === 'pose_data') {
         // Process pose data for sign recognition
         setConfidence(message.confidence || 0)
-        if (message.landmarks) {
-          // Simulate translation based on pose data
-          const mockTranslation = {
-            input: 'GSL signs detected',
-            output: 'Hello, how are you?',
-            confidence: message.confidence || 0.85,
-            timestamp: Date.now()
+
+        // === Smart Tips: parse live prediction from backend ===
+        const gloss = message.predicted_gloss && message.predicted_gloss !== 'UNKNOWN'
+          ? String(message.predicted_gloss)
+          : null
+        const conf = typeof message.predicted_confidence === 'number' ? message.predicted_confidence : 0
+        const tops: Array<{ gloss: string; confidence: number }> = Array.isArray(message.top_matches)
+          ? message.top_matches
+          : []
+
+        setLivePredictedGloss(gloss)
+        setLivePredictedConf(conf)
+        setLiveTopMatches(tops)
+
+        // Fetch primitives for the detected gloss (use cache)
+        if (gloss && conf >= 0.35) {
+          const key = gloss.toLowerCase()
+          if (dictionaryCache[key]?.primitives) {
+            const cached = dictionaryCache[key].primitives
+            setLivePrimitives({
+              direction: cached.direction || 'NONE',
+              repetition: cached.repetition || 'SINGLE',
+              handshape: cached.handshape || 'UNKNOWN',
+              location: cached.location || 'UNKNOWN',
+              two_hands: Boolean(cached.two_hands),
+              facial: Boolean(cached.facial),
+              can_animate: Boolean(cached.can_animate),
+            })
+          } else {
+            // Async fetch & cache
+            fetch(`http://localhost:8000/api/dictionary/search?q=${encodeURIComponent(key)}`)
+              .then(r => r.ok ? r.json() : null)
+              .then(data => {
+                if (data) {
+                  dictionaryCache[key] = data
+                  if (data.primitives) {
+                    setLivePrimitives({
+                      direction: data.primitives.direction || 'NONE',
+                      repetition: data.primitives.repetition || 'SINGLE',
+                      handshape: data.primitives.handshape || 'UNKNOWN',
+                      location: data.primitives.location || 'UNKNOWN',
+                      two_hands: Boolean(data.primitives.two_hands),
+                      facial: Boolean(data.primitives.facial),
+                      can_animate: Boolean(data.primitives.can_animate),
+                    })
+                  }
+                }
+              })
+              .catch(() => {})
           }
-          setLastTranslation(mockTranslation)
-          setTranslationText(mockTranslation.output)
+        } else {
+          setLivePrimitives(null)
         }
+        // =====================================================
       }
     }
   }, [videoSocket.lastMessage, setLastTranslation])
@@ -645,6 +696,13 @@ const Interpreter: React.FC = () => {
                   label: showAvatar ? 'Hide Avatar' : 'Show Avatar',
                   activeClass: 'bg-indigo-500 text-white shadow-indigo-500/20'
                 },
+                {
+                  icon: Lightbulb,
+                  onClick: () => setShowSmartTips(p => !p),
+                  active: showSmartTips,
+                  label: showSmartTips ? 'Hide Smart Tips' : 'Show Smart Tips',
+                  activeClass: 'bg-amber-400 text-black shadow-amber-400/20'
+                },
                 { 
                   icon: Settings, 
                   onClick: () => navigate('/settings'),
@@ -693,12 +751,22 @@ const Interpreter: React.FC = () => {
               
               <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-slate-900">
                 {currentSession.direction === 'sign_to_speech' ? (
-                  <VideoCapture
-                    onFrameCapture={handleVideoFrame}
-                    showLandmarks={visual.showLandmarks}
-                    showConfidence={visual.showConfidence}
-                    className="w-full h-[400px] object-cover"
-                  />
+                  <>
+                    <VideoCapture
+                      onFrameCapture={handleVideoFrame}
+                      showLandmarks={visual.showLandmarks}
+                      showConfidence={visual.showConfidence}
+                      className="w-full h-[400px] object-cover"
+                    />
+                    <SmartTipsOverlay
+                      predictedGloss={livePredictedGloss}
+                      predictedConfidence={livePredictedConf}
+                      primitives={livePrimitives}
+                      topMatches={liveTopMatches}
+                      highContrast={accessibility.highContrast}
+                      visible={showSmartTips}
+                    />
+                  </>
                 ) : (
                   <div className="p-10">
                     <AudioCapture
