@@ -10,8 +10,8 @@ const DirectionSelection: React.FC<DirectionSelectionProps> = ({ onDirectionSele
   const { showAccessibilityPanel, toggleAccessibilityPanel } = useAppStore()
   const { accessibility } = useAppStore(state => state.settings)
   
-  const textSizeClass = accessibility.largeText ? 'text-2xl' : 'text-xl'
-  const buttonSizeClass = accessibility.largeText ? 'w-full md:w-80 h-80' : 'w-full md:w-72 h-72'
+  const textSizeClass = accessibility.largeText ? 'text-2xl sm:text-3xl' : 'text-xl sm:text-2xl'
+  const buttonSizeClass = accessibility.largeText ? 'w-full h-72 lg:h-80' : 'w-full h-64 sm:h-72'
   
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 md:p-12 relative overflow-hidden">
@@ -30,7 +30,7 @@ const DirectionSelection: React.FC<DirectionSelectionProps> = ({ onDirectionSele
       </div>
 
       {/* Main Direction Selection */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-16 w-full max-w-6xl relative z-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 mb-16 w-full max-w-6xl relative z-10">
         {/* Sign to Speech */}
         <button
           onClick={() => onDirectionSelect('sign_to_speech')}

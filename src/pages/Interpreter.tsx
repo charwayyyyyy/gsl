@@ -629,11 +629,11 @@ const Interpreter: React.FC = () => {
   }, [currentSession?.direction, signSequence, currentSignIndex])
 
   const getTextSize = () => {
-    return accessibility.largeText ? 'text-3xl' : 'text-2xl'
+    return accessibility.largeText ? 'text-2xl sm:text-3xl' : 'text-xl sm:text-2xl'
   }
 
   const getButtonSize = () => {
-    return accessibility.largeText ? 'w-16 h-16' : 'w-12 h-12'
+    return accessibility.largeText ? 'w-12 h-12 sm:w-16 sm:h-16' : 'w-10 h-10 sm:w-12 sm:h-12'
   }
 
   const getConfidenceColor = (level: number) => {
@@ -676,8 +676,8 @@ const Interpreter: React.FC = () => {
       {/* Header */}
       <div className={`sticky top-0 z-50 ${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-b-2' : 'glass border-b border-white/20'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <div className="flex items-center gap-6">
+          <div className="flex items-center justify-between h-auto min-h-[5rem] py-3 flex-wrap gap-y-4">
+            <div className="flex items-center gap-3 sm:gap-6">
               <button
                 onClick={() => navigate('/')}
                 className={`
@@ -707,7 +707,7 @@ const Interpreter: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {[
                 { 
                   icon: isMuted ? VolumeX : Volume2, 
