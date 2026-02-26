@@ -47,7 +47,7 @@ export default function Home() {
   ]
 
   return (
-    <div className={`min-h-screen relative overflow-hidden flex flex-col items-center p-4 md:p-8 ${
+    <div className={`dark min-h-screen relative overflow-hidden flex flex-col items-center p-4 md:p-8 ${
       accessibility.highContrast ? 'bg-black' : 'bg-[#050505]'
     }`}>
       {/* Background Orbs */}
@@ -68,7 +68,7 @@ export default function Home() {
           </div>
           
           <h1 className={`font-bold tracking-tight text-white mb-8 leading-[1.1] ${
-            accessibility.largeText ? 'text-7xl md:text-8xl' : 'text-6xl md:text-7xl'
+            accessibility.largeText ? 'text-4xl sm:text-7xl md:text-8xl' : 'text-3xl sm:text-6xl md:text-7xl'
           }`}>
             Ghana Sign Language <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 animate-gradient-x">
@@ -77,7 +77,7 @@ export default function Home() {
           </h1>
           
           <p className={`max-w-3xl mx-auto text-slate-400 leading-relaxed mb-12 ${
-            accessibility.largeText ? 'text-2xl' : 'text-xl'
+            accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'
           }`}>
             Breaking barriers with real-time sign language translation. 
             Experience the future of inclusive communication powered by advanced AI.
@@ -111,15 +111,15 @@ export default function Home() {
                 ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}
               `}
             >
-              <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-8 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 ${accessibility.highContrast ? feature.hcBgClass : feature.bgClass}`}>
-                <feature.icon className={`${accessibility.largeText ? 'w-14 h-14' : 'w-12 h-12'} ${accessibility.highContrast ? feature.hcTextClass : feature.textClass}`} />
+              <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl flex items-center justify-center mb-6 sm:mb-8 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 ${accessibility.highContrast ? feature.hcBgClass : feature.bgClass}`}>
+                <feature.icon className={`${accessibility.largeText ? 'w-10 h-10 sm:w-14 sm:h-14' : 'w-8 h-8 sm:w-12 sm:h-12'} ${accessibility.highContrast ? feature.hcTextClass : feature.textClass}`} />
               </div>
               
               <div className="text-center">
-                <h3 className={`${accessibility.largeText ? 'text-2xl' : 'text-xl'} font-bold mb-3 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                <h3 className={`${accessibility.largeText ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'} font-bold mb-3 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
                   {feature.title}
                 </h3>
-                <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-slate-500 dark:text-slate-400'}`}>
+                <p className={`${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-slate-500 dark:text-slate-400'}`}>
                   {feature.desc}
                 </p>
               </div>
