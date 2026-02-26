@@ -474,7 +474,7 @@ const Interpreter: React.FC = () => {
   }, [audioSocket.lastMessage, currentSession?.direction, runTextToSignPipeline])
 
   useEffect(() => {
-    if (currentSession?.direction !== 'speech_to_sign') {
+    if (currentSession?.direction !== 'speech_to_sign' && currentSession?.direction !== 'text_to_sign') {
       setAvatarStatus('idle')
       setAvatarMessage(null)
       setAvatarKeyframes(null)
@@ -693,9 +693,8 @@ const Interpreter: React.FC = () => {
               >
                 <ArrowLeft className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
               </button>
-              
-              <div>
-                <h1 className={`${getTextSize()} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+              <div className="translate-y-1">
+                <h1 className={`${getTextSize()} font-bold tracking-tight leading-none mb-1 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
                   {currentSession.direction === 'sign_to_speech' 
                     ? 'Sign → Speech' 
                     : currentSession.direction === 'speech_to_sign' 
@@ -808,11 +807,48 @@ const Interpreter: React.FC = () => {
                     />
                   </div>
                 ) : (
-                  <div className="p-8 pb-12 text-center bg-purple-900/10">
-                    <Keyboard className="w-16 h-16 mx-auto mb-4 text-purple-500 opacity-50" />
-                    <p className={`text-lg font-medium ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-400'}`}>
-                      Type your text below to translate to Sign Language
-                    </p>
+                  <div className="p-8 pb-10 bg-purple-900/10 space-y-4 border-t border-purple-500/20">
+                    <textarea
+                      id="primary-text-input"
+                      value={manualInput}
+                      onChange={e => setManualInput(e.target.value)}
+                      rows={accessibility.largeText ? 6 : 5}
+                      className={`
+                        w-full rounded-2xl border-2 px-6 py-5 transition-all duration-300
+                        ${accessibility.highContrast
+                          ? 'bg-black border-yellow-400 text-yellow-200 placeholder-yellow-500'
+                          : 'bg-white/80 dark:bg-slate-900/80 border-purple-200 dark:border-purple-800/50 text-slate-900 dark:text-white placeholder-slate-400 focus:border-purple-500 dark:focus:border-purple-400 shadow-inner'
+                        }
+                        focus:outline-none focus:ring-4 focus:ring-purple-500/20
+                        ${accessibility.largeText ? 'text-2xl' : 'text-xl'}
+                      `}
+                      placeholder="Type exactly what you want to translate here..."
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const text = manualInput.trim()
+                        if (!text) return
+                        setSilenceMessage(null)
+                        setSpeechError(null)
+                        setRecognitionTier('manual')
+                        runTextToSignPipeline(text, 'manual', 0.9)
+                      }}
+                      className={`
+                        w-full flex items-center justify-center gap-3 px-8 py-5 rounded-2xl font-bold shadow-lg
+                        ${accessibility.highContrast
+                          ? 'bg-yellow-400 text-black hover:bg-yellow-500'
+                          : 'bg-purple-600 text-white hover:bg-purple-500 shadow-purple-500/25'
+                        }
+                        transform hover:-translate-y-1 active:scale-95 transition-all duration-300
+                        focus:outline-none focus:ring-4 focus:ring-purple-300/50
+                        ${accessibility.largeText ? 'text-2xl' : 'text-xl'}
+                      `}
+                    >
+                      <Keyboard className="w-7 h-7" />
+                      Translate to Sign Language
+                    </button>
                   </div>
                 )}
               </div>
@@ -869,18 +905,16 @@ const Interpreter: React.FC = () => {
               </div>
             )}
 
-            {(currentSession.direction === 'speech_to_sign' || currentSession.direction === 'text_to_sign') && (
+            {currentSession.direction === 'speech_to_sign' && (
               <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card p-8'}`}>
-                {currentSession.direction === 'speech_to_sign' && (
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-500">
-                      <Volume2 size={24} />
-                    </div>
-                    <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
-                      Speech Controls & Fallback
-                    </h3>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-500">
+                    <Volume2 size={24} />
                   </div>
-                )}
+                  <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                    Speech Controls & Fallback
+                  </h3>
+                </div>
 
                 {speechError && (
                   <div className={`mb-6 flex items-start gap-3 rounded-2xl p-4 ${
@@ -948,13 +982,12 @@ const Interpreter: React.FC = () => {
                         transform hover:scale-105 active:scale-95 transition-all duration-300
                         focus:outline-none focus:ring-4 focus:ring-blue-300/50
                         ${accessibility.largeText ? 'text-lg' : 'text-base'}
-                        ${currentSession.direction === 'text_to_sign' ? 'w-full text-xl py-4' : ''}
                       `}
                     >
                       Translate Text
                     </button>
 
-                    {supportsBrowserRecognition && currentSession.direction === 'speech_to_sign' && (
+                    {supportsBrowserRecognition && (
                       <button
                         type="button"
                         onClick={() => {
@@ -1352,12 +1385,12 @@ const Interpreter: React.FC = () => {
                   )}
 
                   {(avatarStatus === 'idle' || avatarStatus === 'error' || !avatarKeyframes || avatarKeyframes.length === 0) && (
-                    <div className="rounded-xl p-4 text-center bg-gray-50 border border-gray-200">
+                    <div className={`rounded-xl p-4 text-center border transition-colors ${accessibility.highContrast ? 'bg-black border-yellow-400' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50'}`}>
                       <div className="text-6xl mb-4">🤟</div>
-                      <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-700'}`}>
+                      <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-700 dark:text-slate-300'}`}>
                         {avatarMessage || 'Avatar will activate only for signs that exist in the dictionary.'}
                       </p>
-                      <p className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-200' : 'text-gray-500'} mt-2`}>
+                      <p className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-200' : 'text-slate-500 dark:text-slate-400'} mt-2`}>
                         Dictionary pages remain the primary reference for sign accuracy.
                       </p>
                     </div>

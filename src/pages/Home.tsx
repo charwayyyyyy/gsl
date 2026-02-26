@@ -18,22 +18,31 @@ export default function Home() {
       title: 'Real-time', 
       desc: 'Instant translation between GSL and speech with low latency.', 
       icon: Zap, 
-      color: 'blue',
-      gradient: 'from-blue-500/20 to-indigo-500/20'
+      bgClass: 'bg-blue-100 dark:bg-blue-900/30',
+      textClass: 'text-blue-600 dark:text-blue-400',
+      hcBgClass: 'bg-white',
+      hcTextClass: 'text-blue-700',
+      hoverBorder: 'hover:border-blue-400/50'
     },
     { 
       title: 'Accessible', 
       desc: 'Inclusive design with high contrast and font size options.', 
       icon: Accessibility, 
-      color: 'indigo',
-      gradient: 'from-indigo-500/20 to-purple-500/20'
+      bgClass: 'bg-indigo-100 dark:bg-indigo-900/30',
+      textClass: 'text-indigo-600 dark:text-indigo-400',
+      hcBgClass: 'bg-white',
+      hcTextClass: 'text-indigo-700',
+      hoverBorder: 'hover:border-indigo-400/50'
     },
     { 
       title: 'Reliable', 
       desc: 'Built on authentic GSL datasets for maximum accuracy.', 
       icon: Shield, 
-      color: 'purple',
-      gradient: 'from-purple-500/20 to-pink-500/20'
+      bgClass: 'bg-purple-100 dark:bg-purple-900/30',
+      textClass: 'text-purple-600 dark:text-purple-400',
+      hcBgClass: 'bg-white',
+      hcTextClass: 'text-purple-700',
+      hoverBorder: 'hover:border-purple-400/50'
     }
   ]
 
@@ -92,30 +101,27 @@ export default function Home() {
         </div>
 
         {/* Feature Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full animate-slide-up mb-20">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-20 w-full relative z-10 animate-slide-up">
           {features.map((feature, i) => (
             <div 
               key={i} 
-              className="glass-card group p-10 flex flex-col items-center text-center hover:shadow-glass-hover transition-all duration-700 hover:-translate-y-3 relative overflow-hidden"
+              className={`
+                glass-card flex flex-col items-center justify-center p-8 text-center
+                ${feature.hoverBorder} group transition-all duration-500 hover:-translate-y-2
+                ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}
+              `}
             >
-              <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
-              
-              <div className={`relative z-10 w-20 h-20 mb-8 rounded-[2rem] bg-${feature.color}-500/10 flex items-center justify-center border border-${feature.color}-500/20 group-hover:scale-110 group-hover:rotate-6 transition-all duration-700 shadow-glass`}>
-                <feature.icon className={`w-10 h-10 text-${feature.color}-400`} />
+              <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-8 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 ${accessibility.highContrast ? feature.hcBgClass : feature.bgClass}`}>
+                <feature.icon className={`${accessibility.largeText ? 'w-14 h-14' : 'w-12 h-12'} ${accessibility.highContrast ? feature.hcTextClass : feature.textClass}`} />
               </div>
               
-              <h3 className={`relative z-10 font-bold text-slate-900 dark:text-white mb-4 ${accessibility.largeText ? 'text-3xl' : 'text-2xl'}`}>
-                {feature.title}
-              </h3>
-              
-              <p className={`relative z-10 text-slate-700 dark:text-slate-200 leading-relaxed mb-0 ${accessibility.largeText ? 'text-xl' : 'text-base'}`}>
-                {feature.desc}
-              </p>
-
-              <div className="mt-8 pt-8 border-t border-slate-200 dark:border-white/10 w-full relative z-10">
-                <span className="text-xs font-bold tracking-[0.2em] text-blue-600 dark:text-blue-400 uppercase group-hover:text-blue-500 dark:group-hover:text-blue-300 transition-colors">
-                  Enterprise Grade
-                </span>
+              <div className="text-center">
+                <h3 className={`${accessibility.largeText ? 'text-2xl' : 'text-xl'} font-bold mb-3 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                  {feature.title}
+                </h3>
+                <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-slate-500 dark:text-slate-400'}`}>
+                  {feature.desc}
+                </p>
               </div>
             </div>
           ))}

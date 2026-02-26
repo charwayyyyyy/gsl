@@ -41,14 +41,14 @@ const DirectionSelection: React.FC<DirectionSelectionProps> = ({ onDirectionSele
           `}
           aria-label="Sign Language to Speech - I am Deaf/Hard of Hearing"
         >
-          <div className="w-24 h-24 rounded-3xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-8 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
-            <Hand className={`${accessibility.largeText ? 'w-14 h-14' : 'w-12 h-12'} text-blue-600 dark:text-blue-400`} />
+          <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-8 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 ${accessibility.highContrast ? 'bg-white' : 'bg-blue-100 dark:bg-blue-900/30'}`}>
+            <Hand className={`${accessibility.largeText ? 'w-14 h-14' : 'w-12 h-12'} ${accessibility.highContrast ? 'text-blue-700' : 'text-blue-600 dark:text-blue-400'}`} />
           </div>
           <div className="text-center">
-            <h2 className={`${textSizeClass} font-bold text-slate-900 dark:text-white mb-3`}>
+            <h2 className={`${textSizeClass} font-bold mb-3 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
               Sign → Speech
             </h2>
-            <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} text-slate-500 dark:text-slate-400 font-medium`}>
+            <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-slate-500 dark:text-slate-400'}`}>
               I am Deaf/Hard of Hearing
             </p>
           </div>
@@ -64,14 +64,14 @@ const DirectionSelection: React.FC<DirectionSelectionProps> = ({ onDirectionSele
           `}
           aria-label="Speech to Sign Language - I am Hearing"
         >
-          <div className="w-24 h-24 rounded-3xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center mb-8 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[-3deg]">
-            <Mic className={`${accessibility.largeText ? 'w-14 h-14' : 'w-12 h-12'} text-emerald-600 dark:text-emerald-400`} />
+          <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-8 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[-3deg] ${accessibility.highContrast ? 'bg-white' : 'bg-emerald-100 dark:bg-emerald-900/30'}`}>
+            <Mic className={`${accessibility.largeText ? 'w-14 h-14' : 'w-12 h-12'} ${accessibility.highContrast ? 'text-emerald-700' : 'text-emerald-600 dark:text-emerald-400'}`} />
           </div>
           <div className="text-center">
-            <h2 className={`${textSizeClass} font-bold text-slate-900 dark:text-white mb-3`}>
+            <h2 className={`${textSizeClass} font-bold mb-3 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
               Speech → Sign
             </h2>
-            <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} text-slate-500 dark:text-slate-400 font-medium`}>
+            <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-slate-500 dark:text-slate-400'}`}>
               I am Hearing
             </p>
           </div>
@@ -86,14 +86,14 @@ const DirectionSelection: React.FC<DirectionSelectionProps> = ({ onDirectionSele
           `}
           aria-label="Text to Sign Language - Type to Translate"
         >
-          <div className="w-24 h-24 rounded-3xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mb-8 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
-            <Keyboard className={`${accessibility.largeText ? 'w-14 h-14' : 'w-12 h-12'} text-purple-600 dark:text-purple-400`} />
+          <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-8 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 ${accessibility.highContrast ? 'bg-white' : 'bg-purple-100 dark:bg-purple-900/30'}`}>
+            <Keyboard className={`${accessibility.largeText ? 'w-14 h-14' : 'w-12 h-12'} ${accessibility.highContrast ? 'text-purple-700' : 'text-purple-600 dark:text-purple-400'}`} />
           </div>
           <div className="text-center">
-            <h2 className={`${textSizeClass} font-bold text-slate-900 dark:text-white mb-3`}>
+            <h2 className={`${textSizeClass} font-bold mb-3 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
               Text → Sign
             </h2>
-            <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} text-slate-500 dark:text-slate-400 font-medium`}>
+            <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-slate-500 dark:text-slate-400'}`}>
               Type to Translate
             </p>
           </div>
