@@ -1,9 +1,9 @@
 import React from 'react'
-import { Hand, Mic, Settings, HelpCircle, Accessibility, Book } from 'lucide-react'
+import { Hand, Mic, Settings, HelpCircle, Accessibility, Book, Keyboard } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 
 interface DirectionSelectionProps {
-  onDirectionSelect: (direction: 'sign_to_speech' | 'speech_to_sign') => void
+  onDirectionSelect: (direction: 'sign_to_speech' | 'speech_to_sign' | 'text_to_sign') => void
 }
 
 const DirectionSelection: React.FC<DirectionSelectionProps> = ({ onDirectionSelect }) => {
@@ -30,7 +30,7 @@ const DirectionSelection: React.FC<DirectionSelectionProps> = ({ onDirectionSele
       </div>
 
       {/* Main Direction Selection */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-16 w-full max-w-5xl relative z-10">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8 mb-16 w-full max-w-6xl relative z-10">
         {/* Sign to Speech */}
         <button
           onClick={() => onDirectionSelect('sign_to_speech')}
@@ -73,6 +73,28 @@ const DirectionSelection: React.FC<DirectionSelectionProps> = ({ onDirectionSele
             </h2>
             <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} text-slate-500 dark:text-slate-400 font-medium`}>
               I am Hearing
+            </p>
+          </div>
+        </button>
+        {/* Text to Sign */}
+        <button
+          onClick={() => onDirectionSelect('text_to_sign')}
+          className={`
+            ${buttonSizeClass} glass-card flex flex-col items-center justify-center p-8
+            hover:border-purple-400/50 group
+            ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}
+          `}
+          aria-label="Text to Sign Language - Type to Translate"
+        >
+          <div className="w-24 h-24 rounded-3xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mb-8 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
+            <Keyboard className={`${accessibility.largeText ? 'w-14 h-14' : 'w-12 h-12'} text-purple-600 dark:text-purple-400`} />
+          </div>
+          <div className="text-center">
+            <h2 className={`${textSizeClass} font-bold text-slate-900 dark:text-white mb-3`}>
+              Text → Sign
+            </h2>
+            <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} text-slate-500 dark:text-slate-400 font-medium`}>
+              Type to Translate
             </p>
           </div>
         </button>
