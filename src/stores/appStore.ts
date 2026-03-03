@@ -50,7 +50,7 @@ export interface AppSettings {
 
 export interface TranslationSession {
   id: string
-  direction: 'sign_to_speech' | 'speech_to_sign'
+  direction: 'sign_to_speech' | 'speech_to_sign' | 'text_to_sign'
   startTime: number
   endTime?: number
   avgConfidence?: number
@@ -81,7 +81,7 @@ export interface AppState {
   
   // Actions
   updateSettings: (settings: Partial<AppSettings>) => void
-  startTranslationSession: (direction: 'sign_to_speech' | 'speech_to_sign') => void
+  startTranslationSession: (direction: 'sign_to_speech' | 'speech_to_sign' | 'text_to_sign') => void
   endTranslationSession: () => void
   setTranslating: (isTranslating: boolean) => void
   setLastTranslation: (translation: AppState['lastTranslation']) => void

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX, ChevronLeft, ChevronRight, Play, Pause, AlertTriangle, BookOpen, User } from 'lucide-react'
+import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX, ChevronLeft, ChevronRight, Play, Pause, AlertTriangle, BookOpen, User, Lightbulb, Keyboard } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useWebRTC, useWebSocket } from '../hooks/useWebRTC'
 import VideoCapture from '../components/VideoCapture'
 import AudioCapture from '../components/AudioCapture'
 import Avatar3D from '../components/Avatar3D'
+import SmartTipsOverlay from '../components/SmartTipsOverlay'
 
 interface SignPrimitives {
   direction: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT' | 'FORWARD' | 'CIRCULAR' | 'TAP' | 'HOLD' | 'NONE'
@@ -68,6 +69,13 @@ const Interpreter: React.FC = () => {
   const [avatarStatus, setAvatarStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null)
   const [avatarKeyframes, setAvatarKeyframes] = useState<any[] | null>(null)
+
+  // Smart Tips state
+  const [showSmartTips, setShowSmartTips] = useState(true)
+  const [livePredictedGloss, setLivePredictedGloss] = useState<string | null>(null)
+  const [livePredictedConf, setLivePredictedConf] = useState(0)
+  const [liveTopMatches, setLiveTopMatches] = useState<Array<{ gloss: string; confidence: number }>>([])
+  const [livePrimitives, setLivePrimitives] = useState<SignPrimitives | null>(null)
   
   const { startTranslationSession, endTranslationSession, setLastTranslation } = useAppStore.getState()
   
@@ -377,17 +385,60 @@ const Interpreter: React.FC = () => {
       if (message.type === 'pose_data') {
         // Process pose data for sign recognition
         setConfidence(message.confidence || 0)
-        if (message.landmarks) {
-          // Simulate translation based on pose data
-          const mockTranslation = {
-            input: 'GSL signs detected',
-            output: 'Hello, how are you?',
-            confidence: message.confidence || 0.85,
-            timestamp: Date.now()
+
+        // === Smart Tips: parse live prediction from backend ===
+        const gloss = message.predicted_gloss && message.predicted_gloss !== 'UNKNOWN'
+          ? String(message.predicted_gloss)
+          : null
+        const conf = typeof message.predicted_confidence === 'number' ? message.predicted_confidence : 0
+        const tops: Array<{ gloss: string; confidence: number }> = Array.isArray(message.top_matches)
+          ? message.top_matches
+          : []
+
+        setLivePredictedGloss(gloss)
+        setLivePredictedConf(conf)
+        setLiveTopMatches(tops)
+
+        // Fetch primitives for the detected gloss (use cache)
+        if (gloss && conf >= 0.35) {
+          const key = gloss.toLowerCase()
+          if (dictionaryCache[key]?.primitives) {
+            const cached = dictionaryCache[key].primitives
+            setLivePrimitives({
+              direction: cached.direction || 'NONE',
+              repetition: cached.repetition || 'SINGLE',
+              handshape: cached.handshape || 'UNKNOWN',
+              location: cached.location || 'UNKNOWN',
+              two_hands: Boolean(cached.two_hands),
+              facial: Boolean(cached.facial),
+              can_animate: Boolean(cached.can_animate),
+            })
+          } else {
+            // Async fetch & cache
+            fetch(`http://localhost:8000/api/dictionary/search?q=${encodeURIComponent(key)}`)
+              .then(r => r.ok ? r.json() : null)
+              .then(data => {
+                if (data) {
+                  dictionaryCache[key] = data
+                  if (data.primitives) {
+                    setLivePrimitives({
+                      direction: data.primitives.direction || 'NONE',
+                      repetition: data.primitives.repetition || 'SINGLE',
+                      handshape: data.primitives.handshape || 'UNKNOWN',
+                      location: data.primitives.location || 'UNKNOWN',
+                      two_hands: Boolean(data.primitives.two_hands),
+                      facial: Boolean(data.primitives.facial),
+                      can_animate: Boolean(data.primitives.can_animate),
+                    })
+                  }
+                }
+              })
+              .catch(() => {})
           }
-          setLastTranslation(mockTranslation)
-          setTranslationText(mockTranslation.output)
+        } else {
+          setLivePrimitives(null)
         }
+        // =====================================================
       }
     }
   }, [videoSocket.lastMessage, setLastTranslation])
@@ -423,7 +474,7 @@ const Interpreter: React.FC = () => {
   }, [audioSocket.lastMessage, currentSession?.direction, runTextToSignPipeline])
 
   useEffect(() => {
-    if (currentSession?.direction !== 'speech_to_sign') {
+    if (currentSession?.direction !== 'speech_to_sign' && currentSession?.direction !== 'text_to_sign') {
       setAvatarStatus('idle')
       setAvatarMessage(null)
       setAvatarKeyframes(null)
@@ -553,12 +604,36 @@ const Interpreter: React.FC = () => {
     }
   }, [lastTranslation?.output, currentSession?.direction, speakText, isSpeaking])
 
+  // Fetch primitives for active sign in speech-to-sign mode for Smart Tips overlay
+  useEffect(() => {
+    if (currentSession?.direction === 'speech_to_sign') {
+      if (signSequence.length > 0) {
+        // Find the actual sign being shown right now
+        let currentSign = signSequence[currentSignIndex]
+        
+        // If avatar isn't visible, we fall back to index 0 if not playing, but autoPlay effectively drives currentSignIndex
+        if (currentSign && currentSign.status === 'matched') {
+           setLivePredictedGloss(currentSign.gloss || currentSign.word)
+           setLivePredictedConf(1.0)
+           setLiveTopMatches([])
+           setLivePrimitives(currentSign.primitives || null)
+        } else {
+           setLivePredictedGloss(null)
+           setLivePrimitives(null)
+        }
+      } else {
+         setLivePredictedGloss(null)
+         setLivePrimitives(null)
+      }
+    }
+  }, [currentSession?.direction, signSequence, currentSignIndex])
+
   const getTextSize = () => {
-    return accessibility.largeText ? 'text-3xl' : 'text-2xl'
+    return accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'
   }
 
   const getButtonSize = () => {
-    return accessibility.largeText ? 'w-16 h-16' : 'w-12 h-12'
+    return accessibility.largeText ? 'w-12 h-12 sm:w-16 sm:h-16' : 'w-10 h-10 sm:w-12 sm:h-12'
   }
 
   const getConfidenceColor = (level: number) => {
@@ -601,8 +676,8 @@ const Interpreter: React.FC = () => {
       {/* Header */}
       <div className={`sticky top-0 z-50 ${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-b-2' : 'glass border-b border-white/20'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <div className="flex items-center gap-6">
+          <div className="flex items-center justify-between h-auto min-h-[4rem] sm:min-h-[5rem] py-2 sm:py-3 flex-wrap gap-y-3 sm:gap-y-4">
+            <div className="flex items-center gap-3 sm:gap-6">
               <button
                 onClick={() => navigate('/')}
                 className={`
@@ -616,20 +691,23 @@ const Interpreter: React.FC = () => {
                 `}
                 aria-label="Go back to home"
               >
-                <ArrowLeft className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
+                <ArrowLeft className={`${accessibility.largeText ? 'w-6 h-6 sm:w-8 sm:h-8' : 'w-5 h-5 sm:w-6 sm:h-6'}`} />
               </button>
-              
-              <div>
-                <h1 className={`${getTextSize()} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
-                  {currentSession.direction === 'sign_to_speech' ? 'Sign → Speech' : 'Speech → Sign'}
+              <div className="translate-y-0.5 sm:translate-y-1">
+                <h1 className={`${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'} font-bold tracking-tight leading-none mb-0.5 sm:mb-1 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                  {currentSession.direction === 'sign_to_speech' 
+                    ? 'Sign → Speech' 
+                    : currentSession.direction === 'speech_to_sign' 
+                    ? 'Speech → Sign'
+                    : 'Text → Sign'}
                 </h1>
-                <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} font-medium ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500 dark:text-slate-400'}`}>
+                <p className={`${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-[10px] sm:text-sm'} font-medium ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500 dark:text-slate-400'}`}>
                   Premium Translation Experience
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {[
                 { 
                   icon: isMuted ? VolumeX : Volume2, 
@@ -644,6 +722,13 @@ const Interpreter: React.FC = () => {
                   active: showAvatar,
                   label: showAvatar ? 'Hide Avatar' : 'Show Avatar',
                   activeClass: 'bg-indigo-500 text-white shadow-indigo-500/20'
+                },
+                {
+                  icon: Lightbulb,
+                  onClick: () => setShowSmartTips(p => !p),
+                  active: showSmartTips,
+                  label: showSmartTips ? 'Hide Smart Tips' : 'Show Smart Tips',
+                  activeClass: 'bg-amber-400 text-black shadow-amber-400/20'
                 },
                 { 
                   icon: Settings, 
@@ -687,25 +772,83 @@ const Interpreter: React.FC = () => {
               <div className="flex items-center gap-3 mb-6">
                 <div className={`w-3 h-3 rounded-full animate-pulse ${currentSession.direction === 'sign_to_speech' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
                 <h2 className={`${getTextSize()} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
-                  {currentSession.direction === 'sign_to_speech' ? 'Sign Language Input' : 'Speech Input'}
+                  {currentSession.direction === 'sign_to_speech' 
+                    ? 'Sign Language Input' 
+                    : currentSession.direction === 'speech_to_sign'
+                    ? 'Speech Input'
+                    : 'Text Input'}
                 </h2>
               </div>
               
               <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-slate-900">
                 {currentSession.direction === 'sign_to_speech' ? (
-                  <VideoCapture
-                    onFrameCapture={handleVideoFrame}
-                    showLandmarks={visual.showLandmarks}
-                    showConfidence={visual.showConfidence}
-                    className="w-full h-[400px] object-cover"
-                  />
-                ) : (
+                  <>
+                    <VideoCapture
+                      onFrameCapture={handleVideoFrame}
+                      showLandmarks={visual.showLandmarks}
+                      showConfidence={visual.showConfidence}
+                      className="w-full h-[400px] object-cover"
+                    />
+                    <SmartTipsOverlay
+                      predictedGloss={livePredictedGloss}
+                      predictedConfidence={livePredictedConf}
+                      primitives={livePrimitives}
+                      topMatches={liveTopMatches}
+                      highContrast={accessibility.highContrast}
+                      visible={showSmartTips}
+                    />
+                  </>
+                ) : currentSession.direction === 'speech_to_sign' ? (
                   <div className="p-10">
                     <AudioCapture
                       onAudioData={handleAudioData}
                       showLevel={true}
                       className="w-full"
                     />
+                  </div>
+                ) : (
+                  <div className="p-8 pb-10 bg-purple-900/10 space-y-4 border-t border-purple-500/20">
+                    <textarea
+                      id="primary-text-input"
+                      value={manualInput}
+                      onChange={e => setManualInput(e.target.value)}
+                      rows={accessibility.largeText ? 6 : 5}
+                      className={`
+                        w-full rounded-2xl border-2 px-6 py-5 transition-all duration-300
+                        ${accessibility.highContrast
+                          ? 'bg-black border-yellow-400 text-yellow-200 placeholder-yellow-500'
+                          : 'bg-white/80 dark:bg-slate-900/80 border-purple-200 dark:border-purple-800/50 text-slate-900 dark:text-white placeholder-slate-400 focus:border-purple-500 dark:focus:border-purple-400 shadow-inner'
+                        }
+                        focus:outline-none focus:ring-4 focus:ring-purple-500/20
+                        ${accessibility.largeText ? 'text-2xl' : 'text-xl'}
+                      `}
+                      placeholder="Type exactly what you want to translate here..."
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const text = manualInput.trim()
+                        if (!text) return
+                        setSilenceMessage(null)
+                        setSpeechError(null)
+                        setRecognitionTier('manual')
+                        runTextToSignPipeline(text, 'manual', 0.9)
+                      }}
+                      className={`
+                        w-full flex items-center justify-center gap-3 px-8 py-5 rounded-2xl font-bold shadow-lg
+                        ${accessibility.highContrast
+                          ? 'bg-yellow-400 text-black hover:bg-yellow-500'
+                          : 'bg-purple-600 text-white hover:bg-purple-500 shadow-purple-500/25'
+                        }
+                        transform hover:-translate-y-1 active:scale-95 transition-all duration-300
+                        focus:outline-none focus:ring-4 focus:ring-purple-300/50
+                        ${accessibility.largeText ? 'text-2xl' : 'text-xl'}
+                      `}
+                    >
+                      <Keyboard className="w-7 h-7" />
+                      Translate to Sign Language
+                    </button>
                   </div>
                 )}
               </div>
@@ -816,7 +959,7 @@ const Interpreter: React.FC = () => {
                       focus:outline-none focus:ring-4 focus:ring-blue-500/20
                       ${accessibility.largeText ? 'text-lg' : 'text-base'}
                     `}
-                    placeholder="Type what was said here if the microphone has trouble..."
+                    placeholder={currentSession.direction === 'text_to_sign' ? "Type exactly what you want to translate here..." : "Type what was said here if the microphone has trouble..."}
                   />
 
                   <div className="flex flex-wrap gap-4 mt-2">
@@ -931,7 +1074,9 @@ const Interpreter: React.FC = () => {
                       <p className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500'}`}>
                         {currentSession.direction === 'sign_to_speech' 
                           ? 'Waiting for sign...' 
-                          : 'Waiting for speech...'
+                          : currentSession.direction === 'speech_to_sign'
+                          ? 'Waiting for speech...'
+                          : 'Type text to begin'
                         }
                       </p>
                       <p className="text-sm font-medium text-slate-400 dark:text-slate-600 mt-1">
@@ -943,7 +1088,7 @@ const Interpreter: React.FC = () => {
               </div>
             </div>
 
-            {currentSession.direction === 'speech_to_sign' && (
+            {(currentSession.direction === 'speech_to_sign' || currentSession.direction === 'text_to_sign') && (
               <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card'}`}>
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-4">
@@ -1007,7 +1152,7 @@ const Interpreter: React.FC = () => {
                           : 'Unknown Word (Fallback)'
 
                       return (
-                        <div className="animate-fade-in">
+                        <div className="animate-fade-in relative rounded-3xl overflow-hidden border-2 border-transparent">
                           {imageSrc ? (
                             <div className="space-y-6">
                               <div className={`relative group w-full aspect-video rounded-3xl border-2 overflow-hidden flex items-center justify-center shadow-2xl transition-all duration-500 ${
@@ -1091,8 +1236,20 @@ const Interpreter: React.FC = () => {
                               )}
                             </div>
                           )}
+                          
+                          {/* If Avatar is disabled, show Smart Tips overlaid on the image view instead */}
+                          {!showAvatar && (
+                            <SmartTipsOverlay
+                              predictedGloss={livePredictedGloss}
+                              predictedConfidence={livePredictedConf}
+                              primitives={livePrimitives}
+                              topMatches={liveTopMatches}
+                              highContrast={accessibility.highContrast}
+                              visible={showSmartTips}
+                            />
+                          )}
 
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-8">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-8 relative z-10">
                             <button
                               type="button"
                               onClick={() => {
@@ -1180,7 +1337,7 @@ const Interpreter: React.FC = () => {
               </div>
             )}
 
-            {currentSession.direction === 'speech_to_sign' && showAvatar && (
+            {(currentSession.direction === 'speech_to_sign' || currentSession.direction === 'text_to_sign') && showAvatar && (
               <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card p-8'}`}>
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 rounded-2xl bg-purple-500/10 dark:bg-purple-500/20 flex items-center justify-center text-purple-500">
@@ -1208,6 +1365,15 @@ const Interpreter: React.FC = () => {
                           : undefined
                       }
                     />
+                    
+                    <SmartTipsOverlay
+                      predictedGloss={livePredictedGloss}
+                      predictedConfidence={livePredictedConf}
+                      primitives={livePrimitives}
+                      topMatches={liveTopMatches}
+                      highContrast={accessibility.highContrast}
+                      visible={showSmartTips}
+                    />
                   </div>
 
                   {avatarStatus === 'loading' && (
@@ -1219,12 +1385,12 @@ const Interpreter: React.FC = () => {
                   )}
 
                   {(avatarStatus === 'idle' || avatarStatus === 'error' || !avatarKeyframes || avatarKeyframes.length === 0) && (
-                    <div className="rounded-xl p-4 text-center bg-gray-50 border border-gray-200">
+                    <div className={`rounded-xl p-4 text-center border transition-colors ${accessibility.highContrast ? 'bg-black border-yellow-400' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50'}`}>
                       <div className="text-6xl mb-4">🤟</div>
-                      <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-700'}`}>
+                      <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-700 dark:text-slate-300'}`}>
                         {avatarMessage || 'Avatar will activate only for signs that exist in the dictionary.'}
                       </p>
-                      <p className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-200' : 'text-gray-500'} mt-2`}>
+                      <p className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-200' : 'text-slate-500 dark:text-slate-400'} mt-2`}>
                         Dictionary pages remain the primary reference for sign accuracy.
                       </p>
                     </div>
@@ -1245,7 +1411,11 @@ const Interpreter: React.FC = () => {
                     Direction:
                   </span>
                   <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                    {currentSession.direction === 'sign_to_speech' ? 'Sign → Speech' : 'Speech → Sign'}
+                    {currentSession.direction === 'sign_to_speech' 
+                      ? 'Sign → Speech' 
+                      : currentSession.direction === 'speech_to_sign'
+                      ? 'Speech → Sign'
+                      : 'Text → Sign'}
                   </span>
                 </div>
                 

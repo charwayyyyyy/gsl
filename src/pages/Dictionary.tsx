@@ -45,8 +45,8 @@ const Dictionary: React.FC = () => {
   const [zoomLevel, setZoomLevel] = useState(1)
 
   // Helper for responsive text sizing
-  const getTextSize = () => accessibility.largeText ? 'text-xl' : 'text-base'
-  const getHeaderSize = () => accessibility.largeText ? 'text-4xl' : 'text-3xl'
+  const getTextSize = () => accessibility.largeText ? 'text-lg sm:text-xl' : 'text-sm sm:text-base'
+  const getHeaderSize = () => accessibility.largeText ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'
   const getButtonSize = () => accessibility.largeText ? 'p-5' : 'p-3'
 
   const search = async (query: string, isVoice: boolean = false) => {
@@ -241,7 +241,7 @@ const Dictionary: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen relative overflow-hidden ${accessibility.highContrast ? 'bg-black text-yellow-400' : 'bg-slate-50 dark:bg-slate-950'}`}>
+    <div className={`dark min-h-screen relative overflow-hidden ${accessibility.highContrast ? 'bg-black text-yellow-400' : 'bg-slate-50 dark:bg-slate-950'}`}>
       {/* Background Orbs */}
       {!accessibility.highContrast && (
         <>
@@ -254,7 +254,7 @@ const Dictionary: React.FC = () => {
       <div className={`sticky top-0 z-50 ${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-b-2' : 'glass border-b border-white/20'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3 sm:gap-6">
               <button
                 onClick={() => navigate('/')}
                 className={`
@@ -272,10 +272,10 @@ const Dictionary: React.FC = () => {
               </button>
 
               <div>
-                <h1 className={`${accessibility.largeText ? 'text-2xl' : 'text-xl'} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                <h1 className={`${accessibility.largeText ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
                   GSL Dictionary
                 </h1>
-                <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} font-medium ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500 dark:text-slate-400'}`}>
+                <p className={`${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-sm'} font-medium ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500 dark:text-slate-400'}`}>
                   Premium Visual Reference
                 </p>
               </div>
@@ -387,8 +387,8 @@ const Dictionary: React.FC = () => {
               disabled={isListening}
               placeholder={isListening ? "Listening..." : "Search for a word (e.g., dog, hello)..."}
               className={`
-                w-full pl-14 pr-16 py-6 rounded-[2rem] border-2 transition-all duration-500 outline-none
-                ${accessibility.largeText ? 'text-2xl' : 'text-xl'}
+                w-full pl-12 sm:pl-14 pr-16 py-4 sm:py-6 rounded-[2rem] border-2 transition-all duration-500 outline-none
+                ${accessibility.largeText ? 'text-xl sm:text-2xl' : 'text-base sm:text-xl'}
                 ${isListening 
                   ? 'bg-rose-50/50 dark:bg-rose-500/10 border-rose-400 shadow-[0_0_30px_rgba(244,63,94,0.15)]' 
                   : 'bg-white/50 dark:bg-slate-900/50 border-white/40 dark:border-white/10 focus:border-blue-500/50 dark:focus:border-blue-400/50 shadow-glass focus:shadow-glass-hover'
@@ -442,7 +442,7 @@ const Dictionary: React.FC = () => {
                       ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/40 scale-110 -translate-y-1' 
                       : 'bg-white/40 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:scale-105'
                     }
-                    ${accessibility.largeText ? 'text-2xl' : 'text-xl'}
+                    ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}
                     border border-white/20 dark:border-white/5
                   `}
                 >
@@ -480,7 +480,7 @@ const Dictionary: React.FC = () => {
             {result.gloss ? (
               <div className="glass-card overflow-hidden">
                 {/* Result Header */}
-                <div className="p-8 border-b border-white/20 bg-white/30 dark:bg-white/5 backdrop-blur-md">
+                <div className="p-6 sm:p-8 border-b border-white/20 bg-white/30 dark:bg-white/5 backdrop-blur-md">
                   <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
                     <div className="space-y-4">
                       <div className="flex items-center gap-3">
@@ -549,8 +549,8 @@ const Dictionary: React.FC = () => {
                 </div>
 
                 {/* Images Grid */}
-                <div className="p-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-4 sm:p-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                     {Array.isArray(result.images) && result.images.length > 0 ? (
                       result.images.map((img: string, i: number) => (
                         <div 
@@ -599,8 +599,8 @@ const Dictionary: React.FC = () => {
 
                 {/* Alternatives Section */}
                 {Array.isArray(result.alternatives) && result.alternatives.length > 0 && (
-                  <div className="bg-blue-500/5 border-t border-white/20 p-8">
-                    <h3 className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.2em] mb-6">Suggested / Related Signs</h3>
+                  <div className="bg-blue-500/5 border-t border-white/20 p-6 sm:p-8">
+                    <h3 className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.2em] mb-4 sm:mb-6">Suggested / Related Signs</h3>
                     <div className="flex flex-wrap gap-3">
                       {result.alternatives.map((alt) => (
                         <button
@@ -619,8 +619,8 @@ const Dictionary: React.FC = () => {
                 )}
               </div>
             ) : (
-              <div className="glass-card p-16 text-center animate-fade-in">
-                <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-[2rem] flex items-center justify-center mx-auto mb-8">
+              <div className="glass-card p-8 sm:p-16 text-center animate-fade-in mx-4 sm:mx-0">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-100 dark:bg-slate-800 rounded-[2rem] flex items-center justify-center mx-auto mb-6 sm:mb-8">
                   <AlertTriangle className="w-10 h-10 text-amber-500 opacity-80" />
                 </div>
                 <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tighter">No exact match found</h3>
