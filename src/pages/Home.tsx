@@ -68,9 +68,9 @@ export default function Home() {
 
           <h1 className={`font-bold tracking-tight text-white mb-8 leading-[1.1] ${accessibility.largeText ? 'text-4xl sm:text-7xl md:text-8xl' : 'text-3xl sm:text-6xl md:text-7xl'
             }`}>
-            (Preservation of <br />
+            Ghana Sign Language <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 animate-gradient-x">
-              Ghanaian Sign Language)
+              Interpreter
             </span>
           </h1>
 
