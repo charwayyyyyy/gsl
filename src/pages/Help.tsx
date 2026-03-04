@@ -168,8 +168,8 @@ const Help: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {getStartedSteps.map((step, index) => (
-                <div key={index} className={`glass-card group p-6 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left space-y-4 sm:space-y-0 sm:space-x-6 hover:shadow-glass-hover transition-all duration-500 hover:-translate-y-1 ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}`}>
-                  <div className="flex-shrink-0 w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center text-3xl shadow-glass border border-blue-500/20 group-hover:scale-110 transition-transform duration-500">
+                <div key={index} className={`glass-card group p-6 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left space-y-4 sm:space-y-0 sm:space-x-6 border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)] transition-all duration-500 hover:-translate-y-1 ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}`}>
+                  <div className="flex-shrink-0 w-16 h-16 bg-blue-500/10 rounded-2xl flex items-center justify-center text-3xl shadow-glass border border-blue-500/20 group-hover:scale-110 group-hover:bg-amber-100 group-hover:dark:bg-amber-900/40 transition-all duration-500">
                     {step.visual}
                   </div>
                   <div>
@@ -200,8 +200,8 @@ const Help: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {signLanguageTips.map((tip, index) => (
-                <div key={index} className={`glass-card group p-6 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left space-y-4 sm:space-y-0 sm:space-x-6 hover:shadow-glass-hover transition-all duration-500 hover:-translate-y-1 ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}`}>
-                  <div className="flex-shrink-0 w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-3xl shadow-glass border border-emerald-500/20 group-hover:scale-110 transition-transform duration-500">
+                <div key={index} className={`glass-card group p-6 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left space-y-4 sm:space-y-0 sm:space-x-6 border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)] transition-all duration-500 hover:-translate-y-1 ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}`}>
+                  <div className="flex-shrink-0 w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-3xl shadow-glass border border-emerald-500/20 group-hover:scale-110 group-hover:bg-amber-100 group-hover:dark:bg-amber-900/40 transition-all duration-500">
                     {tip.visual}
                   </div>
                   <div>
@@ -231,8 +231,8 @@ const Help: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {speechTips.map((tip, index) => (
-                <div key={index} className={`glass-card group p-6 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left space-y-4 sm:space-y-0 sm:space-x-6 hover:shadow-glass-hover transition-all duration-500 hover:-translate-y-1 ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}`}>
-                  <div className="flex-shrink-0 w-16 h-16 bg-purple-500/10 rounded-2xl flex items-center justify-center text-3xl shadow-glass border border-purple-500/20 group-hover:scale-110 transition-transform duration-500">
+                <div key={index} className={`glass-card group p-6 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left space-y-4 sm:space-y-0 sm:space-x-6 border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)] transition-all duration-500 hover:-translate-y-1 ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}`}>
+                  <div className="flex-shrink-0 w-16 h-16 bg-purple-500/10 rounded-2xl flex items-center justify-center text-3xl shadow-glass border border-purple-500/20 group-hover:scale-110 group-hover:bg-amber-100 group-hover:dark:bg-amber-900/40 transition-all duration-500">
                     {tip.visual}
                   </div>
                   <div>
@@ -262,8 +262,8 @@ const Help: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {accessibilityFeatures.map((feature, index) => (
-                <div key={index} className={`glass-card group p-6 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left space-y-4 sm:space-y-0 sm:space-x-6 hover:shadow-glass-hover transition-all duration-500 hover:-translate-y-1 ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}`}>
-                  <div className="flex-shrink-0 w-16 h-16 bg-orange-500/10 rounded-2xl flex items-center justify-center text-3xl shadow-glass border border-orange-500/20 group-hover:scale-110 transition-transform duration-500">
+                <div key={index} className={`glass-card group p-6 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left space-y-4 sm:space-y-0 sm:space-x-6 border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)] transition-all duration-500 hover:-translate-y-1 ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}`}>
+                  <div className="flex-shrink-0 w-16 h-16 bg-orange-500/10 rounded-2xl flex items-center justify-center text-3xl shadow-glass border border-orange-500/20 group-hover:scale-110 group-hover:bg-amber-100 group-hover:dark:bg-amber-900/40 transition-all duration-500">
                     {feature.visual}
                   </div>
                   <div>
@@ -293,7 +293,7 @@ const Help: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {troubleshootingSteps.map((issue, index) => (
-                <div key={index} className={`glass-card group p-6 sm:p-8 hover:shadow-glass-hover transition-all duration-500 hover:-translate-y-1 border-l-4 border-l-rose-500/30 ${accessibility.highContrast ? 'bg-black border-y-4 border-r-4 border-yellow-400' : ''}`}>
+                <div key={index} className={`glass-card group p-6 sm:p-8 border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)] transition-all duration-500 hover:-translate-y-1 border-l-4 border-l-rose-500/30 ${accessibility.highContrast ? 'bg-black border-y-4 border-r-4 border-yellow-400' : ''}`}>
                   <h3 className={`font-bold text-rose-400 mb-3 sm:mb-4 flex items-center gap-2 sm:gap-3 ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}`}>
                     <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6" />
                     {issue.title}
@@ -327,8 +327,8 @@ const Help: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {settingsGuide.map((setting, index) => (
-                <div key={index} className={`glass-card group p-6 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left space-y-4 sm:space-y-0 sm:space-x-6 hover:shadow-glass-hover transition-all duration-500 hover:-translate-y-1 ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}`}>
-                  <div className="flex-shrink-0 w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-3xl shadow-glass border border-indigo-500/20 group-hover:scale-110 transition-transform duration-500">
+                <div key={index} className={`glass-card group p-6 sm:p-8 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left space-y-4 sm:space-y-0 sm:space-x-6 border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)] transition-all duration-500 hover:-translate-y-1 ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}`}>
+                  <div className="flex-shrink-0 w-16 h-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-3xl shadow-glass border border-indigo-500/20 group-hover:scale-110 group-hover:bg-amber-100 group-hover:dark:bg-amber-900/40 transition-all duration-500">
                     {setting.visual}
                   </div>
                   <div>

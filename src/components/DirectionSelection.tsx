@@ -35,14 +35,15 @@ const DirectionSelection: React.FC<DirectionSelectionProps> = ({ onDirectionSele
         <button
           onClick={() => onDirectionSelect('sign_to_speech')}
           className={`
-            ${buttonSizeClass} glass-card flex flex-col items-center justify-center p-8
-            hover:border-blue-400/50 group
+            ${buttonSizeClass} group glass-card relative flex flex-col items-center justify-center p-8 text-center
+            border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)]
+            hover:-translate-y-2 transition-all duration-500
             ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}
           `}
           aria-label="Sign Language to Speech - I am Deaf/Hard of Hearing"
         >
-          <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-8 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 ${accessibility.highContrast ? 'bg-white' : 'bg-blue-100 dark:bg-blue-900/30'}`}>
-            <Hand className={`${accessibility.largeText ? 'w-10 h-10 sm:w-14 sm:h-14' : 'w-8 h-8 sm:w-12 sm:h-12'} ${accessibility.highContrast ? 'text-blue-700' : 'text-blue-600 dark:text-blue-400'}`} />
+          <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-8 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 ${accessibility.highContrast ? 'bg-white' : 'bg-blue-100 dark:bg-blue-900/30 group-hover:bg-amber-100 dark:group-hover:bg-amber-900/40'}`}>
+            <Hand className={`${accessibility.largeText ? 'w-10 h-10 sm:w-14 sm:h-14' : 'w-8 h-8 sm:w-12 sm:h-12'} ${accessibility.highContrast ? 'text-blue-700' : 'text-blue-600 dark:text-blue-400 group-hover:text-amber-600 dark:group-hover:text-amber-400'}`} />
           </div>
           <div className="text-center">
             <h2 className={`${textSizeClass} font-bold mb-3 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
@@ -58,14 +59,15 @@ const DirectionSelection: React.FC<DirectionSelectionProps> = ({ onDirectionSele
         <button
           onClick={() => onDirectionSelect('speech_to_sign')}
           className={`
-            ${buttonSizeClass} glass-card flex flex-col items-center justify-center p-8
-            hover:border-emerald-400/50 group
+            ${buttonSizeClass} group glass-card relative flex flex-col items-center justify-center p-8 text-center
+            border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)]
+            hover:-translate-y-2 transition-all duration-500
             ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}
           `}
           aria-label="Speech to Sign Language - I am Hearing"
         >
-          <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-8 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-[-3deg] ${accessibility.highContrast ? 'bg-white' : 'bg-emerald-100 dark:bg-emerald-900/30'}`}>
-            <Mic className={`${accessibility.largeText ? 'w-10 h-10 sm:w-14 sm:h-14' : 'w-8 h-8 sm:w-12 sm:h-12'} ${accessibility.highContrast ? 'text-emerald-700' : 'text-emerald-600 dark:text-emerald-400'}`} />
+          <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-8 transition-all duration-500 group-hover:scale-110 group-hover:rotate-[-3deg] ${accessibility.highContrast ? 'bg-white' : 'bg-emerald-100 dark:bg-emerald-900/30 group-hover:bg-amber-100 dark:group-hover:bg-amber-900/40'}`}>
+            <Mic className={`${accessibility.largeText ? 'w-10 h-10 sm:w-14 sm:h-14' : 'w-8 h-8 sm:w-12 sm:h-12'} ${accessibility.highContrast ? 'text-emerald-700' : 'text-emerald-600 dark:text-emerald-400 group-hover:text-amber-600 dark:group-hover:text-amber-400'}`} />
           </div>
           <div className="text-center">
             <h2 className={`${textSizeClass} font-bold mb-3 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
@@ -80,14 +82,15 @@ const DirectionSelection: React.FC<DirectionSelectionProps> = ({ onDirectionSele
         <button
           onClick={() => onDirectionSelect('text_to_sign')}
           className={`
-            ${buttonSizeClass} glass-card flex flex-col items-center justify-center p-8
-            hover:border-purple-400/50 group
+            ${buttonSizeClass} group glass-card relative flex flex-col items-center justify-center p-8 text-center
+            border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)]
+            hover:-translate-y-2 transition-all duration-500
             ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}
           `}
           aria-label="Text to Sign Language - Type to Translate"
         >
-          <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-8 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 ${accessibility.highContrast ? 'bg-white' : 'bg-purple-100 dark:bg-purple-900/30'}`}>
-            <Keyboard className={`${accessibility.largeText ? 'w-10 h-10 sm:w-14 sm:h-14' : 'w-8 h-8 sm:w-12 sm:h-12'} ${accessibility.highContrast ? 'text-purple-700' : 'text-purple-600 dark:text-purple-400'}`} />
+          <div className={`w-24 h-24 rounded-3xl flex items-center justify-center mb-8 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 ${accessibility.highContrast ? 'bg-white' : 'bg-purple-100 dark:bg-purple-900/30 group-hover:bg-amber-100 dark:group-hover:bg-amber-900/40'}`}>
+            <Keyboard className={`${accessibility.largeText ? 'w-10 h-10 sm:w-14 sm:h-14' : 'w-8 h-8 sm:w-12 sm:h-12'} ${accessibility.highContrast ? 'text-purple-700' : 'text-purple-600 dark:text-purple-400 group-hover:text-amber-600 dark:group-hover:text-amber-400'}`} />
           </div>
           <div className="text-center">
             <h2 className={`${textSizeClass} font-bold mb-3 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>

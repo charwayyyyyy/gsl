@@ -768,7 +768,7 @@ const Interpreter: React.FC = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 animate-fade-in">
           {/* Left Panel - Input */}
           <div className="space-y-8">
-            <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card p-8'} overflow-hidden`}>
+            <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] p-8'} overflow-hidden transition-all duration-500`}>
               <div className="flex items-center gap-3 mb-6">
                 <div className={`w-3 h-3 rounded-full animate-pulse ${currentSession.direction === 'sign_to_speech' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
                 <h2 className={`${getTextSize()} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
@@ -855,7 +855,7 @@ const Interpreter: React.FC = () => {
             </div>
 
             {visual.showConfidence && (
-              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card p-8'}`}>
+              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] p-8'} transition-all duration-500`}>
                 <div className="flex items-center justify-between mb-6">
                   <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
                     System Confidence
@@ -896,7 +896,7 @@ const Interpreter: React.FC = () => {
                     { label: 'Speech Recognition', value: sttConfidence },
                     { label: 'Dictionary Match', value: dictConfidence }
                   ].map((stat, idx) => (
-                    <div key={idx} className="p-4 rounded-2xl bg-slate-50/50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700">
+                    <div key={idx} className="p-4 rounded-2xl bg-white/50 dark:bg-slate-800/50 border border-amber-500/30 hover:border-amber-400/60 transition-all duration-300">
                       <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{stat.label}</div>
                       <div className="text-lg font-bold text-slate-900 dark:text-white">{Math.round((stat.value || 0) * 100)}%</div>
                     </div>
@@ -906,7 +906,7 @@ const Interpreter: React.FC = () => {
             )}
 
             {currentSession.direction === 'speech_to_sign' && (
-              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card p-8'}`}>
+              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] p-8'} transition-all duration-500`}>
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-500">
                     <Volume2 size={24} />
@@ -1017,7 +1017,7 @@ const Interpreter: React.FC = () => {
 
           {/* Right Panel - Output */}
           <div className="space-y-8">
-            <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card'}`}>
+            <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] p-8'} transition-all duration-500`}>
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center text-blue-500 shadow-inner">
@@ -1042,7 +1042,7 @@ const Interpreter: React.FC = () => {
               <div className={`min-h-[200px] p-8 rounded-[1.5rem] border-2 transition-all duration-500 flex items-center justify-center ${
                 accessibility.highContrast 
                   ? 'bg-black border-yellow-400 text-yellow-200' 
-                  : 'bg-white/40 dark:bg-slate-950/40 border-slate-100/50 dark:border-slate-800/50 text-slate-900 dark:text-white shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)] dark:shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)]'
+                  : 'bg-white/40 dark:bg-slate-950/40 border-amber-500/20 hover:border-amber-400/40 text-slate-900 dark:text-white shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)] dark:shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)]'
               }`}>
                 {translationText ? (
                   <div className="w-full">
@@ -1089,7 +1089,7 @@ const Interpreter: React.FC = () => {
             </div>
 
             {(currentSession.direction === 'speech_to_sign' || currentSession.direction === 'text_to_sign') && (
-              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card'}`}>
+              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] p-8'} transition-all duration-500`}>
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-500 shadow-inner">

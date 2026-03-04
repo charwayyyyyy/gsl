@@ -478,7 +478,7 @@ const Dictionary: React.FC = () => {
         {result && !loading && (
           <div className="animate-slide-up">
             {result.gloss ? (
-              <div className="glass-card overflow-hidden">
+              <div className="glass-card overflow-hidden border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] transition-all duration-500">
                 {/* Result Header */}
                 <div className="p-6 sm:p-8 border-b border-white/20 bg-white/30 dark:bg-white/5 backdrop-blur-md">
                   <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
@@ -555,7 +555,7 @@ const Dictionary: React.FC = () => {
                       result.images.map((img: string, i: number) => (
                         <div 
                           key={i} 
-                          className="relative group cursor-pointer overflow-hidden rounded-3xl border border-white/20 bg-white/50 dark:bg-slate-900/50 shadow-sm transition-all duration-500 hover:shadow-2xl hover:scale-[1.02]" 
+                          className="relative group cursor-pointer overflow-hidden rounded-3xl border border-amber-500/30 bg-white/50 dark:bg-slate-900/50 shadow-sm transition-all duration-500 hover:shadow-2xl hover:scale-[1.02] hover:border-amber-400/80" 
                           onClick={() => openImageModal(`http://localhost:8000/static/${result.gloss}/${img}`, i)}
                         >
                           <div className="aspect-square flex items-center justify-center p-4">
@@ -670,7 +670,7 @@ const Dictionary: React.FC = () => {
                     setQ(item.gloss)
                     search(item.gloss, false)
                   }}
-                  className="glass-card p-6 text-left group hover:border-indigo-500/30"
+                  className="glass-card p-6 text-left group border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)] transition-all duration-500 hover:-translate-y-1"
                 >
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-lg font-black text-slate-900 dark:text-white group-hover:text-indigo-500 transition-colors tracking-tight">

@@ -103,16 +103,17 @@ export default function Home() {
         {/* Feature Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 mb-20 w-full relative z-10 animate-slide-up">
           {features.map((feature, i) => (
-            <div 
-              key={i} 
+            <div
+              key={i}
               className={`
-                glass-card flex flex-col items-center justify-center p-8 text-center
-                ${feature.hoverBorder} group transition-all duration-500 hover:-translate-y-2
+                group glass-card relative p-8 sm:p-10 flex flex-col items-center
+                border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)]
+                transition-all duration-500 hover:-translate-y-2
                 ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}
               `}
             >
-              <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl flex items-center justify-center mb-6 sm:mb-8 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3 ${accessibility.highContrast ? feature.hcBgClass : feature.bgClass}`}>
-                <feature.icon className={`${accessibility.largeText ? 'w-10 h-10 sm:w-14 sm:h-14' : 'w-8 h-8 sm:w-12 sm:h-12'} ${accessibility.highContrast ? feature.hcTextClass : feature.textClass}`} />
+              <div className={`w-20 h-20 sm:w-24 sm:h-24 rounded-3xl flex items-center justify-center mb-6 sm:mb-8 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 ${accessibility.highContrast ? feature.hcBgClass : feature.bgClass + ' group-hover:bg-amber-100 group-hover:dark:bg-amber-900/40'}`}>
+                <feature.icon className={`${accessibility.largeText ? 'w-10 h-10 sm:w-14 sm:h-14' : 'w-8 h-8 sm:w-12 sm:h-12'} ${accessibility.highContrast ? feature.hcTextClass : feature.textClass + ' group-hover:text-amber-600 group-hover:dark:text-amber-400'}`} />
               </div>
               
               <div className="text-center">
