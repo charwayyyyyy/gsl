@@ -1,0 +1,6 @@
+version: "2"
+authtoken: 3AU2bQJtUlbdXDqVNkp1gsnCgkl_3urS5fFSCJ4qe8QXJbx74
+tunnels:
+  app:
+    proto: http
+    addr: 127.0.0.1:8000

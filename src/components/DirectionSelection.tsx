@@ -22,7 +22,7 @@ const DirectionSelection: React.FC<DirectionSelectionProps> = ({ onDirectionSele
       {/* Header */}
       <div className="text-center mb-16 relative z-10 animate-fade-in">
         <h1 className={`${accessibility.largeText ? 'text-4xl sm:text-5xl' : 'text-3xl sm:text-4xl'} font-bold tracking-tight text-white mb-6`}>
-          Ghana Sign Language <span className="text-blue-500">Interpreter</span>
+          (Preservation of Ghanaian Sign Language)
         </h1>
         <p className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} text-slate-300 max-w-2xl mx-auto leading-relaxed`}>
           Empowering communication through real-time bidirectional translation.

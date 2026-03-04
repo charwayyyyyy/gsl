@@ -1,21 +1,22 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>GSL Project</title>
-    <script type="module">
-      if (import.meta.hot?.on) {
-        import.meta.hot.on('vite:error', (error) => {
-          if (error.err) {
-            console.error(
-              [error.err.message, error.err.frame].filter(Boolean).join('\n'),
-            )
-          }
-        })
-      }
-    </script>
+    <!-- Mobile-first viewport with safe-area support for notched phones -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- Mobile browser chrome color -->
+    <meta name="theme-color" content="#0f172a" />
+    <!-- PWA / installable on Android & iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <!-- SEO -->
+    <title>GSL Interpreter — Ghana Sign Language</title>
+    <meta name="description" content="Real-time bidirectional Ghana Sign Language interpreter. Sign-to-Speech, Speech-to-Sign, and Text-to-Sign in one accessible app." />
+    <meta property="og:title" content="GSL Interpreter — Ghana Sign Language" />
+    <meta property="og:description" content="Real-time Ghana Sign Language interpretation powered by AI." />
+    <meta property="og:type" content="website" />
   </head>
   <body>
     <div id="root"></div>

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
+import { API_BASE_URL, WS_BASE_URL } from '@/config'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX, ChevronLeft, ChevronRight, Play, Pause, AlertTriangle, BookOpen, User, Lightbulb, Keyboard } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
@@ -37,13 +38,13 @@ const dictionaryCache: Record<string, any> = {}
 
 const Interpreter: React.FC = () => {
   const navigate = useNavigate()
-  const { 
-    currentSession, 
-    isTranslating, 
+  const {
+    currentSession,
+    isTranslating,
     lastTranslation,
-    settings 
+    settings
   } = useAppStore()
-  
+
   const [translationText, setTranslationText] = useState('')
   const [confidence, setConfidence] = useState(0)
   const [isSpeaking, setIsSpeaking] = useState(false)
@@ -76,15 +77,15 @@ const Interpreter: React.FC = () => {
   const [livePredictedConf, setLivePredictedConf] = useState(0)
   const [liveTopMatches, setLiveTopMatches] = useState<Array<{ gloss: string; confidence: number }>>([])
   const [livePrimitives, setLivePrimitives] = useState<SignPrimitives | null>(null)
-  
+
   const { startTranslationSession, endTranslationSession, setLastTranslation } = useAppStore.getState()
-  
+
   // WebSocket connections
-  const videoSocket = useWebSocket('ws://localhost:8000/api/video/stream')
-  const audioSocket = useWebSocket('ws://localhost:8000/api/audio/stream')
-  
+  const videoSocket = useWebSocket(`${WS_BASE_URL}/api/video/stream`)
+  const audioSocket = useWebSocket(`${WS_BASE_URL}/api/audio/stream`)
+
   const { accessibility, visual, audio } = settings
-  
+
   useEffect(() => {
     if (!currentSession) {
       startTranslationSession('sign_to_speech')
@@ -107,7 +108,7 @@ const Interpreter: React.FC = () => {
         console.warn('Microphone API not available; using manual input fallback')
       }
       try {
-        const res = await fetch('http://localhost:8000/health')
+        const res = await fetch(`${API_BASE_URL}/health`)
         if (!res.ok) {
           console.warn('Backend health check failed with status', res.status)
         }
@@ -115,7 +116,7 @@ const Interpreter: React.FC = () => {
         console.warn('Backend health check error', e)
       }
       try {
-        const resp = await fetch('http://localhost:8000/api/dictionary/list?letter=A')
+        const resp = await fetch(`${API_BASE_URL}/api/dictionary/list?letter=A`)
         if (!resp.ok) {
           console.warn('Dictionary list check failed with status', resp.status)
         } else {
@@ -187,7 +188,7 @@ const Interpreter: React.FC = () => {
         if (!data) {
           try {
             const resp = await fetch(
-              `http://localhost:8000/api/dictionary/search?q=${encodeURIComponent(key)}`
+              `${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(key)}`
             )
             if (resp.ok) {
               data = await resp.json()
@@ -207,14 +208,14 @@ const Interpreter: React.FC = () => {
           const primitives: SignPrimitives | null =
             data && data.primitives && typeof data.primitives === 'object'
               ? {
-                  direction: data.primitives.direction || 'NONE',
-                  repetition: data.primitives.repetition || 'SINGLE',
-                  handshape: data.primitives.handshape || 'UNKNOWN',
-                  location: data.primitives.location || 'UNKNOWN',
-                  two_hands: Boolean(data.primitives.two_hands),
-                  facial: Boolean(data.primitives.facial),
-                  can_animate: Boolean(data.primitives.can_animate)
-                }
+                direction: data.primitives.direction || 'NONE',
+                repetition: data.primitives.repetition || 'SINGLE',
+                handshape: data.primitives.handshape || 'UNKNOWN',
+                location: data.primitives.location || 'UNKNOWN',
+                two_hands: Boolean(data.primitives.two_hands),
+                facial: Boolean(data.primitives.facial),
+                can_animate: Boolean(data.primitives.can_animate)
+              }
               : null
           results.push({
             word: token,
@@ -286,7 +287,7 @@ const Interpreter: React.FC = () => {
         setSpeechError(null)
         setRecognitionTier('browser')
       }
-      recognition.onend = () => {}
+      recognition.onend = () => { }
       recognition.onerror = (event: any) => {
         const code = event && event.error ? String(event.error) : ''
         if (code === 'not-allowed') {
@@ -365,9 +366,9 @@ const Interpreter: React.FC = () => {
       audioData.forEach((value, index) => {
         view.setFloat32(index * 4, value, true)
       })
-      
+
       const base64Data = btoa(String.fromCharCode(...new Uint8Array(buffer)))
-      
+
       audioSocket.sendMessage({
         type: 'audio_chunk',
         data: base64Data,
@@ -415,7 +416,7 @@ const Interpreter: React.FC = () => {
             })
           } else {
             // Async fetch & cache
-            fetch(`http://localhost:8000/api/dictionary/search?q=${encodeURIComponent(key)}`)
+            fetch(`${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(key)}`)
               .then(r => r.ok ? r.json() : null)
               .then(data => {
                 if (data) {
@@ -433,7 +434,7 @@ const Interpreter: React.FC = () => {
                   }
                 }
               })
-              .catch(() => {})
+              .catch(() => { })
           }
         } else {
           setLivePrimitives(null)
@@ -519,7 +520,7 @@ const Interpreter: React.FC = () => {
     const controller = new AbortController()
     const run = async () => {
       try {
-        const resp = await fetch('http://localhost:8000/api/avatar/render', {
+        const resp = await fetch(`${API_BASE_URL}/api/avatar/render`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -536,8 +537,8 @@ const Interpreter: React.FC = () => {
         const data = await resp.json()
         const keyframes =
           data &&
-          data.animation_data &&
-          Array.isArray(data.animation_data.keyframes)
+            data.animation_data &&
+            Array.isArray(data.animation_data.keyframes)
             ? data.animation_data.keyframes
             : []
         if (!keyframes.length) {
@@ -574,32 +575,32 @@ const Interpreter: React.FC = () => {
       utterance.rate = rate
       utterance.volume = volume
       utterance.pitch = pitch
-      
+
       // Use Ghanaian accent if available
       if (audio.ghanaianAccent) {
         const voices = speechSynthesis.getVoices()
-        const englishVoice = voices.find(voice => 
-          voice.lang.includes('en') && 
+        const englishVoice = voices.find(voice =>
+          voice.lang.includes('en') &&
           (voice.name.includes('Ghana') || voice.name.includes('Africa'))
         ) || voices.find(voice => voice.lang.includes('en'))
-        
+
         if (englishVoice) {
           utterance.voice = englishVoice
         }
       }
-      
+
       utterance.onstart = () => setIsSpeaking(true)
       utterance.onend = () => setIsSpeaking(false)
-      
+
       speechSynthesis.speak(utterance)
     }
   }, [settings.translation.speechSpeed, audio.volumeLevel, audio.ghanaianAccent, isMuted])
 
   // Auto-speak translations for sign-to-speech
   useEffect(() => {
-    if (currentSession?.direction === 'sign_to_speech' && 
-        lastTranslation?.output && 
-        !isSpeaking) {
+    if (currentSession?.direction === 'sign_to_speech' &&
+      lastTranslation?.output &&
+      !isSpeaking) {
       speakText(lastTranslation.output)
     }
   }, [lastTranslation?.output, currentSession?.direction, speakText, isSpeaking])
@@ -610,20 +611,20 @@ const Interpreter: React.FC = () => {
       if (signSequence.length > 0) {
         // Find the actual sign being shown right now
         let currentSign = signSequence[currentSignIndex]
-        
+
         // If avatar isn't visible, we fall back to index 0 if not playing, but autoPlay effectively drives currentSignIndex
         if (currentSign && currentSign.status === 'matched') {
-           setLivePredictedGloss(currentSign.gloss || currentSign.word)
-           setLivePredictedConf(1.0)
-           setLiveTopMatches([])
-           setLivePrimitives(currentSign.primitives || null)
+          setLivePredictedGloss(currentSign.gloss || currentSign.word)
+          setLivePredictedConf(1.0)
+          setLiveTopMatches([])
+          setLivePrimitives(currentSign.primitives || null)
         } else {
-           setLivePredictedGloss(null)
-           setLivePrimitives(null)
+          setLivePredictedGloss(null)
+          setLivePrimitives(null)
         }
       } else {
-         setLivePredictedGloss(null)
-         setLivePrimitives(null)
+        setLivePredictedGloss(null)
+        setLivePrimitives(null)
       }
     }
   }, [currentSession?.direction, signSequence, currentSignIndex])
@@ -633,7 +634,7 @@ const Interpreter: React.FC = () => {
   }
 
   const getButtonSize = () => {
-    return accessibility.largeText ? 'w-12 h-12 sm:w-16 sm:h-16' : 'w-10 h-10 sm:w-12 sm:h-12'
+    return accessibility.largeText ? 'w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16' : 'w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12'
   }
 
   const getConfidenceColor = (level: number) => {
@@ -682,8 +683,8 @@ const Interpreter: React.FC = () => {
                 onClick={() => navigate('/')}
                 className={`
                   ${getButtonSize()} rounded-2xl flex items-center justify-center
-                  ${accessibility.highContrast 
-                    ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400 border-2 border-yellow-400' 
+                  ${accessibility.highContrast
+                    ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400 border-2 border-yellow-400'
                     : 'bg-white/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-white/40 dark:border-white/10'
                   }
                   transform hover:scale-110 active:scale-95 transition-all duration-300
@@ -695,11 +696,11 @@ const Interpreter: React.FC = () => {
               </button>
               <div className="translate-y-0.5 sm:translate-y-1">
                 <h1 className={`${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'} font-bold tracking-tight leading-none mb-0.5 sm:mb-1 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
-                  {currentSession.direction === 'sign_to_speech' 
-                    ? 'Sign → Speech' 
-                    : currentSession.direction === 'speech_to_sign' 
-                    ? 'Speech → Sign'
-                    : 'Text → Sign'}
+                  {currentSession.direction === 'sign_to_speech'
+                    ? 'Sign → Speech'
+                    : currentSession.direction === 'speech_to_sign'
+                      ? 'Speech → Sign'
+                      : 'Text → Sign'}
                 </h1>
                 <p className={`${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-[10px] sm:text-sm'} font-medium ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500 dark:text-slate-400'}`}>
                   Premium Translation Experience
@@ -709,15 +710,15 @@ const Interpreter: React.FC = () => {
 
             <div className="flex items-center gap-2 sm:gap-3">
               {[
-                { 
-                  icon: isMuted ? VolumeX : Volume2, 
+                {
+                  icon: isMuted ? VolumeX : Volume2,
                   onClick: () => setIsMuted(!isMuted),
                   active: isMuted,
                   label: isMuted ? 'Unmute' : 'Mute',
                   activeClass: 'bg-rose-500 text-white shadow-rose-500/20'
                 },
-                { 
-                  icon: showAvatar ? EyeOff : Eye, 
+                {
+                  icon: showAvatar ? EyeOff : Eye,
                   onClick: () => setShowAvatar(!showAvatar),
                   active: showAvatar,
                   label: showAvatar ? 'Hide Avatar' : 'Show Avatar',
@@ -730,13 +731,13 @@ const Interpreter: React.FC = () => {
                   label: showSmartTips ? 'Hide Smart Tips' : 'Show Smart Tips',
                   activeClass: 'bg-amber-400 text-black shadow-amber-400/20'
                 },
-                { 
-                  icon: Settings, 
+                {
+                  icon: Settings,
                   onClick: () => navigate('/settings'),
                   label: 'Settings'
                 },
-                { 
-                  icon: HelpCircle, 
+                {
+                  icon: HelpCircle,
                   onClick: () => navigate('/help'),
                   label: 'Help'
                 }
@@ -746,8 +747,8 @@ const Interpreter: React.FC = () => {
                   onClick={item.onClick}
                   className={`
                     ${getButtonSize()} rounded-2xl flex items-center justify-center transition-all duration-300
-                    ${item.active && item.activeClass ? item.activeClass : 
-                      accessibility.highContrast 
+                    ${item.active && item.activeClass ? item.activeClass :
+                      accessibility.highContrast
                         ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400 border-2 border-yellow-400'
                         : 'bg-white/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-white/40 dark:border-white/10'
                     }
@@ -755,7 +756,7 @@ const Interpreter: React.FC = () => {
                   `}
                   aria-label={item.label}
                 >
-                  <item.icon className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
+                  <item.icon className={`${accessibility.largeText ? 'w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8' : 'w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6'}`} />
                 </button>
               ))}
             </div>
@@ -764,22 +765,22 @@ const Interpreter: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 animate-fade-in">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8 animate-fade-in">
           {/* Left Panel - Input */}
-          <div className="space-y-8">
-            <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] p-8'} overflow-hidden transition-all duration-500`}>
+          <div className="space-y-4 sm:space-y-8">
+            <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-4 sm:p-6' : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] p-4 sm:p-8'} overflow-hidden transition-all duration-500`}>
               <div className="flex items-center gap-3 mb-6">
                 <div className={`w-3 h-3 rounded-full animate-pulse ${currentSession.direction === 'sign_to_speech' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
                 <h2 className={`${getTextSize()} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
-                  {currentSession.direction === 'sign_to_speech' 
-                    ? 'Sign Language Input' 
+                  {currentSession.direction === 'sign_to_speech'
+                    ? 'Sign Language Input'
                     : currentSession.direction === 'speech_to_sign'
-                    ? 'Speech Input'
-                    : 'Text Input'}
+                      ? 'Speech Input'
+                      : 'Text Input'}
                 </h2>
               </div>
-              
+
               <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-slate-900">
                 {currentSession.direction === 'sign_to_speech' ? (
                   <>
@@ -787,7 +788,7 @@ const Interpreter: React.FC = () => {
                       onFrameCapture={handleVideoFrame}
                       showLandmarks={visual.showLandmarks}
                       showConfidence={visual.showConfidence}
-                      className="w-full h-[400px] object-cover"
+                      className="w-full h-[260px] sm:h-[340px] lg:h-[400px] object-cover"
                     />
                     <SmartTipsOverlay
                       predictedGloss={livePredictedGloss}
@@ -874,14 +875,13 @@ const Interpreter: React.FC = () => {
                     )
                   })()}
                 </div>
-                
+
                 <div className={`w-full ${accessibility.largeText ? 'h-5' : 'h-4'} bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden p-1 shadow-inner`}>
                   <div
-                    className={`h-full rounded-full transition-all duration-700 ease-out shadow-sm ${
-                      (!silenceMessage && confidence >= 0.7) ? 'bg-gradient-to-r from-emerald-400 to-emerald-600' :
-                      (!silenceMessage && confidence >= 0.4) ? 'bg-gradient-to-r from-amber-400 to-amber-600' : 
-                      'bg-gradient-to-r from-rose-400 to-rose-600'
-                    }`}
+                    className={`h-full rounded-full transition-all duration-700 ease-out shadow-sm ${(!silenceMessage && confidence >= 0.7) ? 'bg-gradient-to-r from-emerald-400 to-emerald-600' :
+                      (!silenceMessage && confidence >= 0.4) ? 'bg-gradient-to-r from-amber-400 to-amber-600' :
+                        'bg-gradient-to-r from-rose-400 to-rose-600'
+                      }`}
                     style={{
                       width: `${Math.min(
                         100,
@@ -890,7 +890,7 @@ const Interpreter: React.FC = () => {
                     }}
                   />
                 </div>
-                
+
                 <div className="mt-6 grid grid-cols-2 gap-4">
                   {[
                     { label: 'Speech Recognition', value: sttConfidence },
@@ -905,7 +905,7 @@ const Interpreter: React.FC = () => {
               </div>
             )}
 
-            {currentSession.direction === 'speech_to_sign' && (
+            {(currentSession.direction === 'speech_to_sign' || currentSession.direction === 'text_to_sign') && (
               <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] p-8'} transition-all duration-500`}>
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-500">
@@ -917,9 +917,8 @@ const Interpreter: React.FC = () => {
                 </div>
 
                 {speechError && (
-                  <div className={`mb-6 flex items-start gap-3 rounded-2xl p-4 ${
-                    accessibility.highContrast ? 'bg-black border border-yellow-400' : 'bg-rose-50/50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20'
-                  }`}>
+                  <div className={`mb-6 flex items-start gap-3 rounded-2xl p-4 ${accessibility.highContrast ? 'bg-black border border-yellow-400' : 'bg-rose-50/50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20'
+                    }`}>
                     <AlertTriangle className={`${accessibility.largeText ? 'w-7 h-7' : 'w-5 h-5'} ${accessibility.highContrast ? 'text-yellow-400' : 'text-rose-500'} mt-0.5`} />
                     <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-rose-700 dark:text-rose-300'}`}>
                       {speechError}
@@ -928,9 +927,8 @@ const Interpreter: React.FC = () => {
                 )}
 
                 {silenceMessage && (
-                  <div className={`mb-6 flex items-start gap-3 rounded-2xl p-4 ${
-                    accessibility.highContrast ? 'bg-black border border-yellow-400' : 'bg-amber-50/50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20'
-                  }`}>
+                  <div className={`mb-6 flex items-start gap-3 rounded-2xl p-4 ${accessibility.highContrast ? 'bg-black border border-yellow-400' : 'bg-amber-50/50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20'
+                    }`}>
                     <AlertTriangle className={`${accessibility.largeText ? 'w-7 h-7' : 'w-5 h-5'} ${accessibility.highContrast ? 'text-yellow-400' : 'text-amber-500'} mt-0.5`} />
                     <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-amber-800 dark:text-amber-300'}`}>
                       {silenceMessage}
@@ -1038,12 +1036,11 @@ const Interpreter: React.FC = () => {
                   </div>
                 )}
               </div>
-              
-              <div className={`min-h-[200px] p-8 rounded-[1.5rem] border-2 transition-all duration-500 flex items-center justify-center ${
-                accessibility.highContrast 
-                  ? 'bg-black border-yellow-400 text-yellow-200' 
-                  : 'bg-white/40 dark:bg-slate-950/40 border-amber-500/20 hover:border-amber-400/40 text-slate-900 dark:text-white shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)] dark:shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)]'
-              }`}>
+
+              <div className={`min-h-[200px] p-8 rounded-[1.5rem] border-2 transition-all duration-500 flex items-center justify-center ${accessibility.highContrast
+                ? 'bg-black border-yellow-400 text-yellow-200'
+                : 'bg-white/40 dark:bg-slate-950/40 border-amber-500/20 hover:border-amber-400/40 text-slate-900 dark:text-white shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)] dark:shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)]'
+                }`}>
                 {translationText ? (
                   <div className="w-full">
                     <p className={`${accessibility.largeText ? 'text-4xl' : 'text-3xl'} font-bold leading-tight animate-fade-in text-center bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent`}>
@@ -1052,10 +1049,9 @@ const Interpreter: React.FC = () => {
                     {confidence > 0 && (
                       <div className="mt-6 flex items-center justify-center gap-2">
                         <div className="h-1.5 w-32 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full transition-all duration-1000 ${
-                              confidence >= 0.7 ? 'bg-emerald-500' : confidence >= 0.4 ? 'bg-amber-500' : 'bg-rose-500'
-                            }`}
+                          <div
+                            className={`h-full transition-all duration-1000 ${confidence >= 0.7 ? 'bg-emerald-500' : confidence >= 0.4 ? 'bg-amber-500' : 'bg-rose-500'
+                              }`}
                             style={{ width: `${confidence * 100}%` }}
                           />
                         </div>
@@ -1072,11 +1068,11 @@ const Interpreter: React.FC = () => {
                     </div>
                     <div className="text-center">
                       <p className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500'}`}>
-                        {currentSession.direction === 'sign_to_speech' 
-                          ? 'Waiting for sign...' 
+                        {currentSession.direction === 'sign_to_speech'
+                          ? 'Waiting for sign...'
                           : currentSession.direction === 'speech_to_sign'
-                          ? 'Waiting for speech...'
-                          : 'Type text to begin'
+                            ? 'Waiting for speech...'
+                            : 'Type text to begin'
                         }
                       </p>
                       <p className="text-sm font-medium text-slate-400 dark:text-slate-600 mt-1">
@@ -1112,9 +1108,8 @@ const Interpreter: React.FC = () => {
                 </div>
 
                 {dictionaryOffline && (
-                  <div className={`mb-6 rounded-2xl p-4 flex items-center gap-3 ${
-                    accessibility.highContrast ? 'bg-black border border-yellow-400' : 'bg-amber-50/50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20'
-                  }`}>
+                  <div className={`mb-6 rounded-2xl p-4 flex items-center gap-3 ${accessibility.highContrast ? 'bg-black border border-yellow-400' : 'bg-amber-50/50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20'
+                    }`}>
                     <AlertTriangle size={20} className="text-amber-500" />
                     <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-amber-800 dark:text-amber-300'}`}>
                       Using cached results (Offline Mode)
@@ -1144,7 +1139,7 @@ const Interpreter: React.FC = () => {
                       )
                       const imageSrc =
                         hasImages && glossKey
-                          ? `http://localhost:8000/static/${glossKey}/${current.images[clampedFrame]}`
+                          ? `${API_BASE_URL}/static/${glossKey}/${current.images[clampedFrame]}`
                           : null
                       const statusText =
                         current.status === 'matched'
@@ -1155,11 +1150,10 @@ const Interpreter: React.FC = () => {
                         <div className="animate-fade-in relative rounded-3xl overflow-hidden border-2 border-transparent">
                           {imageSrc ? (
                             <div className="space-y-6">
-                              <div className={`relative group w-full aspect-video rounded-3xl border-2 overflow-hidden flex items-center justify-center shadow-2xl transition-all duration-500 ${
-                                accessibility.highContrast
-                                  ? 'bg-black border-yellow-400'
-                                  : 'bg-slate-900 border-slate-200 dark:border-slate-800'
-                              }`}>
+                              <div className={`relative group w-full aspect-video rounded-3xl border-2 overflow-hidden flex items-center justify-center shadow-2xl transition-all duration-500 ${accessibility.highContrast
+                                ? 'bg-black border-yellow-400'
+                                : 'bg-slate-900 border-slate-200 dark:border-slate-800'
+                                }`}>
                                 <img
                                   src={imageSrc}
                                   alt={`${glossKey} sign ${clampedFrame + 1}`}
@@ -1209,11 +1203,10 @@ const Interpreter: React.FC = () => {
                               )}
                             </div>
                           ) : (
-                            <div className={`p-8 rounded-3xl border-2 shadow-xl ${
-                              accessibility.highContrast
-                                ? 'bg-black border-yellow-400 text-yellow-200'
-                                : 'bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white'
-                            }`}>
+                            <div className={`p-8 rounded-3xl border-2 shadow-xl ${accessibility.highContrast
+                              ? 'bg-black border-yellow-400 text-yellow-200'
+                              : 'bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white'
+                              }`}>
                               <div className="flex items-center gap-3 mb-4">
                                 <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500">
                                   <BookOpen size={18} />
@@ -1236,7 +1229,7 @@ const Interpreter: React.FC = () => {
                               )}
                             </div>
                           )}
-                          
+
                           {/* If Avatar is disabled, show Smart Tips overlaid on the image view instead */}
                           {!showAvatar && (
                             <SmartTipsOverlay
@@ -1273,7 +1266,7 @@ const Interpreter: React.FC = () => {
                               <ChevronLeft size={20} />
                               Previous
                             </button>
-                            
+
                             <button
                               type="button"
                               onClick={() => {
@@ -1319,9 +1312,8 @@ const Interpreter: React.FC = () => {
                           <div className="mt-8 p-6 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Translation Info</span>
-                              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${
-                                current.status === 'matched' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'
-                              }`}>
+                              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${current.status === 'matched' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'
+                                }`}>
                                 {statusText}
                               </span>
                             </div>
@@ -1347,7 +1339,7 @@ const Interpreter: React.FC = () => {
                     Signing Avatar
                   </h3>
                 </div>
-                
+
                 <div className="space-y-6">
                   <div className="h-96 relative rounded-3xl overflow-hidden bg-slate-900 shadow-2xl border border-white/10">
                     <Avatar3D
@@ -1355,8 +1347,8 @@ const Interpreter: React.FC = () => {
                       signSequence={
                         avatarKeyframes
                           ? avatarKeyframes
-                              .map(kf => String(kf.sign || kf.gloss || '').toUpperCase())
-                              .filter(label => label.length > 0)
+                            .map(kf => String(kf.sign || kf.gloss || '').toUpperCase())
+                            .filter(label => label.length > 0)
                           : []
                       }
                       currentSign={
@@ -1365,7 +1357,7 @@ const Interpreter: React.FC = () => {
                           : undefined
                       }
                     />
-                    
+
                     <SmartTipsOverlay
                       predictedGloss={livePredictedGloss}
                       predictedConfidence={livePredictedConf}
@@ -1404,34 +1396,33 @@ const Interpreter: React.FC = () => {
               <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold mb-4 ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
                 Session Information
               </h3>
-              
-                <div className="space-y-3">
+
+              <div className="space-y-3">
                 <div className="flex justify-between items-center">
                   <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
                     Direction:
                   </span>
                   <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                    {currentSession.direction === 'sign_to_speech' 
-                      ? 'Sign → Speech' 
+                    {currentSession.direction === 'sign_to_speech'
+                      ? 'Sign → Speech'
                       : currentSession.direction === 'speech_to_sign'
-                      ? 'Speech → Sign'
-                      : 'Text → Sign'}
+                        ? 'Speech → Sign'
+                        : 'Text → Sign'}
                   </span>
                 </div>
-                
+
                 <div className="flex justify-between items-center">
                   <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
                     Status:
                   </span>
-                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${
-                    isTranslating 
-                      ? 'text-green-600' 
-                      : accessibility.highContrast ? 'text-yellow-300' : 'text-gray-900'
-                  }`}>
+                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${isTranslating
+                    ? 'text-green-600'
+                    : accessibility.highContrast ? 'text-yellow-300' : 'text-gray-900'
+                    }`}>
                     {isTranslating ? 'Active' : 'Ready'}
                   </span>
                 </div>
-                
+
                 <div className="flex justify-between items-center">
                   <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
                     Events:
@@ -1440,7 +1431,7 @@ const Interpreter: React.FC = () => {
                     {currentSession.totalEvents}
                   </span>
                 </div>
-                
+
                 {currentSession.avgConfidence && (
                   <div className="flex justify-between items-center">
                     <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>

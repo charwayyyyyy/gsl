@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { API_BASE_URL } from '@/config'
 
 export const useSystemHealth = () => {
   const [isHealthy, setIsHealthy] = useState<boolean>(true)
@@ -7,7 +8,7 @@ export const useSystemHealth = () => {
   useEffect(() => {
     const checkHealth = async () => {
       try {
-        const res = await fetch('http://localhost:8000/health')
+        const res = await fetch(`${API_BASE_URL}/health`)
         if (res.ok) {
           setIsHealthy(true)
         } else {
@@ -22,10 +23,10 @@ export const useSystemHealth = () => {
     }
 
     checkHealth()
-    
+
     // Periodic check every 30 seconds
     const interval = setInterval(checkHealth, 30000)
-    
+
     return () => clearInterval(interval)
   }, [])
 
