@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import DirectionSelection from '@/components/DirectionSelection'
 import { useAppStore, useAccessibilitySettings } from '@/stores/appStore'
-import { Sparkles, Shield, Accessibility, Zap } from 'lucide-react'
+import { Sparkles, Shield, Accessibility, Zap, Bridge } from 'lucide-react'
 
 export default function Home() {
   const navigate = useNavigate()
@@ -47,7 +47,7 @@ export default function Home() {
   ]
 
   return (
-    <div className={`dark min-h-screen relative overflow-hidden flex flex-col items-center p-4 md:p-8 ${accessibility.highContrast ? 'bg-black' : 'bg-[#050505]'
+    <div className={`dark min-h-screen relative overflow-hidden flex flex-col items-center p-4 md:p-8 font-sans ${accessibility.highContrast ? 'bg-black' : 'bg-[#050505]'
       }`}>
       {/* Background Orbs */}
       {!accessibility.highContrast && (
@@ -59,25 +59,33 @@ export default function Home() {
       )}
 
       <div className="w-full max-w-7xl relative z-10 flex flex-col items-center">
+        {/* Logo Section */}
+        <div className="w-full flex justify-start mb-8 sm:mb-16">
+          <div className="flex items-center gap-2 group cursor-pointer">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform duration-500">
+              <Sparkles className="text-white w-6 h-6" />
+            </div>
+            <div className="flex flex-col">
+              <span className="font-serif italic text-2xl tracking-tight text-white leading-none">SignBridge</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400 leading-none mt-1">Ghana Edition</span>
+            </div>
+          </div>
+        </div>
+
         {/* Hero Section */}
         <div className="text-center mt-6 sm:mt-12 mb-10 sm:mb-20 animate-fade-in">
-          <div className="inline-flex items-center space-x-2 px-4 py-2 mb-8 rounded-full bg-blue-500/10 border border-blue-500/20 backdrop-blur-xl shadow-inner">
-            <Sparkles className="w-4 h-4 text-blue-400" />
-            <span className="text-blue-400 text-sm font-semibold tracking-wider uppercase">Next Gen Translation</span>
-          </div>
-
-          <h1 className={`font-bold tracking-tight text-white mb-8 leading-[1.1] ${accessibility.largeText ? 'text-4xl sm:text-7xl md:text-8xl' : 'text-3xl sm:text-6xl md:text-7xl'
+          <h1 className={`font-serif italic tracking-tight text-white mb-8 leading-[1.1] ${accessibility.largeText ? 'text-4xl sm:text-7xl md:text-8xl' : 'text-3xl sm:text-6xl md:text-7xl'
             }`}>
-            Ghana Sign Language <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 animate-gradient-x">
-              Interpreter
+            SignBridge <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 animate-gradient-x font-sans not-italic font-black uppercase tracking-tighter">
+              Ghana
             </span>
           </h1>
 
-          <p className={`max-w-3xl mx-auto text-slate-400 leading-relaxed mb-12 ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'
+          <p className={`max-w-3xl mx-auto text-slate-400 leading-relaxed mb-12 font-sans ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'
             }`}>
-            Breaking barriers with real-time sign language translation.
-            Experience the future of inclusive communication powered by advanced AI.
+            Bridging the gap with real-time sign language translation.
+            Experience the future of inclusive communication powered by SignBridge AI.
           </p>
 
           <div className="flex flex-wrap justify-center gap-4">

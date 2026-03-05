@@ -695,15 +695,15 @@ const Interpreter: React.FC = () => {
                 <ArrowLeft className={`${accessibility.largeText ? 'w-6 h-6 sm:w-8 sm:h-8' : 'w-5 h-5 sm:w-6 sm:h-6'}`} />
               </button>
               <div className="translate-y-0.5 sm:translate-y-1">
-                <h1 className={`${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'} font-bold tracking-tight leading-none mb-0.5 sm:mb-1 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                <h1 className={`${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'} font-serif italic tracking-tight leading-none mb-0.5 sm:mb-1 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                  SignBridge Ghana
+                </h1>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 dark:text-blue-400 leading-none">
                   {currentSession.direction === 'sign_to_speech'
                     ? 'Sign → Speech'
                     : currentSession.direction === 'speech_to_sign'
                       ? 'Speech → Sign'
                       : 'Text → Sign'}
-                </h1>
-                <p className={`${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-[10px] sm:text-sm'} font-medium ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500 dark:text-slate-400'}`}>
-                  Premium Translation Experience
                 </p>
               </div>
             </div>

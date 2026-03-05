@@ -1,6 +1,6 @@
-# Ghana Sign Language (GSL) Interpreter Platform
+# SignBridge Ghana — AI Sign Language Interpreter
 
-A production-grade, offline-first interpreter platform designed for the deaf community in Ghana. This system serves as a digital bridge, using the **"Ghanaian Sign Language Dictionary - 3rd Edition"** as its single source of truth to ensure cultural accuracy and authority.
+A production-grade, offline-first interpreter platform designed for the deaf community in Ghana. SignBridge Ghana serves as a digital bridge, using the **"Ghanaian Sign Language Dictionary - 3rd Edition"** as its single source of truth to ensure cultural accuracy and authority.
 
 ## 🎯 Mission
 

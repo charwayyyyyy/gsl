@@ -9,6 +9,10 @@ export default {
       padding: "2rem",
     },
     extend: {
+      fontFamily: {
+        serif: ['"Playfair Display"', 'serif'],
+        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+      },
       boxShadow: {
         'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
         'glass-hover': '0 12px 40px 0 rgba(31, 38, 135, 0.12)',
