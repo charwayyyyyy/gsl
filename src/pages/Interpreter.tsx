@@ -1139,7 +1139,7 @@ const Interpreter: React.FC = () => {
                       )
                       const imageSrc =
                         hasImages && glossKey
-                          ? `${API_BASE_URL}/static/${glossKey}/${current.images[clampedFrame]}`
+                          ? `${API_BASE_URL}/static/${current.images[clampedFrame]}`
                           : null
                       const statusText =
                         current.status === 'matched'

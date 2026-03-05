@@ -46,6 +46,9 @@ export default defineConfig({
       }
     }
   },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom', 'three', 'zustand', 'lucide-react', 'clsx', 'tailwind-merge'],
+  },
   plugins: [
     react(),
     traeBadgePlugin({

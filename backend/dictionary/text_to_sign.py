@@ -14,9 +14,10 @@ class TextToSignService:
         self.index: Dict[str, Any] = {}
         self._cache_vecs: Dict[str, np.ndarray] = {}
         self._page_cache: Dict[str, int] = {}
-        self._load()
+        self._index_loaded = False
+        self._load_dictionary()
 
-    def _load(self):
+    def _load_dictionary(self):
         if DICT_PATH.exists():
             with open(DICT_PATH, "r", encoding="utf-8") as f:
                 loaded = json.load(f)
@@ -34,10 +35,145 @@ class TextToSignService:
                     self.dictionary = d
                 else:
                     self.dictionary = loaded or {}
+
+    def _ensure_index_loaded(self):
+        if self._index_loaded:
+            return
         if INDEX_PATH.exists():
-            with open(INDEX_PATH, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                self.index = data.get("index", {})
+            try:
+                with open(INDEX_PATH, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                    self.index = data.get("index", {})
+                self._index_loaded = True
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"Failed to load index: {e}")
+
+    def search(self, q: str) -> Dict[str, Any]:
+        qn = (q or "").strip()
+        if qn == "":
+            alts: List[str] = list(self.dictionary.keys())[:3]
+            g = alts[0] if alts else None
+            e = self.dictionary.get(g or "", {})
+            primitives = self._infer_primitives(g or "", e)
+            return {
+                "gloss": g,
+                "images": self._ensure_images(g or "", e) if g else [],
+                "description": e.get("description", "") if g else "",
+                "page": e.get("page") if g else None,
+                "confidence": 1.0 if g else 0.0,
+                "alternatives": alts[1:] if len(alts) > 1 else [],
+                "match_type": "Random" if not g else "Exact",
+                "variants": int(e.get("variants") or 0) if g else 0,
+                "primitives": primitives,
+            }
+        cand: List[str] = []
+        qlow = qn.lower()
+        qup = qn.upper()
+        forms = {qlow, qup}
+        if qlow.endswith("es"):
+            forms.add(qlow[:-2])
+        if qlow.endswith("s"):
+            forms.add(qlow[:-1])
+        for gloss, entry in self.dictionary.items():
+            if gloss.lower() in forms or entry.get("english", "").lower() in forms:
+                imgs = self._ensure_images(gloss, entry)
+                primitives = self._infer_primitives(gloss, entry)
+                return {
+                    "gloss": gloss,
+                    "images": imgs,
+                    "description": entry.get("description", ""),
+                    "page": entry.get("page"),
+                    "confidence": 1.0,
+                    "alternatives": [],
+                    "match_type": "Exact",
+                    "variants": int(entry.get("variants") or 0),
+                    "primitives": primitives,
+                }
+        for gloss, entry in self.dictionary.items():
+            if gloss.lower().startswith(qlow) or entry.get("english", "").lower().startswith(qlow):
+                cand.append(gloss)
+
+        if not cand:
+            for gloss, entry in self.dictionary.items():
+                if qlow in gloss.lower() or qlow in entry.get("english", "").lower():
+                    cand.append(gloss)
+
+        if cand:
+            cand.sort(key=len)
+            g = cand[0]
+            e = self.dictionary.get(g, {})
+            imgs = self._ensure_images(g, e)
+            primitives = self._infer_primitives(g, e)
+            return {
+                "gloss": g,
+                "images": imgs,
+                "description": e.get("description", ""),
+                "page": e.get("page"),
+                "confidence": 0.85,
+                "alternatives": cand[1:4],
+                "match_type": "Prefix/Contains",
+                "variants": int(e.get("variants") or 0),
+                "primitives": primitives,
+            }
+        
+        # Semantic search fallback
+        self._ensure_index_loaded()
+        try:
+            if not hasattr(self, '_text_model') or self._text_model is None:
+                from sentence_transformers import SentenceTransformer
+                self._text_model = SentenceTransformer("all-MiniLM-L6-v2")
+            
+            qvec = np.array(self._text_model.encode(qlow, normalize_embeddings=True))
+        except Exception:
+            h = abs(hash(qlow)) % (10**8)
+            rng = np.random.default_rng(h)
+            qvec = rng.normal(0, 1, 384)
+        
+        scores: List[Any] = []
+        for gloss, rec in self.index.items():
+            tv = np.array(rec.get("text_vec", []), dtype=float)
+            if tv.size == 0:
+                tv = self._cache_vecs.get(gloss)
+                if tv is None:
+                    h = abs(hash(gloss)) % (10**8)
+                    tv = np.random.default_rng(h).normal(0, 1, 384)
+                    self._cache_vecs[gloss] = tv
+            s = self._cos(qvec, tv)
+            scores.append((gloss, float(s)))
+        
+        scores.sort(key=lambda x: x[1], reverse=True)
+        if scores:
+            g, sc = scores[0]
+            e = self.dictionary.get(g, {})
+            imgs = self._ensure_images(g, e)
+            alts = [x[0] for x in scores[1:4]]
+            primitives = self._infer_primitives(g, e)
+            return {
+                "gloss": g,
+                "images": imgs,
+                "description": e.get("description", ""),
+                "page": e.get("page"),
+                "confidence": float(min(0.69, max(0.0, sc))),
+                "alternatives": alts,
+                "match_type": "Semantic",
+                "variants": int(e.get("variants") or 0),
+                "primitives": primitives,
+            }
+        
+        primitives = self._infer_primitives("", {})
+        return {
+            "gloss": None,
+            "images": [],
+            "description": "",
+            "page": None,
+            "confidence": 0.0,
+            "alternatives": [],
+            "match_type": "None",
+            "variants": 0,
+            "primitives": primitives,
+        }
+
 
     def _cos(self, a: np.ndarray, b: np.ndarray) -> float:
         na = np.linalg.norm(a)
@@ -55,10 +191,10 @@ class TextToSignService:
         for img in images:
             p = base / img
             if p.exists():
-                out.append(img)
+                # Return path relative to images/
+                out.append(f"{gloss}/{img}")
             else:
                 # If it doesn't exist in the gloss-specific folder, check the main images folder
-                # (for backward compatibility or if extraction logic changed)
                 p_main = PROCESSED / "images" / img
                 if p_main.exists():
                     out.append(img)
@@ -126,7 +262,7 @@ class TextToSignService:
                             fname = f"{gloss_safe}_p{page}.png"
                             dst = base / fname
                             pix.save(dst)
-                            out.append(fname)
+                            out.append(f"{gloss}/{fname}")
                         else:
                             # Fallback to full page if gloss not found for cropping
                             doc = fitz.open(pdf_path)
@@ -134,7 +270,7 @@ class TextToSignService:
                             fname = f"page{page}.png"
                             dst = base / fname
                             pix.save(dst)
-                            out.append(fname)
+                            out.append(f"{gloss}/{fname}")
         except Exception:
             pass
         return out
