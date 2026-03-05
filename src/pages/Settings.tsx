@@ -58,10 +58,10 @@ const Settings: React.FC = () => {
     }
 
     return (
-      <label className={`glass-card p-5 sm:p-8 flex items-center justify-between cursor-pointer hover:shadow-glass-hover transition-all duration-500 group relative overflow-hidden ${accessibilitySettings.highContrast ? 'bg-black border-4 border-yellow-400' : ''}`}>
+      <label className={`glass-card p-5 sm:p-8 flex items-center justify-between cursor-pointer border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)] transition-all duration-500 group relative overflow-hidden ${accessibilitySettings.highContrast ? 'bg-black border-4 border-yellow-400' : ''}`}>
         <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-[50px] -mr-16 -mt-16 rounded-full group-hover:bg-blue-500/10 transition-all duration-500" />
         <div className="flex items-center gap-4 sm:gap-6 relative z-10 flex-1">
-          <div className={`flex-shrink-0 w-12 h-12 flex items-center justify-center sm:w-16 sm:h-16 rounded-2xl border group-hover:scale-110 transition-all duration-500 shadow-inner ${accessibilitySettings.highContrast ? 'bg-white border-white' : 'bg-blue-500/10 border-blue-500/20 group-hover:bg-blue-500/20'}`}>
+          <div className={`flex-shrink-0 w-12 h-12 flex items-center justify-center sm:w-16 sm:h-16 rounded-2xl border group-hover:scale-110 transition-all duration-500 shadow-inner ${accessibilitySettings.highContrast ? 'bg-white border-white' : 'bg-blue-500/10 border-blue-500/20 group-hover:bg-amber-100 dark:group-hover:bg-amber-900/40'}`}>
             {renderIcon()}
           </div>
           <div>
@@ -87,7 +87,7 @@ const Settings: React.FC = () => {
   }
 
   const renderSlider = (label: string, value: number, min: number, max: number, step: number, onChange: (val: number) => void, unit: string = '') => (
-    <div className={`glass-card p-6 sm:p-10 relative overflow-hidden group ${accessibilitySettings.highContrast ? 'bg-black border-4 border-yellow-400' : ''}`}>
+    <div className={`glass-card p-6 sm:p-10 relative overflow-hidden group border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)] transition-all duration-500 ${accessibilitySettings.highContrast ? 'bg-black border-4 border-yellow-400' : ''}`}>
       <div className="absolute bottom-0 right-0 w-32 h-32 bg-blue-500/5 blur-[50px] -mr-16 -mb-16 rounded-full group-hover:bg-blue-500/10 transition-all duration-500" />
       <div className="flex justify-between items-center mb-8 relative z-10">
         <label className={`font-bold text-white ${accessibilitySettings.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}`}>
@@ -285,7 +285,7 @@ const Settings: React.FC = () => {
                   : 'bg-blue-600/20 border-blue-500 shadow-glass-hover'
                 : accessibilitySettings.highContrast
                   ? 'glass-card bg-black border-slate-600 hover:border-yellow-400'
-                  : 'glass-card border-white/10 hover:border-white/20'
+                  : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)]'
             }`}
           >
             <div className="relative z-10">
@@ -313,7 +313,7 @@ const Settings: React.FC = () => {
                   : 'bg-blue-600/20 border-blue-500 shadow-glass-hover'
                 : accessibilitySettings.highContrast
                   ? 'glass-card bg-black border-slate-600 hover:border-yellow-400'
-                  : 'glass-card border-white/10 hover:border-white/20'
+                  : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)]'
             }`}
           >
             <div className="relative z-10">
@@ -494,7 +494,7 @@ const Settings: React.FC = () => {
                     : `bg-${option.color}-600/20 border-${option.color}-500 shadow-glass-hover`
                   : accessibilitySettings.highContrast
                     ? 'glass-card bg-black border-slate-600 hover:border-yellow-400'
-                    : 'glass-card border-white/10 hover:border-white/20'
+                    : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)]'
               }`}
             >
               <div className="relative z-10">
@@ -514,7 +514,7 @@ const Settings: React.FC = () => {
   
   const renderGhanaTab = () => (
     <div className="space-y-10 animate-fade-in">
-      <div className={`glass-card p-6 sm:p-10 relative overflow-hidden group ${accessibilitySettings.highContrast ? 'bg-black border-4 border-yellow-400' : 'border-blue-500/30'}`}>
+      <div className={`glass-card p-6 sm:p-10 relative overflow-hidden group border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)] transition-all duration-500 ${accessibilitySettings.highContrast ? 'bg-black border-4 border-yellow-400' : 'border-blue-500/30'}`}>
         <div className="absolute inset-0 bg-blue-600/5 group-hover:bg-blue-600/10 transition-colors duration-500" />
         <div className="relative z-10 flex items-center gap-8">
           <div className="w-20 h-20 rounded-[1.5rem] bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-5xl shadow-inner backdrop-blur-xl">

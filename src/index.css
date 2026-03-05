@@ -62,7 +62,7 @@
   }
   
   .glass-card {
-    @apply glass rounded-[2rem] overflow-hidden transition-all duration-500 hover:shadow-glass-hover hover:scale-[1.01] active:scale-[0.99] p-6 md:p-8;
+    @apply glass border-amber-500/30 rounded-[2rem] overflow-hidden transition-all duration-500 hover:shadow-glass-hover hover:scale-[1.01] active:scale-[0.99] p-6 md:p-8;
   }
 
   .section-container {

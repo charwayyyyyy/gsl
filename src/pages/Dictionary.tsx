@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  Mic, MicOff, ZoomIn, ZoomOut, X, ChevronLeft, ChevronRight, 
-  AlertTriangle, BookOpen, Layers, CheckCircle, Flag, 
+import {
+  Mic, MicOff, ZoomIn, ZoomOut, X, ChevronLeft, ChevronRight,
+  AlertTriangle, BookOpen, Layers, CheckCircle, Flag,
   MessageSquare, Search, ArrowLeft, Info, HelpCircle
 } from 'lucide-react'
 import { analytics } from '../services/analytics'
 import { useAppStore } from '../stores/appStore'
+import { API_BASE_URL } from '@/config'
 
 // Add interface for SpeechRecognition
 interface IWindow extends Window {
@@ -36,9 +37,9 @@ const Dictionary: React.FC = () => {
   const [letter, setLetter] = useState<string>('A')
   const [list, setList] = useState<any[]>([])
   const [reported, setReported] = useState(false)
-  
+
   const inputRef = useRef<HTMLInputElement>(null)
-  
+
   // Image zoom modal state
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
   const [selectedImageIndex, setSelectedImageIndex] = useState<number>(0)
@@ -55,22 +56,22 @@ const Dictionary: React.FC = () => {
       setLoading(true)
       setError(null)
       setReported(false) // Reset report status for new search
-      
-      const resp = await fetch(`http://localhost:8000/api/dictionary/search?q=${encodeURIComponent(query)}`)
+
+      const resp = await fetch(`${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(query)}`)
       const data = await resp.json()
       setResult(data)
-      
+
       // Track analytics
       analytics.track({
         event_type: isVoice ? 'voice_search' : 'search',
-        data: { 
-          query, 
-          success: !!data.gloss, 
+        data: {
+          query,
+          success: !!data.gloss,
           match_type: data.match_type,
-          confidence: data.confidence 
+          confidence: data.confidence
         }
       })
-      
+
       // Save to local history
       const history = JSON.parse(localStorage.getItem('search_history') || '[]')
       if (!history.includes(query)) {
@@ -154,7 +155,7 @@ const Dictionary: React.FC = () => {
   const fetchList = async (ltr: string) => {
     try {
       setError(null)
-      const resp = await fetch(`http://localhost:8000/api/dictionary/list?letter=${encodeURIComponent(ltr)}`)
+      const resp = await fetch(`${API_BASE_URL}/api/dictionary/list?letter=${encodeURIComponent(ltr)}`)
       const data = await resp.json()
       setList(Array.isArray(data?.items) ? data.items : [])
     } catch {
@@ -201,7 +202,7 @@ const Dictionary: React.FC = () => {
     if (!result?.images) return
     const newIndex = (selectedImageIndex - 1 + result.images.length) % result.images.length
     setSelectedImageIndex(newIndex)
-    setSelectedImage(`http://localhost:8000/static/${result.gloss}/${result.images[newIndex]}`)
+    setSelectedImage(`${API_BASE_URL}/static/${result.gloss}/${result.images[newIndex]}`)
     setZoomLevel(1)
   }
 
@@ -210,7 +211,7 @@ const Dictionary: React.FC = () => {
     if (!result?.images) return
     const newIndex = (selectedImageIndex + 1) % result.images.length
     setSelectedImageIndex(newIndex)
-    setSelectedImage(`http://localhost:8000/static/${result.gloss}/${result.images[newIndex]}`)
+    setSelectedImage(`${API_BASE_URL}/static/${result.gloss}/${result.images[newIndex]}`)
     setZoomLevel(1)
   }
 
@@ -218,14 +219,14 @@ const Dictionary: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!selectedImage) return
-      
+
       if (e.key === 'Escape') closeImageModal()
       if (e.key === 'ArrowLeft') handlePrevImage(e as any)
       if (e.key === 'ArrowRight') handleNextImage(e as any)
       if (e.key === '+' || e.key === '=') handleZoomIn(e as any)
       if (e.key === '-') handleZoomOut(e as any)
     }
-    
+
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedImage, selectedImageIndex, zoomLevel])
@@ -259,8 +260,8 @@ const Dictionary: React.FC = () => {
                 onClick={() => navigate('/')}
                 className={`
                   ${getButtonSize()} rounded-2xl flex items-center justify-center
-                  ${accessibility.highContrast 
-                    ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400 border-2 border-yellow-400' 
+                  ${accessibility.highContrast
+                    ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400 border-2 border-yellow-400'
                     : 'bg-white/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-white/40 dark:border-white/10'
                   }
                   transform hover:scale-110 active:scale-95 transition-all duration-300
@@ -286,7 +287,7 @@ const Dictionary: React.FC = () => {
                 onClick={() => navigate('/help')}
                 className={`
                   ${getButtonSize()} rounded-2xl flex items-center justify-center transition-all duration-300
-                  ${accessibility.highContrast 
+                  ${accessibility.highContrast
                     ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400 border-2 border-yellow-400'
                     : 'bg-white/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-white/40 dark:border-white/10'
                   }
@@ -303,19 +304,19 @@ const Dictionary: React.FC = () => {
 
       {/* Image Zoom Modal */}
       {selectedImage && (
-        <div 
+        <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-4 animate-fade-in"
           onClick={closeImageModal}
         >
           <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
-            <img 
-              src={selectedImage} 
-              alt="Zoomed view" 
+            <img
+              src={selectedImage}
+              alt="Zoomed view"
               className="max-w-full max-h-full object-contain transition-transform duration-300 ease-out shadow-2xl rounded-3xl"
               style={{ transform: `scale(${zoomLevel})` }}
               onClick={(e) => e.stopPropagation()}
             />
-            
+
             {/* Navigation Controls */}
             {result?.images && result.images.length > 1 && (
               <>
@@ -338,7 +339,7 @@ const Dictionary: React.FC = () => {
 
             {/* Zoom Controls */}
             <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex items-center gap-6 bg-white/10 backdrop-blur-xl px-8 py-4 rounded-3xl text-white border border-white/10 shadow-2xl">
-              <button 
+              <button
                 onClick={handleZoomOut}
                 className="p-2 hover:bg-white/10 rounded-xl transition-colors"
                 title="Zoom Out (-)"
@@ -346,7 +347,7 @@ const Dictionary: React.FC = () => {
                 <ZoomOut size={28} />
               </button>
               <span className="font-mono text-xl w-20 text-center select-none font-bold tracking-tighter">{Math.round(zoomLevel * 100)}%</span>
-              <button 
+              <button
                 onClick={handleZoomIn}
                 className="p-2 hover:bg-white/10 rounded-xl transition-colors"
                 title="Zoom In (+)"
@@ -354,15 +355,15 @@ const Dictionary: React.FC = () => {
                 <ZoomIn size={28} />
               </button>
             </div>
-            
-            <button 
+
+            <button
               onClick={closeImageModal}
               className="absolute top-8 right-8 p-4 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-2xl text-white transition-all transform hover:scale-110 active:scale-95 border border-white/10"
               title="Close (Esc)"
             >
               <X size={32} />
             </button>
-            
+
             {/* Image Counter */}
             {result?.images && result.images.length > 1 && (
               <div className="absolute top-8 left-8 px-5 py-2.5 bg-white/10 backdrop-blur-md text-white rounded-2xl text-sm font-bold border border-white/10 tracking-widest">
@@ -389,8 +390,8 @@ const Dictionary: React.FC = () => {
               className={`
                 w-full pl-12 sm:pl-14 pr-16 py-4 sm:py-6 rounded-[2rem] border-2 transition-all duration-500 outline-none
                 ${accessibility.largeText ? 'text-xl sm:text-2xl' : 'text-base sm:text-xl'}
-                ${isListening 
-                  ? 'bg-rose-50/50 dark:bg-rose-500/10 border-rose-400 shadow-[0_0_30px_rgba(244,63,94,0.15)]' 
+                ${isListening
+                  ? 'bg-rose-50/50 dark:bg-rose-500/10 border-rose-400 shadow-[0_0_30px_rgba(244,63,94,0.15)]'
                   : 'bg-white/50 dark:bg-slate-900/50 border-white/40 dark:border-white/10 focus:border-blue-500/50 dark:focus:border-blue-400/50 shadow-glass focus:shadow-glass-hover'
                 }
                 backdrop-blur-xl
@@ -401,8 +402,8 @@ const Dictionary: React.FC = () => {
               disabled={loading}
               className={`
                 absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-2xl transition-all duration-500
-                ${isListening 
-                  ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/40 animate-pulse' 
+                ${isListening
+                  ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/40 animate-pulse'
                   : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-blue-500 hover:text-white dark:hover:bg-blue-500'
                 }
               `}
@@ -411,7 +412,7 @@ const Dictionary: React.FC = () => {
               {isListening ? <MicOff size={24} /> : <Mic size={24} />}
             </button>
           </div>
-          
+
           {isListening && (
             <div className="mt-4 flex items-center justify-center gap-3 text-rose-500 animate-pulse">
               <div className="flex gap-1">
@@ -423,7 +424,7 @@ const Dictionary: React.FC = () => {
             </div>
           )}
         </div>
-        
+
         {/* Alphabet Navigation */}
         {!q && (
           <div className="animate-fade-in space-y-4">
@@ -438,8 +439,8 @@ const Dictionary: React.FC = () => {
                   onClick={() => setLetter(a)}
                   className={`
                     w-11 h-11 sm:w-14 sm:h-14 rounded-2xl font-bold transition-all duration-500 flex items-center justify-center
-                    ${letter === a 
-                      ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/40 scale-110 -translate-y-1' 
+                    ${letter === a
+                      ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/40 scale-110 -translate-y-1'
                       : 'bg-white/40 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:scale-105'
                     }
                     ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}
@@ -478,7 +479,7 @@ const Dictionary: React.FC = () => {
         {result && !loading && (
           <div className="animate-slide-up">
             {result.gloss ? (
-              <div className="glass-card overflow-hidden">
+              <div className="glass-card overflow-hidden border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] transition-all duration-500">
                 {/* Result Header */}
                 <div className="p-6 sm:p-8 border-b border-white/20 bg-white/30 dark:bg-white/5 backdrop-blur-md">
                   <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
@@ -491,7 +492,7 @@ const Dictionary: React.FC = () => {
                           {result.gloss}
                         </h2>
                       </div>
-                      
+
                       <div className="flex flex-wrap gap-2">
                         <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border ${getMatchColor(result.match_type)}`}>
                           {result.match_type} Match
@@ -511,14 +512,14 @@ const Dictionary: React.FC = () => {
                         </span>
                       </div>
                     </div>
-                    
+
                     <button
                       onClick={handleReport}
                       disabled={reported}
                       className={`
                         flex items-center gap-3 px-6 py-3 rounded-2xl text-sm font-black uppercase tracking-widest transition-all duration-300
-                        ${reported 
-                          ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 cursor-default' 
+                        ${reported
+                          ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 cursor-default'
                           : 'bg-white/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 border border-white/40 dark:border-white/10 hover:bg-rose-500 hover:text-white hover:border-rose-500 shadow-sm'
                         }
                         transform hover:scale-105 active:scale-95
@@ -537,7 +538,7 @@ const Dictionary: React.FC = () => {
                       )}
                     </button>
                   </div>
-                  
+
                   {result.description && (
                     <div className="mt-8 flex gap-4 p-6 rounded-3xl bg-blue-500/5 border border-blue-500/10 backdrop-blur-sm">
                       <MessageSquare size={24} className="text-blue-500 shrink-0" />
@@ -553,15 +554,15 @@ const Dictionary: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                     {Array.isArray(result.images) && result.images.length > 0 ? (
                       result.images.map((img: string, i: number) => (
-                        <div 
-                          key={i} 
-                          className="relative group cursor-pointer overflow-hidden rounded-3xl border border-white/20 bg-white/50 dark:bg-slate-900/50 shadow-sm transition-all duration-500 hover:shadow-2xl hover:scale-[1.02]" 
-                          onClick={() => openImageModal(`http://localhost:8000/static/${result.gloss}/${img}`, i)}
+                        <div
+                          key={i}
+                          className="relative group cursor-pointer overflow-hidden rounded-3xl border border-amber-500/30 bg-white/50 dark:bg-slate-900/50 shadow-sm transition-all duration-500 hover:shadow-2xl hover:scale-[1.02] hover:border-amber-400/80"
+                          onClick={() => openImageModal(`${API_BASE_URL}/static/${result.gloss}/${img}`, i)}
                         >
                           <div className="aspect-square flex items-center justify-center p-4">
                             <img
-                              src={`http://localhost:8000/static/${result.gloss}/${img}`}
-                              alt={`${result.gloss} sign ${i+1}`}
+                              src={`${API_BASE_URL}/static/${result.gloss}/${img}`}
+                              alt={`${result.gloss} sign ${i + 1}`}
                               className="max-w-full max-h-full object-contain transition-transform duration-700 group-hover:scale-110"
                               loading="lazy"
                               onError={(e) => {
@@ -570,13 +571,13 @@ const Dictionary: React.FC = () => {
                               }}
                             />
                           </div>
-                          
+
                           <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/5 transition-all duration-500 flex items-center justify-center opacity-0 group-hover:opacity-100 backdrop-blur-[2px]">
                             <div className="bg-white/90 dark:bg-slate-900/90 p-4 rounded-2xl shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-500">
                               <ZoomIn className="text-blue-600" size={32} />
                             </div>
                           </div>
-                          
+
                           <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                             <div className="bg-black/60 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border border-white/20">
                               Frame {i + 1}
@@ -627,7 +628,7 @@ const Dictionary: React.FC = () => {
                 <p className={`${getTextSize()} text-slate-500 dark:text-slate-400 mb-10 max-w-md mx-auto leading-relaxed`}>
                   We couldn't find a direct sign for <span className="text-blue-500 font-bold">"{q}"</span>. Try one of our suggested alternatives below.
                 </p>
-                
+
                 {/* Fallback alternatives for no match */}
                 {Array.isArray(result.alternatives) && result.alternatives.length > 0 && (
                   <div className="flex flex-wrap gap-3 justify-center">
@@ -661,7 +662,7 @@ const Dictionary: React.FC = () => {
                 Glosses starting with <span className="text-indigo-500">"{letter}"</span>
               </h2>
             </div>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {list.map((item) => (
                 <button
@@ -670,7 +671,7 @@ const Dictionary: React.FC = () => {
                     setQ(item.gloss)
                     search(item.gloss, false)
                   }}
-                  className="glass-card p-6 text-left group hover:border-indigo-500/30"
+                  className="glass-card p-6 text-left group border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)] transition-all duration-500 hover:-translate-y-1"
                 >
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-lg font-black text-slate-900 dark:text-white group-hover:text-indigo-500 transition-colors tracking-tight">

@@ -1,5 +1,6 @@
+import { API_BASE_URL } from '@/config';
 
-const API_BASE = 'http://localhost:8000/api';
+const API_BASE = `${API_BASE_URL}/api`;
 
 export interface AnalyticsEvent {
   event_type: 'search' | 'voice_search' | 'unknown_search' | 'feedback' | 'error';
@@ -55,7 +56,7 @@ class AnalyticsService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(feedback),
       });
-      
+
       // Also track as an analytics event
       this.track({
         event_type: 'feedback',

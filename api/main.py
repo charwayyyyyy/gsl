@@ -1,4 +1,5 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, UploadFile, File, Form, Response
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -699,6 +700,25 @@ async def end_translation_session(session_id: str):
         logger.error(f"Error ending translation session: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+# Serve compiled React frontend from 'dist' folder
+# Handle SPA routing: redirect unknown paths to index.html
+@app.get("/{catchall:path}")
+async def serve_frontend(catchall: str):
+    # Exclude /api, /health, /static from catchall if uvicorn didn't catch them
+    if catchall.startswith("api/") or catchall.startswith("health") or catchall.startswith("static/"):
+        raise HTTPException(status_code=404)
+        
+    dist_path = Path("dist") / catchall
+    if dist_path.exists() and dist_path.is_file():
+        return FileResponse(dist_path)
+    
+    index_path = Path("dist") / "index.html"
+    if index_path.exists():
+        return FileResponse(index_path)
+    
+    return {"message": "Ghana Sign Language Interpreter API is running, but Frontend build not found."}
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)  # Disable reload for production stability
+
