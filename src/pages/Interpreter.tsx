@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { API_BASE_URL, WS_BASE_URL } from '@/config'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX, ChevronLeft, ChevronRight, Play, Pause, AlertTriangle, BookOpen, User, Lightbulb, Keyboard } from 'lucide-react'
+import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX, ChevronLeft, ChevronRight, Play, Pause, AlertTriangle, BookOpen, User, Lightbulb, Keyboard, Sun, Moon } from 'lucide-react'
+import { useTheme } from '@/hooks/useTheme'
 import { useAppStore } from '../stores/appStore'
 import { useWebRTC, useWebSocket } from '../hooks/useWebRTC'
 import VideoCapture from '../components/VideoCapture'
@@ -44,6 +45,7 @@ const Interpreter: React.FC = () => {
     lastTranslation,
     settings
   } = useAppStore()
+  const { isDark, toggleTheme } = useTheme()
 
   const [translationText, setTranslationText] = useState('')
   const [confidence, setConfidence] = useState(0)
@@ -759,6 +761,23 @@ const Interpreter: React.FC = () => {
                   <item.icon className={`${accessibility.largeText ? 'w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8' : 'w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6'}`} />
                 </button>
               ))}
+
+              {/* Theme toggle */}
+              <button
+                onClick={toggleTheme}
+                aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+                className={`
+                  ${getButtonSize()} rounded-2xl flex items-center justify-center transition-all duration-300
+                  bg-white/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200
+                  hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-white/40 dark:border-white/10
+                  transform hover:scale-110 active:scale-95 focus:outline-none
+                `}
+              >
+                {isDark
+                  ? <Sun className={`${accessibility.largeText ? 'w-5 h-5' : 'w-4 h-4'} text-amber-400`} />
+                  : <Moon className={`${accessibility.largeText ? 'w-5 h-5' : 'w-4 h-4'} text-slate-600`} />
+                }
+              </button>
             </div>
           </div>
         </div>
@@ -767,8 +786,8 @@ const Interpreter: React.FC = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8 animate-fade-in">
-          {/* Left Panel - Input */}
-          <div className="space-y-4 sm:space-y-8">
+          {/* Left Panel - Input (Moved below output on mobile) */}
+          <div className="space-y-4 sm:space-y-8 order-2 lg:order-1">
             <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-4 sm:p-6' : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] p-4 sm:p-8'} overflow-hidden transition-all duration-500`}>
               <div className="flex items-center gap-3 mb-6">
                 <div className={`w-3 h-3 rounded-full animate-pulse ${currentSession.direction === 'sign_to_speech' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
@@ -1013,8 +1032,8 @@ const Interpreter: React.FC = () => {
             )}
           </div>
 
-          {/* Right Panel - Output */}
-          <div className="space-y-8">
+          {/* Right Panel - Output (Moved above input on mobile) */}
+          <div className="space-y-8 order-1 lg:order-2">
             <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] p-8'} transition-all duration-500`}>
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-4">

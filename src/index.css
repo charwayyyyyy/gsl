@@ -7,7 +7,7 @@
   line-height: 1.5;
   font-weight: 400;
   color-scheme: light dark;
-  
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -21,35 +21,41 @@
   }
 
   body {
-    @apply m-0 min-h-screen overflow-x-hidden bg-slate-50 text-slate-900 transition-colors duration-500 selection:bg-blue-500/30 selection:text-blue-900 dark:selection:text-blue-100;
+    @apply m-0 min-h-screen overflow-x-hidden;
+    /* Simple solid colors — identical on ALL devices (no fixed-attachment mobile bugs) */
+    background-color: #f8fafc;
+    color: #0f172a;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     line-height: 1.6;
-    background: radial-gradient(circle at 0% 0%, #e0f2fe 0%, transparent 50%),
-                radial-gradient(circle at 100% 0%, #fef3c7 0%, transparent 50%),
-                radial-gradient(circle at 100% 100%, #dcfce7 0%, transparent 50%),
-                radial-gradient(circle at 0% 100%, #f3e8ff 0%, transparent 50%),
-                #f8fafc;
-    background-attachment: fixed;
+    transition: background-color 0.3s, color 0.3s;
   }
 
   .dark body {
-    @apply bg-slate-950 text-slate-50;
-    background: radial-gradient(circle at 0% 0%, #0c4a6e 0%, transparent 40%),
-                radial-gradient(circle at 100% 0%, #78350f 0%, transparent 40%),
-                radial-gradient(circle at 100% 100%, #064e3b 0%, transparent 40%),
-                radial-gradient(circle at 0% 100%, #4c1d95 0%, transparent 40%),
-                #020617;
-    background-attachment: fixed;
+    background-color: #050505;
+    color: #f8fafc;
   }
 
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-bold tracking-tight text-slate-900 dark:text-white mb-[0.5em];
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-bold tracking-tight mb-[0.5em];
     line-height: 1.2;
   }
 
-  h1 { @apply text-4xl md:text-5xl lg:text-6xl; }
-  h2 { @apply text-3xl md:text-4xl; }
-  h3 { @apply text-2xl md:text-3xl; }
+  h1 {
+    @apply text-4xl md:text-5xl lg:text-6xl;
+  }
+
+  h2 {
+    @apply text-3xl md:text-4xl;
+  }
+
+  h3 {
+    @apply text-2xl md:text-3xl;
+  }
 
   p {
     @apply mb-4 leading-relaxed opacity-90;
@@ -58,11 +64,13 @@
 
 @layer components {
   .glass {
-    @apply backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/40 dark:border-white/10 shadow-glass;
+    /* Solid white in light mode — semi-transparent blends with dark on mobile */
+    @apply backdrop-blur-sm bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-white/10 shadow-glass;
   }
-  
+
   .glass-card {
-    @apply glass border-amber-500/30 rounded-[2rem] overflow-hidden transition-all duration-500 hover:shadow-glass-hover hover:scale-[1.01] active:scale-[0.99] p-6 md:p-8;
+    @apply glass rounded-[2rem] overflow-hidden transition-all duration-300 hover:shadow-glass-hover hover:scale-[1.01] active:scale-[0.99] p-6 md:p-8;
+    will-change: transform;
   }
 
   .section-container {
@@ -84,8 +92,8 @@
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -93,22 +101,71 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-slate-300/50 dark:bg-slate-700/50 rounded-full backdrop-blur-md;
+  @apply bg-slate-300/50 dark:bg-slate-700/50 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   @apply bg-slate-400/50 dark:bg-slate-600/50;
 }
 
-/* Animations */
+/* Animations — transform-only (compositor, no layout repaint) */
 @keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
 .animate-float {
   animation: float 6s ease-in-out infinite;
+  will-change: transform;
+}
+
+/* Gradient text: static on mobile, animated on md+ screens only */
+.animate-gradient-x {
+  background-size: 200% 200%;
+}
+
+@media (min-width: 768px) {
+  .animate-gradient-x {
+    animation: gradient-x 8s linear infinite;
+  }
+}
+
+@keyframes gradient-x {
+
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Hide expensive blur orbs on mobile */
+@media (max-width: 640px) {
+  .perf-orb {
+    display: none;
+  }
+}
+
+/* Honor OS reduce-motion preference */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.15ms !important;
+  }
 }
 
 /* UI Enhancement: Premium feel */
