@@ -248,10 +248,10 @@ async def startup_event():
             logger.info(f"Seeded dictionary from gsl_json: {len(migrated)} entries")
       except Exception as e:
         logger.warning(f"Dictionary seed failed: {e}")
-      if build_sign_index:
+      if build_sign_index and not Path("data/processed/gsl_sign_index.json").exists():
         try: build_sign_index()
         except Exception as e: logger.warning(f"build_sign_index failed: {e}")
-      if build_motion_templates:
+      if build_motion_templates and not Path("data/processed/dictionary_motion_templates.json").exists():
         try: build_motion_templates()
         except Exception as e: logger.warning(f"build_motion_templates failed: {e}")
       try:

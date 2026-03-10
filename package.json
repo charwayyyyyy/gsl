@@ -1,6 +1,6 @@
 {
-  "name": "gsl",
-  "private": true,
+  "name": "signbridge-ghana",
+  "description": "SignBridge Ghana — AI-powered Ghana Sign Language Interpreter",
   "version": "0.0.0",
   "type": "module",
   "scripts": {

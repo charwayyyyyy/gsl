@@ -202,7 +202,7 @@ const Dictionary: React.FC = () => {
     if (!result?.images) return
     const newIndex = (selectedImageIndex - 1 + result.images.length) % result.images.length
     setSelectedImageIndex(newIndex)
-    setSelectedImage(`${API_BASE_URL}/static/${result.gloss}/${result.images[newIndex]}`)
+    setSelectedImage(`${API_BASE_URL}/static/${result.images[newIndex]}`)
     setZoomLevel(1)
   }
 
@@ -211,7 +211,7 @@ const Dictionary: React.FC = () => {
     if (!result?.images) return
     const newIndex = (selectedImageIndex + 1) % result.images.length
     setSelectedImageIndex(newIndex)
-    setSelectedImage(`${API_BASE_URL}/static/${result.gloss}/${result.images[newIndex]}`)
+    setSelectedImage(`${API_BASE_URL}/static/${result.images[newIndex]}`)
     setZoomLevel(1)
   }
 
@@ -273,11 +273,11 @@ const Dictionary: React.FC = () => {
               </button>
 
               <div>
-                <h1 className={`${accessibility.largeText ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
-                  GSL Dictionary
+                <h1 className={`${accessibility.largeText ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'} font-serif italic tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                  SignBridge Ghana
                 </h1>
-                <p className={`${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-sm'} font-medium ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500 dark:text-slate-400'}`}>
-                  Premium Visual Reference
+                <p className={`${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-sm'} font-sans font-black uppercase tracking-[0.2em] ${accessibility.highContrast ? 'text-yellow-300' : 'text-blue-500 dark:text-blue-400'}`}>
+                  Visual Reference
                 </p>
               </div>
             </div>
@@ -538,15 +538,6 @@ const Dictionary: React.FC = () => {
                       )}
                     </button>
                   </div>
-
-                  {result.description && (
-                    <div className="mt-8 flex gap-4 p-6 rounded-3xl bg-blue-500/5 border border-blue-500/10 backdrop-blur-sm">
-                      <MessageSquare size={24} className="text-blue-500 shrink-0" />
-                      <p className={`${getTextSize()} font-medium text-slate-700 dark:text-slate-300 leading-relaxed`}>
-                        {result.description}
-                      </p>
-                    </div>
-                  )}
                 </div>
 
                 {/* Images Grid */}
@@ -554,37 +545,50 @@ const Dictionary: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                     {Array.isArray(result.images) && result.images.length > 0 ? (
                       result.images.map((img: string, i: number) => (
-                        <div
-                          key={i}
-                          className="relative group cursor-pointer overflow-hidden rounded-3xl border border-amber-500/30 bg-white/50 dark:bg-slate-900/50 shadow-sm transition-all duration-500 hover:shadow-2xl hover:scale-[1.02] hover:border-amber-400/80"
-                          onClick={() => openImageModal(`${API_BASE_URL}/static/${result.gloss}/${img}`, i)}
-                        >
-                          <div className="aspect-square flex items-center justify-center p-4">
-                            <img
-                              src={`${API_BASE_URL}/static/${result.gloss}/${img}`}
-                              alt={`${result.gloss} sign ${i + 1}`}
-                              className="max-w-full max-h-full object-contain transition-transform duration-700 group-hover:scale-110"
-                              loading="lazy"
-                              onError={(e) => {
-                                const el = e.target as HTMLImageElement
-                                el.style.display = 'none'
-                              }}
-                            />
+                        <div key={i} className="flex flex-col gap-6">
+                          <div
+                            className="relative group cursor-pointer overflow-hidden rounded-3xl border border-amber-500/30 bg-white/50 dark:bg-slate-900/50 shadow-sm transition-all duration-500 hover:shadow-2xl hover:scale-[1.02] hover:border-amber-400/80"
+                            onClick={() => openImageModal(`${API_BASE_URL}/static/${img}`, i)}
+                          >
+                            <div className="aspect-square flex items-center justify-center p-4">
+                              <img
+                                src={`${API_BASE_URL}/static/${img}`}
+                                alt={`${result.gloss} sign ${i + 1}`}
+                                className="max-w-full max-h-full object-contain transition-transform duration-700 group-hover:scale-110"
+                                loading="lazy"
+                                onError={(e) => {
+                                  const el = e.target as HTMLImageElement
+                                  el.style.display = 'none'
+                                }}
+                              />
+                            </div>
+
+                            <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/5 transition-all duration-500 flex items-center justify-center opacity-0 group-hover:opacity-100 backdrop-blur-[2px]">
+                              <div className="bg-white/90 dark:bg-slate-900/90 p-4 rounded-2xl shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-500">
+                                <ZoomIn className="text-blue-600" size={32} />
+                              </div>
+                            </div>
+
+                            <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <div className="bg-black/60 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border border-white/20">
+                                Frame {i + 1}
+                              </div>
+                              <div className="bg-white/90 dark:bg-slate-900/90 text-slate-900 dark:text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl shadow-lg">
+                                Zoom View
+                              </div>
+                            </div>
                           </div>
 
-                          <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/5 transition-all duration-500 flex items-center justify-center opacity-0 group-hover:opacity-100 backdrop-blur-[2px]">
-                            <div className="bg-white/90 dark:bg-slate-900/90 p-4 rounded-2xl shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-500">
-                              <ZoomIn className="text-blue-600" size={32} />
-                            </div>
-                          </div>
-
-                          <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                            <div className="bg-black/60 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border border-white/20">
-                              Frame {i + 1}
-                            </div>
-                            <div className="bg-white/90 dark:bg-slate-900/90 text-slate-900 dark:text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl shadow-lg">
-                              Zoom View
-                            </div>
+                          {/* Sign Definition - Matches User Request */}
+                          <div className="text-center px-4 pb-4 animate-fade-in">
+                            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-wider mb-2">
+                              {result.gloss}
+                            </h3>
+                            {result.description && (
+                              <p className={`${getTextSize()} font-medium text-slate-600 dark:text-slate-300 leading-relaxed max-w-md mx-auto`}>
+                                {result.description}
+                              </p>
+                            )}
                           </div>
                         </div>
                       ))
