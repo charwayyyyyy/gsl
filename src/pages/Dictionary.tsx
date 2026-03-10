@@ -655,7 +655,6 @@ const Dictionary: React.FC = () => {
           </div>
         )}
 
-<<<<<<< Updated upstream
         {/* Loading State */}
         {loading && (
           <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
@@ -857,10 +856,7 @@ const Dictionary: React.FC = () => {
           </div>
         )}
 
-        {/* Letter Glosses List */}
-=======
         {/* 4. Letter Glosses List (Last on mobile) */}
->>>>>>> Stashed changes
         {!q && list && list.length > 0 && (
           <div className="animate-fade-in order-4">
             <div className="flex items-center gap-4 mb-8">
