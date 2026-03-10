@@ -49,12 +49,12 @@ export default function Home() {
 
   return (
     // Use pure Tailwind dark: classes — background driven entirely by html.dark class
-    <div className={`min-h-screen relative overflow-hidden flex flex-col items-center p-4 md:p-8 font-sans
+    <div className={`min-h-screen relative overflow-hidden flex flex-col items-center p-4 md:p-8
       bg-slate-50 dark:bg-[#050505]
       ${accessibility.highContrast ? '!bg-black' : ''}
     `}>
-      {/* Background Orbs — hidden on mobile via .perf-orb */}
 
+      {/* Background Orbs — hidden on mobile via .perf-orb */}
       {!accessibility.highContrast && (
         <>
           <div className="perf-orb absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 dark:bg-blue-600/10 blur-[100px] rounded-full animate-pulse-slow" />
@@ -77,19 +77,6 @@ export default function Home() {
       </button>
 
       <div className="w-full max-w-7xl relative z-10 flex flex-col items-center">
-        {/* Logo Section */}
-        <div className="w-full flex justify-start mb-8 sm:mb-16">
-          <div className="flex items-center gap-2 group cursor-pointer">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform duration-500">
-              <Sparkles className="text-white w-6 h-6" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-serif italic text-2xl tracking-tight text-white leading-none">SignBridge</span>
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400 leading-none mt-1">Ghana Edition</span>
-            </div>
-          </div>
-        </div>
-
         {/* Hero Section */}
         <div className="text-center mt-6 sm:mt-12 mb-10 sm:mb-20 animate-fade-in">
           <div className="inline-flex items-center space-x-2 px-4 py-2 mb-8 rounded-full bg-blue-500/10 border border-blue-500/20 backdrop-blur-sm shadow-inner">
@@ -101,25 +88,24 @@ export default function Home() {
             style={{
               color: accessibility.highContrast ? '#facc15' : isDark ? '#ffffff' : '#0f172a'
             }}
-            className={`font-serif italic tracking-tight mb-8 leading-[1.1]
+            className={`font-bold tracking-tight mb-8 leading-[1.1]
               ${accessibility.largeText ? 'text-4xl sm:text-7xl md:text-8xl' : 'text-3xl sm:text-6xl md:text-7xl'}
             `}
           >
             SignBridge <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 animate-gradient-x font-sans not-italic font-black uppercase tracking-tighter">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 animate-gradient-x">
               Ghana
             </span>
           </h1>
 
           <p
             style={{ color: accessibility.highContrast ? '#fef08a' : isDark ? '#94a3b8' : '#475569' }}
-            className={`max-w-3xl mx-auto leading-relaxed mb-12 font-sans
+            className={`max-w-3xl mx-auto leading-relaxed mb-12
               ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}
             `}
           >
             Bridging the gap with real-time sign language translation.
             Experience the future of inclusive communication powered by SignBridge AI.
-
           </p>
 
           <div className="flex flex-wrap justify-center gap-4">

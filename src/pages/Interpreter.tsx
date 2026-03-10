@@ -784,10 +784,10 @@ const Interpreter: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 relative z-10">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pb-40 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8 animate-fade-in">
-          {/* Left Panel - Input (Moved below output on mobile) */}
-          <div className="space-y-4 sm:space-y-8 order-2 lg:order-1">
+          {/* Left Panel - Input (Sticky at Bottom on mobile) */}
+          <div className="space-y-4 sm:space-y-8 order-2 lg:order-1 sticky bottom-0 left-0 right-0 z-40 bg-white/60 dark:bg-slate-950/60 backdrop-blur-xl -mx-3 px-3 py-6 mt-auto border-t border-white/20 lg:static lg:z-auto lg:mx-0 lg:px-0 lg:py-0 lg:mt-0 lg:bg-transparent lg:dark:bg-transparent lg:backdrop-blur-none lg:border-none">
             <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-4 sm:p-6' : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] p-4 sm:p-8'} overflow-hidden transition-all duration-500`}>
               <div className="flex items-center gap-3 mb-6">
                 <div className={`w-3 h-3 rounded-full animate-pulse ${currentSession.direction === 'sign_to_speech' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
@@ -827,20 +827,20 @@ const Interpreter: React.FC = () => {
                     />
                   </div>
                 ) : (
-                  <div className="p-8 pb-10 bg-purple-900/10 space-y-4 border-t border-purple-500/20">
+                  <div className="p-4 sm:p-8 bg-purple-900/10 space-y-4 border-t border-purple-500/20">
                     <textarea
                       id="primary-text-input"
                       value={manualInput}
                       onChange={e => setManualInput(e.target.value)}
-                      rows={accessibility.largeText ? 6 : 5}
+                      rows={accessibility.largeText ? 4 : 3}
                       className={`
-                        w-full rounded-2xl border-2 px-6 py-5 transition-all duration-300
+                        w-full rounded-2xl border-2 px-4 py-3 transition-all duration-300
                         ${accessibility.highContrast
                           ? 'bg-black border-yellow-400 text-yellow-200 placeholder-yellow-500'
                           : 'bg-white/80 dark:bg-slate-900/80 border-purple-200 dark:border-purple-800/50 text-slate-900 dark:text-white placeholder-slate-400 focus:border-purple-500 dark:focus:border-purple-400 shadow-inner'
                         }
                         focus:outline-none focus:ring-4 focus:ring-purple-500/20
-                        ${accessibility.largeText ? 'text-2xl' : 'text-xl'}
+                        ${accessibility.largeText ? 'text-xl' : 'text-lg'}
                       `}
                       placeholder="Type exactly what you want to translate here..."
                       autoFocus
@@ -856,14 +856,14 @@ const Interpreter: React.FC = () => {
                         runTextToSignPipeline(text, 'manual', 0.9)
                       }}
                       className={`
-                        w-full flex items-center justify-center gap-3 px-8 py-5 rounded-2xl font-bold shadow-lg
+                        w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl font-bold shadow-lg
                         ${accessibility.highContrast
                           ? 'bg-yellow-400 text-black hover:bg-yellow-500'
                           : 'bg-purple-600 text-white hover:bg-purple-500 shadow-purple-500/25'
                         }
                         transform hover:-translate-y-1 active:scale-95 transition-all duration-300
                         focus:outline-none focus:ring-4 focus:ring-purple-300/50
-                        ${accessibility.largeText ? 'text-2xl' : 'text-xl'}
+                        ${accessibility.largeText ? 'text-xl' : 'text-lg'}
                       `}
                     >
                       <Keyboard className="w-7 h-7" />

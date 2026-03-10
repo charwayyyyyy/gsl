@@ -17,6 +17,9 @@ class TextToSignService:
         self._index_loaded = False
         self._load_dictionary()
 
+    def _load(self):
+        self._load_dictionary()
+
     def _load_dictionary(self):
         if DICT_PATH.exists():
             with open(DICT_PATH, "r", encoding="utf-8") as f:
