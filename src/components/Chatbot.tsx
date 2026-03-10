@@ -42,14 +42,19 @@ export default function Chatbot() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response');
+        let errDesc = 'Failed to get response';
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) errDesc = errorData.detail;
+        } catch (e) {}
+        throw new Error(errDesc);
       }
 
       const data = await response.json();
       setMessages([...newMessages, { role: 'model', content: data.response }]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Chat error:', error);
-      setMessages([...newMessages, { role: 'model', content: "Sorry, I'm having trouble connecting to my brain right now. Please try again later." }]);
+      setMessages([...newMessages, { role: 'model', content: error.message || "Sorry, I'm having trouble connecting to my brain right now. Please try again later." }]);
     } finally {
       setIsLoading(false);
     }
