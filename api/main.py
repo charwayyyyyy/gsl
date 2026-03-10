@@ -12,6 +12,7 @@ from datetime import datetime
 import uuid
 import logging
 import os
+import google.generativeai as genai
 
 from .services.gsl_dictionary_service import GSLDictionaryService
 from backend.dictionary.text_to_sign import TextToSignService
@@ -171,6 +172,21 @@ class AnalyticsEventRequest(BaseModel):
 class FeedbackRequest(BaseModel):
     gloss: str
     reason: Optional[str] = None
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+
+# Configure Gemini AI
+api_key = os.getenv("GEMINI_API_KEY")
+if api_key:
+    genai.configure(api_key=api_key)
+    logger.info("Gemini AI configured successfully")
+else:
+    logger.warning("GEMINI_API_KEY environment variable not set. Chatbot will not work.")
 
 # Initialize database on startup
 @app.on_event("startup")
@@ -698,6 +714,38 @@ async def end_translation_session(session_id: str):
         raise
     except Exception as e:
         logger.error(f"Error ending translation session: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Gemini Help Chatbot endpoint
+@app.post("/api/chat")
+async def chat_with_gemini(request: ChatRequest):
+    if not os.getenv("GEMINI_API_KEY"):
+        raise HTTPException(status_code=500, detail="Gemini API is not configured on the server.")
+    
+    try:
+        model = genai.GenerativeModel('gemini-2.5-pro')
+        
+        # Convert simple message format to Gemini format
+        history = []
+        for msg in request.messages[:-1]:
+            role = "user" if msg.role == "user" else "model"
+            history.append({"role": role, "parts": [{"text": msg.content}]})
+        
+        system_prompt = (
+            "You are a helpful assistant for SignBridge Ghana, a real-time Ghanaian Sign Language interpreter. "
+            "You help users understand how to use the web app (which has Sign-to-Speech, Speech-to-Sign, and Text-to-Sign features). "
+            "Keep your answers concise, clear, and very friendly. If they ask about sign language, provide brief tips."
+        )
+        
+        model = genai.GenerativeModel('gemini-2.5-pro', system_instruction=system_prompt)
+        chat = model.start_chat(history=history)
+        
+        last_message = request.messages[-1].content
+        response = chat.send_message(last_message)
+        
+        return {"response": response.text}
+    except Exception as e:
+        logger.error(f"Error calling Gemini API: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Serve compiled React frontend from 'dist' folder
