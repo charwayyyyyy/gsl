@@ -4,3 +4,4 @@ tunnels:
   app:
     proto: http
     addr: 127.0.0.1:8000
+    domain: breathier-latisha-superaverage.ngrok-free.dev
