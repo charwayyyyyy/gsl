@@ -23,6 +23,7 @@ const Avatar3D: React.FC<Avatar3DProps> = ({
   const animationRef = useRef<number | null>(null);
   
   const [isAnimating, setIsAnimating] = useState(false);
+  const [seqIndex, setSeqIndex] = useState(0);
   const { settings } = useAppStore();
 
   // GSL sign animations mapping
@@ -451,20 +452,36 @@ const Avatar3D: React.FC<Avatar3DProps> = ({
     }
   }, [currentSign, isAnimating]);
 
-  // Handle sign sequence
+  // Reset sequence when a new sequence arrives
   useEffect(() => {
-    if (signSequence.length > 0 && !isAnimating) {
-      const currentSignIndex = 0;
-      const sign = signSequence[currentSignIndex];
+    setSeqIndex(0);
+  }, [signSequence]);
+
+  // Handle sequence playback
+  useEffect(() => {
+    if (signSequence.length > 0 && !isAnimating && seqIndex < signSequence.length) {
+      const sign = signSequence[seqIndex];
       
       if (sign && avatarRef.current) {
         const animationFunction = signAnimations[sign];
         if (animationFunction) {
+          // Play animation and increment sequence on completion (handled by setTimeout inside the animation)
+          // We override the onSignComplete locally or wait for the isAnimating to become false
           animationFunction(avatarRef.current);
+          
+          // Fallback timer just in case the animation doesn't reset isAnimating
+          setTimeout(() => {
+            setSeqIndex(prev => prev + 1);
+          }, 2100);
+        } else {
+          // If no animation mapping, skip to next after a delay
+          setTimeout(() => {
+            setSeqIndex(prev => prev + 1);
+          }, 1000);
         }
       }
     }
-  }, [signSequence, isAnimating]);
+  }, [signSequence, isAnimating, seqIndex]);
 
   if (!isVisible) {
     return null;

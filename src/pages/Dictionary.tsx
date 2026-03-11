@@ -374,10 +374,211 @@ const Dictionary: React.FC = () => {
         </div>
       )}
 
-      <div className="max-w-5xl mx-auto px-6 py-12 relative z-10">
-        {/* Search Section */}
-        <div className="mb-12 animate-slide-up">
-          <div className="relative group">
+      {/* Main Container with bottom padding for sticky mobile input */}
+      <div className="max-w-5xl mx-auto px-6 py-12 pb-32 relative z-10 flex flex-col">
+        {/* 1. Search Results (Top on mobile) */}
+        <div className="order-1">
+          {/* Loading State */}
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
+              <div className="relative w-20 h-20 mb-6">
+                <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full"></div>
+                <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+              <p className="text-xl font-bold text-slate-900 dark:text-white animate-pulse tracking-tight">Accessing Dictionary...</p>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className="glass-card p-6 border-rose-500/20 bg-rose-50/50 dark:bg-rose-500/5 flex items-center gap-4 mb-12 animate-slide-up">
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500">
+                <AlertTriangle size={24} />
+              </div>
+              <p className={`${getTextSize()} font-bold text-rose-700 dark:text-rose-400`}>{error}</p>
+            </div>
+          )}
+
+          {/* Actual Results */}
+          {result && !loading && (
+            <div className="animate-slide-up">
+              {result.gloss ? (
+                <div className="glass-card overflow-hidden border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] transition-all duration-500 mb-12">
+                  {/* Result Header */}
+                  <div className="p-6 sm:p-8 border-b border-white/20 bg-white/30 dark:bg-white/5 backdrop-blur-md">
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500">
+                            <BookOpen size={24} />
+                          </div>
+                          <h2 className={`${getHeaderSize()} font-black text-slate-900 dark:text-white tracking-tighter`}>
+                            {result.gloss}
+                          </h2>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border ${getMatchColor(result.match_type)}`}>
+                            {result.match_type} Match
+                          </span>
+                          {result.page && (
+                            <span className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-white/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border border-white/20">
+                              <Info size={14} /> Page {result.page}
+                            </span>
+                          )}
+                          {result.variants > 0 && (
+                            <span className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-white/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border border-white/20">
+                              <Layers size={14} /> {result.variants} Variants
+                            </span>
+                          )}
+                          <span className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            <CheckCircle size={14} /> {Math.round((result.confidence || 0) * 100)}% Match
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={handleReport}
+                        disabled={reported}
+                        className={`
+                          flex items-center gap-3 px-6 py-3 rounded-2xl text-sm font-black uppercase tracking-widest transition-all duration-300
+                          ${reported
+                            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 cursor-default'
+                            : 'bg-white/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 border border-white/40 dark:border-white/10 hover:bg-rose-500 hover:text-white hover:border-rose-500 shadow-sm'
+                          }
+                          transform hover:scale-105 active:scale-95
+                        `}
+                      >
+                        {reported ? (
+                          <>
+                            <CheckCircle size={18} />
+                            Reported
+                          </>
+                        ) : (
+                          <>
+                            <Flag size={18} />
+                            Report Issue
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    {result.description && (
+                      <div className="mt-8 flex gap-4 p-6 rounded-3xl bg-blue-500/5 border border-blue-500/10 backdrop-blur-sm">
+                        <MessageSquare size={24} className="text-blue-500 shrink-0" />
+                        <p className={`${getTextSize()} font-medium text-slate-700 dark:text-slate-300 leading-relaxed`}>
+                          {result.description}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Images Grid */}
+                  <div className="p-4 sm:p-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                      {Array.isArray(result.images) && result.images.length > 0 ? (
+                        result.images.map((img: string, i: number) => (
+                          <div
+                            key={i}
+                            className="relative group cursor-pointer overflow-hidden rounded-3xl border border-amber-500/30 bg-white/50 dark:bg-slate-900/50 shadow-sm transition-all duration-500 hover:shadow-2xl hover:scale-[1.02] hover:border-amber-400/80"
+                            onClick={() => openImageModal(`${API_BASE_URL}/static/${result.gloss}/${img}`, i)}
+                          >
+                            <div className="aspect-square flex items-center justify-center p-4">
+                              <img
+                                src={`${API_BASE_URL}/static/${result.gloss}/${img}`}
+                                alt={`${result.gloss} sign ${i + 1}`}
+                                className="max-w-full max-h-full object-contain transition-transform duration-700 group-hover:scale-110"
+                                loading="lazy"
+                                onError={(e) => {
+                                  const el = e.target as HTMLImageElement
+                                  el.style.display = 'none'
+                                }}
+                              />
+                            </div>
+
+                            <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/5 transition-all duration-500 flex items-center justify-center opacity-0 group-hover:opacity-100 backdrop-blur-[2px]">
+                              <div className="bg-white/90 dark:bg-slate-900/90 p-4 rounded-2xl shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-500">
+                                <ZoomIn className="text-blue-600" size={32} />
+                              </div>
+                            </div>
+
+                            <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                              <div className="bg-black/60 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border border-white/20">
+                                Frame {i + 1}
+                              </div>
+                              <div className="bg-white/90 dark:bg-slate-900/90 text-slate-900 dark:text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl shadow-lg">
+                                Zoom View
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="col-span-full py-20 flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-slate-400">
+                          <AlertTriangle size={48} className="mb-4 opacity-20" />
+                          <span className="text-lg font-bold tracking-tight">Visual sequence unavailable</span>
+                          <p className="text-sm font-medium mt-1">We're working on adding more signs.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Alternatives Section */}
+                  {Array.isArray(result.alternatives) && result.alternatives.length > 0 && (
+                    <div className="bg-blue-500/5 border-t border-white/20 p-6 sm:p-8">
+                      <h3 className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.2em] mb-4 sm:mb-6">Suggested / Related Signs</h3>
+                      <div className="flex flex-wrap gap-3">
+                        {result.alternatives.map((alt) => (
+                          <button
+                            key={alt}
+                            onClick={() => {
+                              setQ(alt)
+                              search(alt, false)
+                            }}
+                            className="px-6 py-3 bg-white/70 dark:bg-slate-800/70 text-slate-700 dark:text-slate-200 border border-white/40 dark:border-white/10 rounded-2xl hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all duration-300 shadow-sm text-sm font-bold transform hover:scale-105 active:scale-95"
+                          >
+                            {alt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="glass-card p-8 sm:p-16 text-center animate-fade-in mx-4 sm:mx-0 mb-12">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-100 dark:bg-slate-800 rounded-[2rem] flex items-center justify-center mx-auto mb-6 sm:mb-8">
+                    <AlertTriangle className="w-10 h-10 text-amber-500 opacity-80" />
+                  </div>
+                  <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tighter">No exact match found</h3>
+                  <p className={`${getTextSize()} text-slate-500 dark:text-slate-400 mb-10 max-w-md mx-auto leading-relaxed`}>
+                    We couldn't find a direct sign for <span className="text-blue-500 font-bold">"{q}"</span>. Try one of our suggested alternatives below.
+                  </p>
+
+                  {/* Fallback alternatives for no match */}
+                  {Array.isArray(result.alternatives) && result.alternatives.length > 0 && (
+                    <div className="flex flex-wrap gap-3 justify-center">
+                      {result.alternatives.map((alt) => (
+                        <button
+                          key={alt}
+                          onClick={() => {
+                            setQ(alt)
+                            search(alt, false)
+                          }}
+                          className="px-8 py-4 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition-all duration-300 shadow-lg shadow-blue-500/30 text-base font-bold transform hover:scale-105 active:scale-95"
+                        >
+                          {alt}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 2. Search Section (Sticky at Bottom on mobile) */}
+        <div className="sticky bottom-0 left-0 right-0 z-40 order-2 -mx-6 px-6 py-6 mt-auto sm:static sm:z-auto sm:mx-0 sm:px-0 sm:py-0 sm:mt-12 animate-slide-up bg-white/60 dark:bg-slate-950/60 backdrop-blur-xl border-t border-white/20 sm:bg-transparent sm:dark:bg-transparent sm:backdrop-blur-none sm:border-none">
+          <div className="relative group max-w-5xl mx-auto">
             <div className={`absolute inset-y-0 left-5 flex items-center pointer-events-none transition-colors duration-300 ${isListening ? 'text-rose-500' : 'text-slate-400 group-focus-within:text-blue-500'}`}>
               <Search size={24} />
             </div>
@@ -425,9 +626,9 @@ const Dictionary: React.FC = () => {
           )}
         </div>
 
-        {/* Alphabet Navigation */}
+        {/* 3. Alphabet Navigation (Bottom on mobile) */}
         {!q && (
-          <div className="animate-fade-in space-y-4">
+          <div className="animate-fade-in space-y-4 order-3">
             <div className="flex items-center gap-3 px-2 mb-2">
               <Layers className="w-5 h-5 text-blue-500" />
               <span className="text-xs font-black uppercase tracking-widest text-slate-400">Browse by letter</span>
@@ -655,9 +856,9 @@ const Dictionary: React.FC = () => {
           </div>
         )}
 
-        {/* Letter Glosses List */}
+        {/* 4. Letter Glosses List (Last on mobile) */}
         {!q && list && list.length > 0 && (
-          <div className="animate-fade-in">
+          <div className="animate-fade-in order-4">
             <div className="flex items-center gap-4 mb-8">
               <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
                 <Layers size={24} />
@@ -678,7 +879,7 @@ const Dictionary: React.FC = () => {
                   className="glass-card p-6 text-left group border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)] transition-all duration-500 hover:-translate-y-1"
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-lg font-black text-slate-900 dark:text-white group-hover:text-indigo-500 transition-colors tracking-tight">
+                    <span className="text-lg font-black text-slate-900 dark:text-white group-hover:text-indigo-500 transition-colors tracking-tight" >
                       {item.gloss}
                     </span>
                     <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">

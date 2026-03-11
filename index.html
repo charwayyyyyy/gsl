@@ -1,29 +1,38 @@
 <!doctype html>
-<html lang="en" class="dark">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- Mobile-first viewport with safe-area support for notched phones -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <!-- Mobile browser chrome color -->
-    <meta name="theme-color" content="#0f172a" />
-    <!-- PWA / installable on Android & iOS -->
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap" rel="stylesheet">
-    <!-- SEO -->
-    <title>SignBridge Ghana — Ghana Sign Language Interpreter</title>
-    <meta name="description" content="SignBridge Ghana: Real-time bidirectional Ghana Sign Language interpreter. Breaking communication barriers with AI." />
-    <meta property="og:title" content="SignBridge Ghana — AI Sign Language Interpreter" />
-    <meta property="og:description" content="Real-time Ghana Sign Language interpretation powered by AI." />
-    <meta property="og:type" content="website" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <!-- Theme: apply before paint to avoid flash (runs sync, before React) -->
+  <script>
+    (function () {
+      var stored = localStorage.getItem('theme');
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var isDark = stored ? stored === 'dark' : prefersDark;
+      document.documentElement.classList.toggle('dark', isDark);
+    })();
+  </script>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <!-- Mobile-first viewport with safe-area support for notched phones -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <!-- Mobile browser chrome color -->
+  <meta name="theme-color" content="#0f172a" />
+  <!-- PWA / installable on Android & iOS -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <!-- SEO -->
+  <title>SignBridge Ghana — Ghana Sign Language Interpreter</title>
+  <meta name="description"
+    content="SignBridge Ghana: Real-time bidirectional Ghana Sign Language interpreter. Breaking communication barriers with AI." />
+  <meta property="og:title" content="SignBridge Ghana — AI Sign Language Interpreter" />
+  <meta property="og:description" content="Real-time Ghana Sign Language interpretation powered by AI." />
+  <meta property="og:type" content="website" />
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>

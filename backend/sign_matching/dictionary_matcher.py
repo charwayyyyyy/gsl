@@ -5,14 +5,23 @@ import numpy as np
 
 TEMPLATES_PATH = Path("data") / "processed" / "dictionary_motion_templates.json"
 
+from scipy.spatial.distance import cdist
+
 def dtw_distance(a: np.ndarray, b: np.ndarray) -> float:
     n, m = a.shape[0], b.shape[0]
+    
+    if n == 0 or m == 0:
+        return float('inf')
+        
+    # Pre-compute all pairwise Euclidean distances in C instantly
+    cost = cdist(a, b, metric='euclidean')
+    
     D = np.full((n+1, m+1), np.inf, dtype=float)
     D[0,0] = 0.0
     for i in range(1, n+1):
         for j in range(1, m+1):
-            cost = np.linalg.norm(a[i-1] - b[j-1])
-            D[i,j] = cost + min(D[i-1,j], D[i,j-1], D[i-1,j-1])
+            D[i,j] = cost[i-1, j-1] + min(D[i-1,j], D[i,j-1], D[i-1,j-1])
+            
     return float(D[n,m] / (n + m))
 
 def normalize_sequence(seq: List[List[float]]) -> np.ndarray:

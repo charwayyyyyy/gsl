@@ -15,9 +15,14 @@ class TextToSignService:
         self._cache_vecs: Dict[str, np.ndarray] = {}
         self._page_cache: Dict[str, int] = {}
         self._index_loaded = False
+        self._text_model = None
+        self._index_matrix = None
+        self._index_keys = []
         self._load_dictionary()
+        self._preload_model()
 
     def _load_dictionary(self):
+        """Load the GSL dictionary from JSON."""
         if DICT_PATH.exists():
             with open(DICT_PATH, "r", encoding="utf-8") as f:
                 loaded = json.load(f)
@@ -36,6 +41,18 @@ class TextToSignService:
                 else:
                     self.dictionary = loaded or {}
 
+    def _preload_model(self):
+        """Force initialization of the NLP model on startup to avoid request-time latency."""
+        try:
+            from sentence_transformers import SentenceTransformer
+            import torch
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            # Use smaller model for faster loading if needed, but and-MiniLM is already small
+            self._text_model = SentenceTransformer("all-MiniLM-L6-v2", device=device)
+            print(f"TextToSign model loaded on {device}")
+        except Exception as e:
+            print(f"Failed to preload SentenceTransformer: {e}")
+
     def _ensure_index_loaded(self):
         if self._index_loaded:
             return
@@ -44,6 +61,24 @@ class TextToSignService:
                 with open(INDEX_PATH, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     self.index = data.get("index", {})
+                
+                # Build a NumPy matrix for vectorized similarity search
+                keys = []
+                vectors = []
+                for gloss, rec in self.index.items():
+                    tv = rec.get("text_vec", [])
+                    if len(tv) == 384:
+                        keys.append(gloss)
+                        vectors.append(tv)
+                
+                if vectors:
+                    self._index_matrix = np.array(vectors, dtype=float)
+                    # Pre-normalize for fast cosine similarity via dot product
+                    norms = np.linalg.norm(self._index_matrix, axis=1, keepdims=True)
+                    norms[norms == 0] = 1.0
+                    self._index_matrix = self._index_matrix / norms
+                    self._index_keys = keys
+                
                 self._index_loaded = True
             except Exception as e:
                 import logging
@@ -119,48 +154,42 @@ class TextToSignService:
         
         # Semantic search fallback
         self._ensure_index_loaded()
-        try:
-            if not hasattr(self, '_text_model') or self._text_model is None:
-                from sentence_transformers import SentenceTransformer
-                self._text_model = SentenceTransformer("all-MiniLM-L6-v2")
-            
-            qvec = np.array(self._text_model.encode(qlow, normalize_embeddings=True))
-        except Exception:
-            h = abs(hash(qlow)) % (10**8)
-            rng = np.random.default_rng(h)
-            qvec = rng.normal(0, 1, 384)
-        
-        scores: List[Any] = []
-        for gloss, rec in self.index.items():
-            tv = np.array(rec.get("text_vec", []), dtype=float)
-            if tv.size == 0:
-                tv = self._cache_vecs.get(gloss)
-                if tv is None:
-                    h = abs(hash(gloss)) % (10**8)
-                    tv = np.random.default_rng(h).normal(0, 1, 384)
-                    self._cache_vecs[gloss] = tv
-            s = self._cos(qvec, tv)
-            scores.append((gloss, float(s)))
-        
-        scores.sort(key=lambda x: x[1], reverse=True)
-        if scores:
-            g, sc = scores[0]
-            e = self.dictionary.get(g, {})
-            imgs = self._ensure_images(g, e)
-            alts = [x[0] for x in scores[1:4]]
-            primitives = self._infer_primitives(g, e)
-            return {
-                "gloss": g,
-                "images": imgs,
-                "description": e.get("description", ""),
-                "page": e.get("page"),
-                "confidence": float(min(0.69, max(0.0, sc))),
-                "alternatives": alts,
-                "match_type": "Semantic",
-                "variants": int(e.get("variants") or 0),
-                "primitives": primitives,
-            }
-        
+        if self._text_model and self._index_matrix is not None:
+            try:
+                # Vectorized search
+                qvec = self._text_model.encode(qlow, normalize_embeddings=True)
+                # Cosine similarity is just dot product since both are unit normalized
+                similarities = self._index_matrix @ qvec
+                
+                # Get top match
+                best_idx = np.argmax(similarities)
+                sc = float(similarities[best_idx])
+                g = self._index_keys[best_idx]
+                
+                # Get alternatives (top 2-4)
+                top_indices = np.argsort(similarities)[::-1]
+                alts = [self._index_keys[i] for i in top_indices[1:4]]
+                
+                e = self.dictionary.get(g, {})
+                imgs = self._ensure_images(g, e)
+                primitives = self._infer_primitives(g, e)
+                
+                return {
+                    "gloss": g,
+                    "images": imgs,
+                    "description": e.get("description", ""),
+                    "page": e.get("page"),
+                    "confidence": float(min(0.69, max(0.0, sc))),
+                    "alternatives": alts,
+                    "match_type": "Semantic (Vectorized)",
+                    "variants": int(e.get("variants") or 0),
+                    "primitives": primitives,
+                }
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Vectorized search failed: {e}")
+
+        # Fallback to random if index/model fails
         primitives = self._infer_primitives("", {})
         return {
             "gloss": None,
@@ -426,121 +455,4 @@ class TextToSignService:
             "can_animate": can_animate,
         }
 
-    def search(self, q: str) -> Dict[str, Any]:
-        qn = (q or "").strip()
-        if qn == "":
-            alts: List[str] = list(self.dictionary.keys())[:3]
-            g = alts[0] if alts else None
-            e = self.dictionary.get(g or "", {})
-            primitives = self._infer_primitives(g or "", e)
-            return {
-                "gloss": g,
-                "images": self._ensure_images(g or "", e) if g else [],
-                "description": e.get("description", "") if g else "",
-                "page": e.get("page") if g else None,
-                "confidence": 1.0 if g else 0.0,
-                "alternatives": alts[1:] if len(alts) > 1 else [],
-                "match_type": "Random" if not g else "Exact",
-                "variants": int(e.get("variants") or 0) if g else 0,
-                "primitives": primitives,
-            }
-        cand: List[str] = []
-        qlow = qn.lower()
-        qup = qn.upper()
-        forms = {qlow, qup}
-        if qlow.endswith("es"):
-            forms.add(qlow[:-2])
-        if qlow.endswith("s"):
-            forms.add(qlow[:-1])
-        for gloss, entry in self.dictionary.items():
-            if gloss.lower() in forms or entry.get("english", "").lower() in forms:
-                imgs = self._ensure_images(gloss, entry)
-                primitives = self._infer_primitives(gloss, entry)
-                return {
-                    "gloss": gloss,
-                    "images": imgs,
-                    "description": entry.get("description", ""),
-                    "page": entry.get("page"),
-                    "confidence": 1.0,
-                    "alternatives": [],
-                    "match_type": "Exact",
-                    "variants": int(entry.get("variants") or 0),
-                    "primitives": primitives,
-                }
-        for gloss, entry in self.dictionary.items():
-            if gloss.lower().startswith(qlow) or entry.get("english", "").lower().startswith(qlow):
-                cand.append(gloss)
-
-        if not cand:
-            for gloss, entry in self.dictionary.items():
-                if qlow in gloss.lower() or qlow in entry.get("english", "").lower():
-                    cand.append(gloss)
-
-        if cand:
-            cand.sort(key=len)
-            g = cand[0]
-            e = self.dictionary.get(g, {})
-            imgs = self._ensure_images(g, e)
-            primitives = self._infer_primitives(g, e)
-            return {
-                "gloss": g,
-                "images": imgs,
-                "description": e.get("description", ""),
-                "page": e.get("page"),
-                "confidence": 0.85,
-                "alternatives": cand[1:4],
-                "match_type": "Prefix/Contains",
-                "variants": int(e.get("variants") or 0),
-                "primitives": primitives,
-            }
-        try:
-            from sentence_transformers import SentenceTransformer
-
-            model = SentenceTransformer("all-MiniLM-L6-v2")
-            qvec = np.array(model.encode(qlow, normalize_embeddings=True))
-        except Exception:
-            h = abs(hash(qlow)) % (10**8)
-            rng = np.random.default_rng(h)
-            qvec = rng.normal(0, 1, 384)
-        scores: List[Any] = []
-        for gloss, rec in self.index.items():
-            tv = np.array(rec.get("text_vec", []), dtype=float)
-            if tv.size == 0:
-                tv = self._cache_vecs.get(gloss)
-                if tv is None:
-                    h = abs(hash(gloss)) % (10**8)
-                    tv = np.random.default_rng(h).normal(0, 1, 384)
-                    self._cache_vecs[gloss] = tv
-            s = self._cos(qvec, tv)
-            scores.append((gloss, float(s)))
-        scores.sort(key=lambda x: x[1], reverse=True)
-        if scores:
-            g, sc = scores[0]
-            e = self.dictionary.get(g, {})
-            imgs = self._ensure_images(g, e)
-            alts = [x[0] for x in scores[1:4]]
-            primitives = self._infer_primitives(g, e)
-            return {
-                "gloss": g,
-                "images": imgs,
-                "description": e.get("description", ""),
-                "page": e.get("page"),
-                "confidence": float(min(0.69, max(0.0, sc))),
-                "alternatives": alts,
-                "match_type": "Semantic",
-                "variants": int(e.get("variants") or 0),
-                "primitives": primitives,
-            }
-        primitives = self._infer_primitives("", {})
-        return {
-            "gloss": None,
-            "images": [],
-            "description": "",
-            "page": None,
-            "confidence": 0.0,
-            "alternatives": [],
-            "match_type": "None",
-            "variants": 0,
-            "primitives": primitives,
-        }
 

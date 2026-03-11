@@ -1,5 +1,5 @@
 $ErrorActionPreference = "SilentlyContinue"
-$root = Split-Path -Parent (Resolve-Path "$PSScriptRoot\..")
+$root = Resolve-Path "$PSScriptRoot\.." | Select-Object -ExpandProperty Path
 Set-Location $root
 
 Write-Host "----------------------------------------------------" -ForegroundColor Cyan

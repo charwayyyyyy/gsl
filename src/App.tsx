@@ -36,6 +36,8 @@ const HealthBanner = () => {
   );
 };
 
+import Chatbot from "@/components/Chatbot";
+
 export default function App() {
   return (
     <Router>
@@ -51,6 +53,7 @@ export default function App() {
           </Routes>
         </Suspense>
       </ErrorBoundary>
+      <Chatbot />
     </Router>
   );
 }

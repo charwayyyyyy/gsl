@@ -9,9 +9,12 @@ import json
 import base64
 import numpy as np
 from datetime import datetime
-import uuid
 import logging
 import os
+from dotenv import load_dotenv
+load_dotenv()
+import google.generativeai as genai
+import uuid
 
 from .services.gsl_dictionary_service import GSLDictionaryService
 from backend.dictionary.text_to_sign import TextToSignService
@@ -50,7 +53,7 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000", "http://localhost:5174"],
+    allow_origin_regex=".*",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -171,6 +174,21 @@ class AnalyticsEventRequest(BaseModel):
 class FeedbackRequest(BaseModel):
     gloss: str
     reason: Optional[str] = None
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+
+# Configure Gemini AI
+api_key = os.getenv("GEMINI_API_KEY")
+if api_key:
+    genai.configure(api_key=api_key)
+    logger.info("Gemini AI configured successfully")
+else:
+    logger.warning("GEMINI_API_KEY environment variable not set. Chatbot will not work.")
 
 # Initialize database on startup
 @app.on_event("startup")
@@ -358,8 +376,13 @@ async def video_stream(websocket: WebSocket):
                     elif isinstance(lm, (list, tuple)) and len(lm) >= 3:
                         seq.append([lm[0], lm[1], lm[2]])
                 try:
-                    g, score = dict_matcher.best_match(seq)
-                    tops = dict_matcher.top_matches(seq, 3)
+                    # Run CPU-bound DTW matchers in a thread so they don't block the WebSocket event loop
+                    def run_matchers():
+                        g_best, s_best = dict_matcher.best_match(seq)
+                        t_best = dict_matcher.top_matches(seq, 3)
+                        return g_best, s_best, t_best
+
+                    g, score, tops = await asyncio.to_thread(run_matchers)
                     predicted_gloss = g
                     predicted_confidence = float(max(0.0, score))
                 except Exception as e:
@@ -698,6 +721,38 @@ async def end_translation_session(session_id: str):
         raise
     except Exception as e:
         logger.error(f"Error ending translation session: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Gemini Help Chatbot endpoint
+@app.post("/api/chat")
+async def chat_with_gemini(request: ChatRequest):
+    if not os.getenv("GEMINI_API_KEY"):
+        raise HTTPException(status_code=500, detail="Gemini API is not configured on the server.")
+    
+    try:
+        model = genai.GenerativeModel('gemini-2.5-flash')
+        
+        # Convert simple message format to Gemini format
+        history = []
+        for msg in request.messages[:-1]:
+            role = "user" if msg.role == "user" else "model"
+            history.append({"role": role, "parts": [{"text": msg.content}]})
+        
+        system_prompt = (
+            "You are a helpful assistant for SignBridge Ghana, a real-time Ghanaian Sign Language interpreter. "
+            "You help users understand how to use the web app (which has Sign-to-Speech, Speech-to-Sign, and Text-to-Sign features). "
+            "Keep your answers concise, clear, and very friendly. If they ask about sign language, provide brief tips."
+        )
+        
+        model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=system_prompt)
+        chat = model.start_chat(history=history)
+        
+        last_message = request.messages[-1].content
+        response = chat.send_message(last_message)
+        
+        return {"response": response.text}
+    except Exception as e:
+        logger.error(f"Error calling Gemini API: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Serve compiled React frontend from 'dist' folder
