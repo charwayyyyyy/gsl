@@ -724,7 +724,7 @@ async def chat_with_gemini(request: ChatRequest):
         raise HTTPException(status_code=500, detail="Gemini API is not configured on the server.")
     
     try:
-        model = genai.GenerativeModel('gemini-2.5-pro')
+        model = genai.GenerativeModel('gemini-2.5-flash')
         
         # Convert simple message format to Gemini format
         history = []
@@ -738,7 +738,7 @@ async def chat_with_gemini(request: ChatRequest):
             "Keep your answers concise, clear, and very friendly. If they ask about sign language, provide brief tips."
         )
         
-        model = genai.GenerativeModel('gemini-2.5-pro', system_instruction=system_prompt)
+        model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=system_prompt)
         chat = model.start_chat(history=history)
         
         last_message = request.messages[-1].content
