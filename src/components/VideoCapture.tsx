@@ -80,8 +80,8 @@ const VideoCapture: React.FC<VideoCaptureProps> = ({
       }
     }
 
-    // Capture frames at 15 FPS for performance
-    const interval = setInterval(captureFrame, 1000 / 15)
+    // Capture frames at 10 FPS for performance (reduced to give backend breathing room)
+    const interval = setInterval(captureFrame, 1000 / 10)
 
     return () => {
       clearInterval(interval)

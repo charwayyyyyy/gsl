@@ -439,19 +439,38 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
       const canvas = canvasRef.current
       const video = videoRef.current
       
-      // Set canvas dimensions to match video
+      // Set canvas dimensions to a max of 640x480 to drastically reduce payload size
       if (!video.videoWidth || !video.videoHeight) return null
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
+      
+      const MAX_WIDTH = 640
+      const MAX_HEIGHT = 480
+      let width = video.videoWidth
+      let height = video.videoHeight
+      
+      if (width > MAX_WIDTH) {
+        height = Math.round((height * MAX_WIDTH) / width)
+        width = MAX_WIDTH
+      }
+      if (height > MAX_HEIGHT) {
+        width = Math.round((width * MAX_HEIGHT) / height)
+        height = MAX_HEIGHT
+      }
+
+      canvas.width = width
+      canvas.height = height
       
       const ctx = canvas.getContext('2d')
+      // Disable image smoothing for slightly faster draw
+      if (ctx) {
+        ctx.imageSmoothingEnabled = false
+      }
       if (!ctx) return null
       
-      // Draw current video frame to canvas
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      // Draw current video frame to downscaled canvas
+      ctx.drawImage(video, 0, 0, width, height)
       
-      // Convert to base64
-      return canvas.toDataURL('image/jpeg', 0.8)
+      // Convert to base64 with moderate compression (0.7) for speed
+      return canvas.toDataURL('image/jpeg', 0.7)
     } catch (error) {
       console.error('Error capturing video frame:', error)
       return null

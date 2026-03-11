@@ -563,11 +563,11 @@ class GSLTranslationService:
     def _english_to_gsl_rule_based(self, english_text: str) -> List[str]:
         """Rule-based English to GSL translation"""
         try:
-            from ..nlp.en_to_gsl import to_gsl
+            from backend.nlp.en_to_gsl import to_gsl
             return to_gsl(english_text)
             
         except Exception as e:
-            logger.error(f"Error in rule-based translation: {e}")
+            logger.error("Error in rule-based translation:", exc_info=True)
             return []
     
     def get_translation_info(self) -> Dict:

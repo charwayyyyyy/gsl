@@ -126,16 +126,8 @@ class MediaPipeService:
         
         logger.info("MediaPipe service initialized successfully")
 
-    async def process_frame(self, frame_data: bytes) -> Dict[str, Any]:
-        """
-        Process a video frame and extract sign language relevant features
-        
-        Args:
-            frame_data: Base64 encoded frame data
-            
-        Returns:
-            Dictionary containing extracted landmarks and confidence scores
-        """
+    def _process_frame_sync(self, frame_data: bytes) -> Dict[str, Any]:
+        """Synchronous part of frame processing, meant to be run in a thread"""
         start_time = time.time()
         
         try:
@@ -150,7 +142,13 @@ class MediaPipeService:
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             
             # Process frame with MediaPipe solutions
-            results = await self._process_media_pipe(rgb_frame)
+            if not _MP_AVAILABLE:
+                results = {"hands": None, "pose": None, "face": None}
+            else:
+                results = {}
+                results["hands"] = self.hands.process(rgb_frame) if self.hands else None
+                results["pose"] = self.pose.process(rgb_frame) if self.pose else None
+                results["face"] = self.face_mesh.process(rgb_frame) if self.face_mesh else None
             
             # Extract sign language relevant features
             features = self._extract_sign_language_features(results, rgb_frame)
@@ -176,18 +174,11 @@ class MediaPipeService:
                 "error": str(e)
             }
 
-    async def _process_media_pipe(self, rgb_frame: np.ndarray) -> Dict[str, Any]:
-        """Process frame with all MediaPipe solutions"""
-        if not _MP_AVAILABLE:
-            return {"hands": None, "pose": None, "face": None}
-        results = {}
-        hand_results = self.hands.process(rgb_frame) if self.hands else None
-        results["hands"] = hand_results
-        pose_results = self.pose.process(rgb_frame) if self.pose else None
-        results["pose"] = pose_results
-        face_results = self.face_mesh.process(rgb_frame) if self.face_mesh else None
-        results["face"] = face_results
-        return results
+    async def process_frame(self, frame_data: bytes) -> Dict[str, Any]:
+        """
+        Process a video frame carefully without blocking the async event loop
+        """
+        return await asyncio.to_thread(self._process_frame_sync, frame_data)
 
     def _extract_sign_language_features(self, results: Dict[str, Any], frame: np.ndarray) -> Dict[str, Any]:
         """Extract features specifically relevant for sign language recognition"""

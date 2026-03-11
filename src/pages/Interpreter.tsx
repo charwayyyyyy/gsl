@@ -184,27 +184,32 @@ const Interpreter: React.FC = () => {
       const results: SignWord[] = []
       let matchSum = 0
       let matchCountLocal = 0
-      for (const token of tokens) {
+      
+      // Fetch all unknown tokens concurrently
+      const fetchPromises = tokens.map(async (token) => {
         const key = token.toLowerCase()
         let data = dictionaryCache[key]
+        
         if (!data) {
           try {
-            const resp = await fetch(
-              `${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(key)}`
-            )
+            const resp = await fetch(`${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(key)}`)
             if (resp.ok) {
               data = await resp.json()
               dictionaryCache[key] = data
               setDictionaryOffline(false)
             } else {
               setDictionaryOffline(true)
-              data = dictionaryCache[key]
             }
           } catch (e) {
             setDictionaryOffline(true)
-            data = dictionaryCache[key]
           }
         }
+        return { token, data }
+      })
+
+      const resolvedTokens = await Promise.all(fetchPromises)
+
+      for (const { token, data } of resolvedTokens) {
         if (data && data.gloss) {
           const c = typeof data.confidence === 'number' ? data.confidence : 0
           const primitives: SignPrimitives | null =
@@ -497,17 +502,6 @@ const Interpreter: React.FC = () => {
       setAvatarStatus('idle')
       setAvatarKeyframes(null)
       setAvatarMessage('No dictionary signs available for these words. Avatar is disabled.')
-      return
-    }
-    const animatable = matched.filter(
-      s => s.primitives && s.primitives.can_animate
-    )
-    if (!animatable.length) {
-      setAvatarStatus('idle')
-      setAvatarKeyframes(null)
-      setAvatarMessage(
-        'Dictionary descriptions do not contain enough motion detail. Using dictionary images only.'
-      )
       return
     }
     const gslSequence = matched.map(s => (s.gloss || '').toUpperCase())

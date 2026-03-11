@@ -14,6 +14,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 import google.generativeai as genai
+import uuid
 
 from .services.gsl_dictionary_service import GSLDictionaryService
 from backend.dictionary.text_to_sign import TextToSignService
@@ -375,8 +376,13 @@ async def video_stream(websocket: WebSocket):
                     elif isinstance(lm, (list, tuple)) and len(lm) >= 3:
                         seq.append([lm[0], lm[1], lm[2]])
                 try:
-                    g, score = dict_matcher.best_match(seq)
-                    tops = dict_matcher.top_matches(seq, 3)
+                    # Run CPU-bound DTW matchers in a thread so they don't block the WebSocket event loop
+                    def run_matchers():
+                        g_best, s_best = dict_matcher.best_match(seq)
+                        t_best = dict_matcher.top_matches(seq, 3)
+                        return g_best, s_best, t_best
+
+                    g, score, tops = await asyncio.to_thread(run_matchers)
                     predicted_gloss = g
                     predicted_confidence = float(max(0.0, score))
                 except Exception as e:

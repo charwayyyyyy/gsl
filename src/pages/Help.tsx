@@ -159,10 +159,10 @@ const Help: React.FC = () => {
         return (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center mb-12">
-              <h2 className={`font-bold text-white mb-4 ${accessibility.largeText ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'}`}>
+              <h2 className={`font-bold text-slate-900 dark:text-white mb-4 ${accessibility.largeText ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'}`}>
                 Getting Started
               </h2>
-              <p className={`text-slate-400 max-w-2xl mx-auto ${accessibility.largeText ? 'text-lg sm:text-xl' : 'text-base sm:text-lg'}`}>
+              <p className={`text-slate-600 dark:text-slate-400 max-w-2xl mx-auto ${accessibility.largeText ? 'text-lg sm:text-xl' : 'text-base sm:text-lg'}`}>
                 Follow these simple steps to start communicating with the GSL interpreter.
               </p>
             </div>
@@ -173,11 +173,11 @@ const Help: React.FC = () => {
                     {step.visual}
                   </div>
                   <div>
-                    <h3 className={`font-bold text-white mb-2 sm:mb-3 ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}`}>
+                    <h3 className={`font-bold text-slate-900 dark:text-white mb-2 sm:mb-3 ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}`}>
                       <span className="text-blue-500 mr-2">{index + 1}.</span>
                       {step.title}
                     </h3>
-                    <p className={`text-slate-400 leading-relaxed ${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'}`}>
+                    <p className={`text-slate-600 dark:text-slate-400 leading-relaxed ${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'}`}>
                       {step.description}
                     </p>
                   </div>
@@ -191,10 +191,10 @@ const Help: React.FC = () => {
         return (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center mb-12">
-              <h2 className={`font-bold text-white mb-4 ${accessibility.largeText ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'}`}>
+              <h2 className={`font-bold text-slate-900 dark:text-white mb-4 ${accessibility.largeText ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'}`}>
                 Sign Language Guide
               </h2>
-              <p className={`text-slate-400 max-w-2xl mx-auto ${accessibility.largeText ? 'text-lg sm:text-xl' : 'text-base sm:text-lg'}`}>
+              <p className={`text-slate-600 dark:text-slate-400 max-w-2xl mx-auto ${accessibility.largeText ? 'text-lg sm:text-xl' : 'text-base sm:text-lg'}`}>
                 Optimize your signing environment for the highest recognition accuracy.
               </p>
             </div>
@@ -205,10 +205,10 @@ const Help: React.FC = () => {
                     {tip.visual}
                   </div>
                   <div>
-                    <h3 className={`font-bold text-white mb-2 sm:mb-3 ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}`}>
+                    <h3 className={`font-bold text-slate-900 dark:text-white mb-2 sm:mb-3 ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}`}>
                       {tip.title}
                     </h3>
-                    <p className={`text-slate-400 leading-relaxed ${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'}`}>
+                    <p className={`text-slate-600 dark:text-slate-400 leading-relaxed ${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'}`}>
                       {tip.description}
                     </p>
                   </div>
@@ -222,10 +222,10 @@ const Help: React.FC = () => {
         return (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center mb-12">
-              <h2 className={`font-bold text-white mb-4 ${accessibility.largeText ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'}`}>
+              <h2 className={`font-bold text-slate-900 dark:text-white mb-4 ${accessibility.largeText ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'}`}>
                 Speech Recognition
               </h2>
-              <p className={`text-slate-400 max-w-2xl mx-auto ${accessibility.largeText ? 'text-lg sm:text-xl' : 'text-base sm:text-lg'}`}>
+              <p className={`text-slate-600 dark:text-slate-400 max-w-2xl mx-auto ${accessibility.largeText ? 'text-lg sm:text-xl' : 'text-base sm:text-lg'}`}>
                 Ensure your voice is captured clearly for accurate real-time translation.
               </p>
             </div>
@@ -236,10 +236,10 @@ const Help: React.FC = () => {
                     {tip.visual}
                   </div>
                   <div>
-                    <h3 className={`font-bold text-white mb-2 sm:mb-3 ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}`}>
+                    <h3 className={`font-bold text-slate-900 dark:text-white mb-2 sm:mb-3 ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}`}>
                       {tip.title}
                     </h3>
-                    <p className={`text-slate-400 leading-relaxed ${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'}`}>
+                    <p className={`text-slate-600 dark:text-slate-400 leading-relaxed ${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'}`}>
                       {tip.description}
                     </p>
                   </div>
@@ -253,10 +253,10 @@ const Help: React.FC = () => {
         return (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center mb-12">
-              <h2 className={`font-bold text-white mb-4 ${accessibility.largeText ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'}`}>
+              <h2 className={`font-bold text-slate-900 dark:text-white mb-4 ${accessibility.largeText ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'}`}>
                 Accessibility Features
               </h2>
-              <p className={`text-slate-400 max-w-2xl mx-auto ${accessibility.largeText ? 'text-lg sm:text-xl' : 'text-base sm:text-lg'}`}>
+              <p className={`text-slate-600 dark:text-slate-400 max-w-2xl mx-auto ${accessibility.largeText ? 'text-lg sm:text-xl' : 'text-base sm:text-lg'}`}>
                 We believe in inclusive communication for everyone.
               </p>
             </div>
@@ -267,10 +267,10 @@ const Help: React.FC = () => {
                     {feature.visual}
                   </div>
                   <div>
-                    <h3 className={`font-bold text-white mb-2 sm:mb-3 ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}`}>
+                    <h3 className={`font-bold text-slate-900 dark:text-white mb-2 sm:mb-3 ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}`}>
                       {feature.title}
                     </h3>
-                    <p className={`text-slate-400 leading-relaxed ${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'}`}>
+                    <p className={`text-slate-600 dark:text-slate-400 leading-relaxed ${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'}`}>
                       {feature.description}
                     </p>
                   </div>
@@ -284,25 +284,25 @@ const Help: React.FC = () => {
         return (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center mb-12">
-              <h2 className={`font-bold text-white mb-4 ${accessibility.largeText ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'}`}>
+              <h2 className={`font-bold text-slate-900 dark:text-white mb-4 ${accessibility.largeText ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'}`}>
                 Troubleshooting
               </h2>
-              <p className={`text-slate-400 max-w-2xl mx-auto ${accessibility.largeText ? 'text-lg sm:text-xl' : 'text-base sm:text-lg'}`}>
+              <p className={`text-slate-600 dark:text-slate-400 max-w-2xl mx-auto ${accessibility.largeText ? 'text-lg sm:text-xl' : 'text-base sm:text-lg'}`}>
                 Quick fixes for common technical issues.
               </p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {troubleshootingSteps.map((issue, index) => (
                 <div key={index} className={`glass-card group p-6 sm:p-8 border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)] transition-all duration-500 hover:-translate-y-1 border-l-4 border-l-rose-500/30 ${accessibility.highContrast ? 'bg-black border-y-4 border-r-4 border-yellow-400' : ''}`}>
-                  <h3 className={`font-bold text-rose-400 mb-3 sm:mb-4 flex items-center gap-2 sm:gap-3 ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}`}>
+                  <h3 className={`font-bold text-rose-600 dark:text-rose-400 mb-3 sm:mb-4 flex items-center gap-2 sm:gap-3 ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}`}>
                     <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6" />
                     {issue.title}
                   </h3>
-                  <p className={`text-slate-400 mb-6 leading-relaxed ${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'}`}>
+                  <p className={`text-slate-600 dark:text-slate-400 mb-6 leading-relaxed ${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'}`}>
                     {issue.description}
                   </p>
                   <div className="bg-emerald-500/5 rounded-2xl p-6 border border-emerald-500/10 group-hover:bg-emerald-500/10 transition-colors">
-                    <p className={`text-emerald-400 ${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'}`}>
+                    <p className={`text-emerald-700 dark:text-emerald-400 ${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'}`}>
                       <span className="font-bold mr-2 uppercase text-[10px] sm:text-xs tracking-widest opacity-70">Solution:</span>
                       <br />
                       {issue.solution}
@@ -318,10 +318,10 @@ const Help: React.FC = () => {
         return (
           <div className="space-y-8 animate-fade-in">
             <div className="text-center mb-12">
-              <h2 className={`font-bold text-white mb-4 ${accessibility.largeText ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'}`}>
+              <h2 className={`font-bold text-slate-900 dark:text-white mb-4 ${accessibility.largeText ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'}`}>
                 Settings Guide
               </h2>
-              <p className={`text-slate-400 max-w-2xl mx-auto ${accessibility.largeText ? 'text-lg sm:text-xl' : 'text-base sm:text-lg'}`}>
+              <p className={`text-slate-600 dark:text-slate-400 max-w-2xl mx-auto ${accessibility.largeText ? 'text-lg sm:text-xl' : 'text-base sm:text-lg'}`}>
                 Tailor your experience with powerful customization options.
               </p>
             </div>
@@ -332,10 +332,10 @@ const Help: React.FC = () => {
                     {setting.visual}
                   </div>
                   <div>
-                    <h3 className={`font-bold text-white mb-2 sm:mb-3 ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}`}>
+                    <h3 className={`font-bold text-slate-900 dark:text-white mb-2 sm:mb-3 ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}`}>
                       {setting.title}
                     </h3>
-                    <p className={`text-slate-400 leading-relaxed ${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'}`}>
+                    <p className={`text-slate-600 dark:text-slate-400 leading-relaxed ${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'}`}>
                       {setting.description}
                     </p>
                   </div>
@@ -351,8 +351,8 @@ const Help: React.FC = () => {
   };
 
   return (
-    <div className={`dark min-h-screen relative overflow-hidden p-4 md:p-8 ${
-      accessibility.highContrast ? 'bg-black' : 'bg-[#050505]'
+    <div className={`min-h-screen relative overflow-hidden p-4 md:p-8 transition-colors duration-500 ${
+      accessibility.highContrast ? 'bg-white dark:bg-black' : 'bg-slate-50 dark:bg-[#050505]'
     }`}>
       {/* Background Orbs */}
       {!accessibility.highContrast && (
@@ -369,10 +369,10 @@ const Help: React.FC = () => {
             <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full group-hover:bg-blue-500/30 transition-all duration-500 opacity-50" />
             <HelpCircle className={`text-blue-400 relative z-10 ${accessibility.largeText ? 'w-10 h-10 sm:w-14 sm:h-14' : 'w-8 h-8 sm:w-12 sm:h-12'}`} />
           </div>
-          <h1 className={`font-bold text-white mb-4 sm:mb-6 leading-tight ${accessibility.largeText ? 'text-4xl sm:text-6xl' : 'text-3xl sm:text-5xl'}`}>
+          <h1 className={`font-bold text-slate-900 dark:text-white mb-4 sm:mb-6 leading-tight ${accessibility.largeText ? 'text-4xl sm:text-6xl' : 'text-3xl sm:text-5xl'}`}>
             Help & <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">Tutorial</span>
           </h1>
-          <p className={`max-w-2xl mx-auto text-slate-400 leading-relaxed px-4 sm:px-0 ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}`}>
+          <p className={`max-w-2xl mx-auto text-slate-600 dark:text-slate-400 leading-relaxed px-4 sm:px-0 ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}`}>
             Master the art of sign language translation with our comprehensive guide and resources.
           </p>
         </div>
@@ -389,7 +389,7 @@ const Help: React.FC = () => {
                   flex items-center space-x-2 sm:space-x-3 px-4 py-3 sm:px-8 sm:py-4 rounded-2xl transition-all duration-500
                   ${isActive 
                     ? 'bg-blue-600 text-white shadow-[0_0_30px_rgba(37,99,235,0.3)] scale-105 z-10' 
-                    : 'glass-card text-slate-400 hover:text-white hover:scale-105 hover:bg-white/10'
+                    : 'glass-card text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white hover:scale-105 hover:bg-slate-200 dark:hover:bg-white/10'
                   }
                   ${accessibility.largeText ? 'text-xl sm:text-2xl' : 'text-sm sm:text-lg font-medium'}
                   backdrop-blur-xl
@@ -415,10 +415,10 @@ const Help: React.FC = () => {
               <Ear className="w-6 h-6 text-blue-400" />
             </div>
             <div className="text-left">
-              <span className={`block text-white font-bold ${accessibility.largeText ? 'text-2xl' : 'text-xl'}`}>
+              <span className={`block text-slate-900 dark:text-white font-bold ${accessibility.largeText ? 'text-2xl' : 'text-xl'}`}>
                 Still need help?
               </span>
-              <span className={`text-slate-400 group-hover:text-blue-300 transition-colors ${accessibility.largeText ? 'text-lg' : 'text-base'}`}>
+              <span className={`text-slate-600 dark:text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-300 transition-colors ${accessibility.largeText ? 'text-lg' : 'text-base'}`}>
                 Contact our support team anytime
               </span>
             </div>
