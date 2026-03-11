@@ -1,11 +1,27 @@
 services:
+  # Backend FastAPI Service
   - type: web
-    name: gsl-interpreter-backend
+    name: signbridge-ghana-backend
     env: python
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt && pip install -r api/requirements.txt
     startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
       - key: GEMINI_API_KEY
         sync: false
+      - key: DATABASE_URL
+        value: sqlite:///gsl_interpreter.db
+
+  # Frontend Vite Static Site
+  - type: static
+    name: signbridge-ghana-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: signbridge-ghana-backend
+          property: host
