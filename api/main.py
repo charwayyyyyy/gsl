@@ -9,9 +9,10 @@ import json
 import base64
 import numpy as np
 from datetime import datetime
-import uuid
 import logging
 import os
+from dotenv import load_dotenv
+load_dotenv()
 import google.generativeai as genai
 
 from .services.gsl_dictionary_service import GSLDictionaryService
