@@ -4,10 +4,16 @@ from typing import List
 EN_TO_GSL = {
     "hello": ["HELLO"],
     "thank": ["THANK_YOU"],
+    "thanks": ["THANK_YOU"],
     "please": ["PLEASE"],
     "sorry": ["SORRY"],
     "you": ["YOU"],
     "i": ["I"],
+    "good morning": ["GOOD", "MORNING"],
+    "good afternoon": ["GOOD", "AFTERNOON"],
+    "good night": ["GOOD", "NIGHT"],
+    "how are you": ["HOW", "YOU"],
+    "my name": ["MY", "NAME"],
 }
 
 def fingerspell(word: str) -> str:

@@ -37,8 +37,24 @@ const HealthBanner = () => {
 };
 
 import Chatbot from "@/components/Chatbot";
+import { useVisualSettings } from "@/stores/appStore";
+import { useEffect } from "react";
 
 export default function App() {
+  const { colorScheme } = useVisualSettings();
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (colorScheme === 'dark' || (colorScheme === 'default' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      root.classList.add('dark');
+    } else if (colorScheme === 'light') {
+      root.classList.remove('dark');
+    } else {
+      // For 'default' if not dark
+      root.classList.remove('dark');
+    }
+  }, [colorScheme]);
+
   return (
     <Router>
       <HealthBanner />
