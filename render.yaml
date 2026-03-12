@@ -18,7 +18,7 @@ services:
       sizeGB: 1
 
   # Frontend Vite Static Site
-  - type: static
+  - type: web
     name: signbridge-ghana-frontend
     env: static
     buildCommand: npm install && npm run build
