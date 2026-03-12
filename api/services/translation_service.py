@@ -315,164 +315,51 @@ if nn is not None and torch is not None:
             return logits
 
 class GSLTranslationService:
-    """Main translation service for GSL-English translation"""
+    """Main translation service for GSL-English translation (Optimized for Render Free Tier)"""
     
     def __init__(self, config: TranslationConfig):
         self.config = config
         self.grammar_rules = GSLGrammarRules()
         self.model = None
         self.tokenizer = None
-        self.is_loaded = False
+        self.is_loaded = True # Rule-based is always loaded
         
-        # Vocabulary mappings
+        # Minimal vocabulary mappings for rule-based fallback
         self.gsl_to_id = {}
-        self.id_to_gsl = {}
         self.english_to_id = {}
-        self.id_to_english = {}
+        self._build_basic_vocabularies()
         
-        # Thread pool for async operations
-        self.executor = ThreadPoolExecutor(max_workers=2)
-        
-        logger.info("GSLTranslationService initialized")
+        logger.info("GSLTranslationService (Rule-based Optimized) initialized")
     
     async def load_model(self, model_path: Optional[str] = None):
-        """Load translation model"""
-        try:
-            logger.info("Loading translation model...")
-            
-            if model_path and Path(model_path).exists() and torch is not None:
-                # Load custom trained model
-                checkpoint = torch.load(model_path, map_location=self.config.device)
-                
-                # Initialize model with saved dimensions
-                gsl_vocab_size = checkpoint.get('gsl_vocab_size', self.config.gsl_vocabulary_size)
-                english_vocab_size = checkpoint.get('english_vocab_size', 30000)
-                
-                self.model = GSLTranslationModel(
-                    self.config, 
-                    gsl_vocab_size, 
-                    english_vocab_size
-                ).to(self.config.device)
-                
-                self.model.load_state_dict(checkpoint['model_state_dict'])
-                
-                # Load vocabularies
-                self.gsl_to_id = checkpoint.get('gsl_to_id', {})
-                self.id_to_gsl = {v: k for k, v in self.gsl_to_id.items()}
-                self.english_to_id = checkpoint.get('english_to_id', {})
-                self.id_to_english = {v: k for k, v in self.english_to_id.items()}
-                
-            else:
-                # Use pre-trained MarianMT model as base
-                if MarianTokenizer and MarianMTModel and torch is not None:
-                    self.tokenizer = MarianTokenizer.from_pretrained(self.config.model_name)
-                    self.model = MarianMTModel.from_pretrained(self.config.model_name).to(self.config.device)
-                else:
-                    self.model = None
-                
-                # Build basic vocabularies
-                self._build_basic_vocabularies()
-            
-            self.model.eval()
-            self.is_loaded = True
-            logger.info("Translation model loaded successfully")
-            
-        except Exception as e:
-            logger.error(f"Failed to load translation model: {e}")
-            # Fallback: continue with rule-based only
-            self.model = None
-            self.is_loaded = True
-    
+        """No-op for Render Free Tier to save RAM"""
+        pass
+
     def _build_basic_vocabularies(self):
         """Build basic GSL and English vocabularies"""
-        # GSL vocabulary (signs)
-        gsl_signs = [
-            "HELLO", "GOODBYE", "THANK_YOU", "PLEASE", "SORRY",
-            "YES", "NO", "MAYBE", "OK", "GOOD", "BAD", "HAPPY", "SAD",
-            "I", "YOU", "HE", "SHE", "WE", "THEY", "IT", "THIS", "THAT",
-            "WANT", "NEED", "LIKE", "LOVE", "KNOW", "THINK", "FEEL", "SEE",
-            "EAT", "DRINK", "SLEEP", "WORK", "PLAY", "GO", "COME", "STAY",
-            "BIG", "SMALL", "TALL", "SHORT", "FAST", "SLOW", "HOT", "COLD",
-            "HERE", "THERE", "NOW", "LATER", "BEFORE", "AFTER", "TODAY", "TOMORROW",
-            "WHAT", "WHO", "WHERE", "WHEN", "WHY", "HOW", "WHICH"
-        ]
-        
-        # Build mappings
+        gsl_signs = ["HELLO", "GOODBYE", "THANK_YOU", "PLEASE", "SORRY", "YES", "NO"]
         for i, sign in enumerate(gsl_signs):
             self.gsl_to_id[sign] = i
-            self.id_to_gsl[i] = sign
         
-        # English vocabulary (basic)
-        english_words = [
-            "hello", "goodbye", "thank", "you", "please", "sorry",
-            "yes", "no", "maybe", "ok", "good", "bad", "happy", "sad",
-            "i", "he", "she", "we", "they", "it", "this", "that",
-            "want", "need", "like", "love", "know", "think", "feel", "see",
-            "eat", "drink", "sleep", "work", "play", "go", "come", "stay",
-            "big", "small", "tall", "short", "fast", "slow", "hot", "cold",
-            "here", "there", "now", "later", "before", "after", "today", "tomorrow",
-            "what", "who", "where", "when", "why", "how", "which"
-        ]
-        
+        english_words = ["hello", "goodbye", "thank", "you", "please", "sorry"]
         for i, word in enumerate(english_words):
             self.english_to_id[word] = i
-            self.id_to_english[i] = word
-    
-    def gsl_sequence_to_tokens(self, gsl_sequence: List[str]) -> List[int]:
-        """Convert GSL sign sequence to token IDs"""
-        tokens = []
-        
-        for sign in gsl_sequence:
-            if sign in self.gsl_to_id:
-                tokens.append(self.gsl_to_id[sign])
-            else:
-                # Unknown sign - use UNK token or create new ID
-                if "UNK" in self.gsl_to_id:
-                    tokens.append(self.gsl_to_id["UNK"])
-                else:
-                    # Add new sign to vocabulary
-                    new_id = len(self.gsl_to_id)
-                    self.gsl_to_id[sign] = new_id
-                    self.id_to_gsl[new_id] = sign
-                    tokens.append(new_id)
-        
-        return tokens
-    
-    def tokens_to_english(self, token_ids: List[int]) -> str:
-        """Convert English token IDs to text"""
-        words = []
-        
-        for token_id in token_ids:
-            if token_id in self.id_to_english:
-                words.append(self.id_to_english[token_id])
-            else:
-                words.append("<UNK>")
-        
-        return " ".join(words)
-    
+
     async def translate_gsl_to_english(self, gsl_sequence: List[str], context: Optional[List[str]] = None) -> Dict:
-        """Translate GSL sign sequence to English"""
+        """Translate GSL sign sequence to English using rule-based engine"""
         try:
-            if not self.is_loaded:
-                await self.load_model()
-            
             # Apply grammar rules
             if self.config.grammar_rules_enabled:
                 gsl_sequence = self.grammar_rules.apply_grammar_rules(gsl_sequence, context)
             
-            # Simple rule-based translation for now
-            # In practice, use the neural model
+            # Use the rule-based engine
             english_text = self.grammar_rules.translate_to_english(gsl_sequence)
-            
-            # Use transformer model if available
-            if hasattr(self, 'model') and isinstance(self.model, GSLTranslationModel):
-                english_text = await self._neural_translate_gsl_to_english(gsl_sequence)
             
             return {
                 'english_text': english_text,
                 'gsl_sequence': gsl_sequence,
                 'confidence': 0.8,
-                'translation_method': 'rule_based' if not hasattr(self, 'model') or not isinstance(self.model, GSLTranslationModel) else 'neural',
+                'translation_method': 'rule_based_optimized',
                 'timestamp': time.time()
             }
             
@@ -485,102 +372,29 @@ class GSLTranslationService:
                 'error': str(e),
                 'timestamp': time.time()
             }
-    
-    async def _neural_translate_gsl_to_english(self, gsl_sequence: List[str]) -> str:
-        """Neural translation from GSL to English"""
-        try:
-            # Convert GSL sequence to tokens
-            if torch is None:
-                return self.grammar_rules.translate_to_english(gsl_sequence)
-            gsl_tokens = self.gsl_sequence_to_tokens(gsl_sequence)
-            
-            # Convert to tensor
-            gsl_tensor = torch.LongTensor([gsl_tokens]).transpose(0, 1).to(self.config.device)
-            
-            # Generate English translation
-            with torch.no_grad():
-                # Simple greedy decoding for now
-                max_length = min(len(gsl_tokens) * 2, self.config.max_length)
-                
-                # Initialize decoder input
-                decoder_input = torch.LongTensor([[self.english_to_id.get("<BOS>", 0)]]).to(self.config.device)
-                
-                output_tokens = []
-                
-                for _ in range(max_length):
-                    logits = self.model(gsl_tensor, decoder_input)
-                    next_token = torch.argmax(logits[-1, :, :], dim=-1)
-                    output_tokens.append(next_token.item())
-                    
-                    # Check for end of sequence
-                    if next_token.item() == self.english_to_id.get("<EOS>", 1):
-                        break
-                    
-                    # Update decoder input
-                    decoder_input = torch.cat([decoder_input, next_token.unsqueeze(0)], dim=0)
-                
-                # Convert tokens to text
-                english_text = self.tokens_to_english(output_tokens)
-                
-                return english_text
-                
-        except Exception as e:
-            logger.error(f"Error in neural translation: {e}")
-            # Fallback to rule-based translation
-            return self.grammar_rules.translate_to_english(gsl_sequence)
-    
+
     async def translate_english_to_gsl(self, english_text: str, context: Optional[List[str]] = None) -> Dict:
-        """Translate English text to GSL sign sequence"""
+        """Translate English text to GSL sign sequence using rule-based engine"""
         try:
-            if not self.is_loaded:
-                await self.load_model()
-            
-            # Simple rule-based translation for now
-            gsl_sequence = self._english_to_gsl_rule_based(english_text)
-            
-            # Apply GSL grammar rules
-            if self.config.grammar_rules_enabled:
-                gsl_sequence = self.grammar_rules.apply_grammar_rules(gsl_sequence, context)
+            from backend.nlp.en_to_gsl import to_gsl
+            gsl_sequence = to_gsl(english_text)
             
             return {
                 'gsl_sequence': gsl_sequence,
                 'english_text': english_text,
                 'confidence': 0.7,
-                'translation_method': 'rule_based',
+                'translation_method': 'rule_based_optimized',
                 'timestamp': time.time()
             }
-            
         except Exception as e:
             logger.error(f"Error translating English to GSL: {e}")
-            return {
-                'gsl_sequence': [],
-                'english_text': english_text,
-                'confidence': 0.0,
-                'error': str(e),
-                'timestamp': time.time()
-            }
-    
-    def _english_to_gsl_rule_based(self, english_text: str) -> List[str]:
-        """Rule-based English to GSL translation"""
-        try:
-            from backend.nlp.en_to_gsl import to_gsl
-            return to_gsl(english_text)
-            
-        except Exception as e:
-            logger.error("Error in rule-based translation:", exc_info=True)
-            return []
-    
+            return {'gsl_sequence': [], 'english_text': english_text, 'confidence': 0.0, 'error': str(e)}
+
     def get_translation_info(self) -> Dict:
-        """Get translation service information"""
         return {
-            'model_loaded': self.is_loaded,
+            'model_loaded': True,
             'grammar_rules_enabled': self.config.grammar_rules_enabled,
-            'gsl_vocabulary_size': len(self.gsl_to_id),
-            'english_vocabulary_size': len(self.english_to_id),
-            'context_window': self.config.context_window,
-            'confidence_threshold': self.config.confidence_threshold,
-            'supported_languages': ['en', 'gsl'],
-            'translation_methods': ['rule_based', 'neural']
+            'translation_methods': ['rule_based_optimized']
         }
     
     def get_grammar_rules(self) -> Dict:

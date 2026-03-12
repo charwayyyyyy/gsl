@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAppStore } from '../stores/appStore'
 
+// Optimized WebRTC hook for Render Free Tier
+// Note: MediaPipe processing is now expected to happen on the frontend.
+// We should ideally integrate MediaPipe JS SDK here or in a separate component.
+
 export interface WebRTCState {
   isSupported: boolean
   isConnected: boolean
