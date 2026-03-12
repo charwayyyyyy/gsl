@@ -1,10 +1,9 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { API_BASE_URL, WS_BASE_URL } from '@/config'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX, ChevronLeft, ChevronRight, Play, Pause, AlertTriangle, BookOpen, User, Lightbulb, Keyboard, Sun, Moon } from 'lucide-react'
-import { useTheme } from '@/hooks/useTheme'
-import { useAppStore } from '../stores/appStore'
+import { useAppStore, useVisualSettings } from '../stores/appStore'
 import { useWebRTC, useWebSocket } from '../hooks/useWebRTC'
+import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX, ChevronLeft, ChevronRight, Play, Pause, AlertTriangle, BookOpen, User, Lightbulb, Keyboard, Sun, Moon, Laptop } from 'lucide-react'
 import VideoCapture from '../components/VideoCapture'
 import AudioCapture from '../components/AudioCapture'
 import Avatar3D from '../components/Avatar3D'
@@ -45,7 +44,16 @@ const Interpreter: React.FC = () => {
     lastTranslation,
     settings
   } = useAppStore()
-  const { isDark, toggleTheme } = useTheme()
+  const { colorScheme, updateVisual } = useVisualSettings()
+  
+  const isDark = colorScheme === 'dark' || 
+                 (colorScheme === 'default' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+
+  const toggleTheme = () => {
+    if (colorScheme === 'light') updateVisual({ colorScheme: 'dark' })
+    else if (colorScheme === 'dark') updateVisual({ colorScheme: 'default' })
+    else updateVisual({ colorScheme: 'light' })
+  }
 
   const [translationText, setTranslationText] = useState('')
   const [confidence, setConfidence] = useState(0)
@@ -661,7 +669,7 @@ const Interpreter: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen relative overflow-hidden ${accessibility.highContrast ? 'bg-black text-yellow-400' : 'bg-slate-50 dark:bg-slate-950'}`}>
+    <div className={`min-h-screen relative overflow-hidden ${accessibility.highContrast ? 'bg-black text-yellow-400' : 'bg-slate-50 dark:bg-[#050505]'}`}>
       {/* Background Orbs - Only if not high contrast */}
       {!accessibility.highContrast && (
         <>
@@ -767,9 +775,11 @@ const Interpreter: React.FC = () => {
                   transform hover:scale-110 active:scale-95 focus:outline-none
                 `}
               >
-                {isDark
-                  ? <Sun className={`${accessibility.largeText ? 'w-5 h-5' : 'w-4 h-4'} text-amber-400`} />
-                  : <Moon className={`${accessibility.largeText ? 'w-5 h-5' : 'w-4 h-4'} text-slate-600`} />
+                {colorScheme === 'default'
+                  ? <Laptop className={`${accessibility.largeText ? 'w-5 h-5' : 'w-4 h-4'} text-slate-500`} />
+                  : isDark
+                    ? <Sun className={`${accessibility.largeText ? 'w-5 h-5' : 'w-4 h-4'} text-amber-400`} />
+                    : <Moon className={`${accessibility.largeText ? 'w-5 h-5' : 'w-4 h-4'} text-slate-600`} />
                 }
               </button>
             </div>

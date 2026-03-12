@@ -1,16 +1,24 @@
 import { useNavigate } from 'react-router-dom'
 import DirectionSelection from '@/components/DirectionSelection'
 import CommunitySlider from '@/components/CommunitySlider'
-import { useAppStore, useAccessibilitySettings } from '@/stores/appStore'
-import { Sparkles, Shield, Accessibility, Zap, Sun, Moon } from 'lucide-react'
-import { useTheme } from '@/hooks/useTheme'
+import { useAppStore, useAccessibilitySettings, useVisualSettings } from '@/stores/appStore'
+import { Sparkles, Shield, Accessibility, Zap, Sun, Moon, Laptop } from 'lucide-react'
 
 
 export default function Home() {
   const navigate = useNavigate()
   const accessibility = useAccessibilitySettings()
   const { startTranslationSession } = useAppStore.getState()
-  const { isDark, toggleTheme } = useTheme()
+  const { colorScheme, updateVisual } = useVisualSettings()
+  
+  const isDark = colorScheme === 'dark' || 
+                 (colorScheme === 'default' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+
+  const toggleTheme = () => {
+    if (colorScheme === 'light') updateVisual({ colorScheme: 'dark' })
+    else if (colorScheme === 'dark') updateVisual({ colorScheme: 'default' })
+    else updateVisual({ colorScheme: 'light' })
+  }
 
   const handleDirectionSelect = (direction: 'sign_to_speech' | 'speech_to_sign') => {
     startTranslationSession(direction)
@@ -71,9 +79,12 @@ export default function Home() {
           bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700
           hover:scale-110 transition-all duration-300 shadow-lg"
       >
-        {isDark
-          ? <Sun className="w-4 h-4 text-amber-400" />
-          : <Moon className="w-4 h-4 text-slate-700" />}
+        {colorScheme === 'default' 
+          ? <Laptop className="w-4 h-4 text-slate-500" />
+          : isDark
+            ? <Sun className="w-4 h-4 text-amber-400" />
+            : <Moon className="w-4 h-4 text-slate-700" />
+        }
       </button>
 
       <div className="w-full max-w-7xl relative z-10 flex flex-col items-center">

@@ -10,7 +10,10 @@ import {
   RotateCcw,
   Palette,
   Globe,
-  BookOpen
+  BookOpen,
+  Sun,
+  Moon,
+  Laptop
 } from 'lucide-react'
 import {
   useAppStore,
@@ -425,6 +428,51 @@ const Settings: React.FC = () => {
 
   const renderVisualTab = () => (
     <div className="space-y-10 animate-fade-in">
+      <div>
+        <h3 className={`${getTextSize()} font-bold mb-8 text-slate-900 dark:text-white flex items-center gap-3`}>
+          <div className="w-2 h-8 bg-blue-500 rounded-full" />
+          Theme & Appearance
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[
+            { value: 'light', label: 'Light Mode', desc: 'Clear & classic', icon: Sun, color: 'amber' },
+            { value: 'dark', label: 'Dark Mode', desc: 'Easy on eyes', icon: Moon, color: 'blue' },
+            { value: 'default', label: 'System', desc: 'Sync with OS', icon: Laptop, color: 'slate' }
+          ].map((option) => (
+            <button
+              key={option.value}
+              onClick={() => {
+                visual.updateVisual({ colorScheme: option.value as any })
+                setHasChanges(true)
+              }}
+              className={`p-6 rounded-[2rem] border-2 transition-all duration-500 text-left relative overflow-hidden group ${visual.colorScheme === option.value
+                ? accessibilitySettings.highContrast
+                  ? `bg-${option.color}-600/20 border-yellow-400 shadow-glass-hover bg-black`
+                  : `bg-${option.color}-600/20 border-${option.color}-500 shadow-glass-hover`
+                : accessibilitySettings.highContrast
+                  ? 'glass-card bg-black border-slate-600 hover:border-yellow-400'
+                  : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)]'
+                }`}
+            >
+              <div className="relative z-10 flex items-start gap-4">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-${option.color}-500/10 text-${option.color}-500 group-hover:scale-110 transition-transform`}>
+                  <option.icon size={24} />
+                </div>
+                <div>
+                  <div className={`font-bold text-slate-900 dark:text-white mb-1 ${accessibilitySettings.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}`}>
+                    {option.label}
+                  </div>
+                  <div className={`text-slate-400 ${accessibilitySettings.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'}`}>
+                    {option.desc}
+                  </div>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div>
         <h3 className={`${getTextSize()} font-bold mb-8 text-slate-900 dark:text-white flex items-center gap-3`}>
           <div className="w-2 h-8 bg-amber-500 rounded-full" />
