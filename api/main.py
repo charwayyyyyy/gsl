@@ -67,7 +67,7 @@ mediapipe_service = MediaPipeService()
 from .services.translation_service import TranslationConfig
 translation_service = TranslationService(TranslationConfig())
 avatar_service = AvatarService()
-speech_service = SpeechRecognitionService(SpeechRecognitionConfig(device="cpu", language="en", fp16=False, chunk_duration=2.0, overlap_duration=0.5))
+speech_service = SpeechRecognitionService(SpeechRecognitionConfig(language="en"))
 _audio_buffers: Dict[str, Any] = {}
 
 # Serve extracted dictionary images

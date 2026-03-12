@@ -12,4 +12,5 @@ aiofiles
 websockets
 numpy
 scipy
+google-generativeai
 # mediapipe, whisper, torch, transformers, sentence-transformers REMOVED for Render Free Tier (512MB RAM)

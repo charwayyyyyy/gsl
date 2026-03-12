@@ -3,6 +3,7 @@ import httpx
 import base64
 import json
 import logging
+import numpy as np
 from typing import Optional, Dict, List, AsyncGenerator
 import asyncio
 import time
