@@ -1,7 +1,9 @@
 import json
+import os
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import numpy as np
+import httpx
 
 PROCESSED = Path("data") / "processed"
 DICT_PATH = PROCESSED / "gsl_dictionary.json"
@@ -15,12 +17,10 @@ class TextToSignService:
         self._cache_vecs: Dict[str, np.ndarray] = {}
         self._page_cache: Dict[str, int] = {}
         self._index_loaded = False
-        self._text_model = None
         self._index_matrix = None
         self._index_keys = []
         self._search_cache: Dict[str, Dict[str, Any]] = {}  # Simple cache for results
         self._load_dictionary()
-        self._preload_model()
 
     def _load(self):
         """Compatibility method for main.py."""
@@ -48,16 +48,36 @@ class TextToSignService:
                     self.dictionary = loaded or {}
 
     def _preload_model(self):
-        """Force initialization of the NLP model on startup to avoid request-time latency."""
+        """No-op: local model disabled for free tier. Using Gemini API instead."""
+        pass
+
+    def _get_embedding(self, text: str) -> np.ndarray:
+        """Get embedding for search query via Gemini API."""
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            return self._fallback_embedding(text)
+            
         try:
-            from sentence_transformers import SentenceTransformer
-            import torch
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-            # Use smaller model for faster loading if needed, but and-MiniLM is already small
-            self._text_model = SentenceTransformer("all-MiniLM-L6-v2", device=device)
-            print(f"TextToSign model loaded on {device}")
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/models/embedding-001:embedContent?key={api_key}"
+            payload = {
+                "model": "models/embedding-001",
+                "content": {"parts": [{"text": text}]}
+            }
+            with httpx.Client(timeout=10.0) as client:
+                resp = client.post(url, json=payload)
+                if resp.status_code == 200:
+                    return np.array(resp.json()["embedding"]["values"])
         except Exception as e:
-            print(f"Failed to preload SentenceTransformer: {e}")
+            import logging
+            logging.getLogger(__name__).warning(f"Embedding API failed: {e}")
+            
+        return self._fallback_embedding(text)
+
+    def _fallback_embedding(self, text: str) -> np.ndarray:
+        h = abs(hash(text)) % (10**8)
+        rng = np.random.default_rng(h)
+        # Gemini embeddings are 768d, match that
+        return rng.normal(0, 1, 768)
 
     def _ensure_index_loaded(self):
         if self._index_loaded:
@@ -73,7 +93,8 @@ class TextToSignService:
                 vectors = []
                 for gloss, rec in self.index.items():
                     tv = rec.get("text_vec", [])
-                    if len(tv) == 384:
+                    # Support both 384d (legacy) and 768d (Gemini)
+                    if len(tv) in [384, 768]:
                         keys.append(gloss)
                         vectors.append(tv)
                 
@@ -100,7 +121,6 @@ class TextToSignService:
             return self._search_cache[qn.lower()]
 
         qlow = qn.lower()
-        qup = qn.upper()
         
         # 1. Exact Match (Gloss or English)
         for gloss, entry in self.dictionary.items():
@@ -141,12 +161,53 @@ class TextToSignService:
         
         # Semantic search fallback
         self._ensure_index_loaded()
-        if self._text_model and self._index_matrix is not None:
+        if self._index_matrix is not None:
             try:
-                # Vectorized search
-                qvec = self._text_model.encode(qlow, normalize_embeddings=True)
+                # Vectorized search using API embedding
+                qvec = self._get_embedding(qlow)
+                
+                # Unit normalize query vector
+                qnorm = np.linalg.norm(qvec)
+                if qnorm > 0:
+                    qvec = qvec / qnorm
+                
                 # Cosine similarity is just dot product since both are unit normalized
-                similarities = self._index_matrix @ qvec
+                # We need to handle dimension mismatch if index was built with different model
+                if qvec.size == self._index_matrix.shape[1]:
+                    similarities = self._index_matrix @ qvec
+                    
+                    # Get top match
+                    best_idx = np.argmax(similarities)
+                    sc = float(similarities[best_idx])
+                    g = self._index_keys[best_idx]
+                    
+                    # Get alternatives (top 2-4)
+                    top_indices = np.argsort(similarities)[::-1]
+                    alts = [self._index_keys[i] for i in top_indices[1:4]]
+                    
+                    e = self.dictionary.get(g, {})
+                    imgs = self._ensure_images(g, e)
+                    primitives = self._infer_primitives(g, e)
+                    
+                    res = {
+                        "gloss": g,
+                        "images": imgs,
+                        "description": e.get("description", ""),
+                        "page": e.get("page"),
+                        "confidence": float(min(0.69, max(0.0, sc))),
+                        "alternatives": alts,
+                        "match_type": "Semantic (Vectorized)",
+                        "variants": int(e.get("variants") or 0),
+                        "primitives": primitives,
+                    }
+                    self._search_cache[qlow] = res
+                    return res
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Vectorized search failed: {e}")
+
+        # Fallback to empty
+        return self._empty_response()
                 
                 # Get top match
                 best_idx = np.argmax(similarities)

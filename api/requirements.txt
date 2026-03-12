@@ -16,4 +16,5 @@ google-generativeai
 PyPDF2
 pdfplumber
 Pillow
+PyMuPDF
 # mediapipe, whisper, torch, transformers, sentence-transformers REMOVED for Render Free Tier (512MB RAM)
