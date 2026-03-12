@@ -13,7 +13,8 @@ import logging
 import os
 from dotenv import load_dotenv
 load_dotenv()
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import uuid
 
 from .services.gsl_dictionary_service import GSLDictionaryService
@@ -200,9 +201,10 @@ class ChatRequest(BaseModel):
 
 # Configure Gemini AI
 api_key = os.getenv("GEMINI_API_KEY")
+gemini_client = None
 if api_key:
-    genai.configure(api_key=api_key)
-    logger.info("Gemini AI configured successfully")
+    gemini_client = genai.Client(api_key=api_key)
+    logger.info("Gemini AI (google-genai) configured successfully")
 else:
     logger.warning("GEMINI_API_KEY environment variable not set. Chatbot will not work.")
 
@@ -742,12 +744,10 @@ async def end_translation_session(session_id: str):
 # Gemini Help Chatbot endpoint
 @app.post("/api/chat")
 async def chat_with_gemini(request: ChatRequest):
-    if not os.getenv("GEMINI_API_KEY"):
+    if not gemini_client:
         raise HTTPException(status_code=500, detail="Gemini API is not configured on the server.")
     
     try:
-        model = genai.GenerativeModel('gemini-2.5-flash')
-        
         # Convert simple message format to Gemini format
         history = []
         for msg in request.messages[:-1]:
@@ -760,11 +760,15 @@ async def chat_with_gemini(request: ChatRequest):
             "Keep your answers concise, clear, and very friendly. If they ask about sign language, provide brief tips."
         )
         
-        model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=system_prompt)
-        chat = model.start_chat(history=history)
-        
         last_message = request.messages[-1].content
-        response = chat.send_message(last_message)
+        
+        response = gemini_client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=history + [{"role": "user", "parts": [{"text": last_message}]}],
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+            )
+        )
         
         return {"response": response.text}
     except Exception as e:

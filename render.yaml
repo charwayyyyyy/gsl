@@ -19,6 +19,6 @@ services:
       - key: API_BASE_URL
         value: https://gsl-fullstack.onrender.com
       - key: GEMINI_API_KEY
-        sync: false
+        generateValue: false # Set this manually in Render Dashboard
     plan: free
     region: ohio

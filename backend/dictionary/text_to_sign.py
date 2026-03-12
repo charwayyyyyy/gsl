@@ -208,39 +208,6 @@ class TextToSignService:
 
         # Fallback to empty
         return self._empty_response()
-                
-                # Get top match
-                best_idx = np.argmax(similarities)
-                sc = float(similarities[best_idx])
-                g = self._index_keys[best_idx]
-                
-                # Get alternatives (top 2-4)
-                top_indices = np.argsort(similarities)[::-1]
-                alts = [self._index_keys[i] for i in top_indices[1:4]]
-                
-                e = self.dictionary.get(g, {})
-                imgs = self._ensure_images(g, e)
-                primitives = self._infer_primitives(g, e)
-                
-                res = {
-                    "gloss": g,
-                    "images": imgs,
-                    "description": e.get("description", ""),
-                    "page": e.get("page"),
-                    "confidence": float(min(0.69, max(0.0, sc))),
-                    "alternatives": alts,
-                    "match_type": "Semantic (Vectorized)",
-                    "variants": int(e.get("variants") or 0),
-                    "primitives": primitives,
-                }
-                self._search_cache[qlow] = res
-                return res
-            except Exception as e:
-                import logging
-                logging.getLogger(__name__).error(f"Vectorized search failed: {e}")
-
-        # Fallback to empty
-        return self._empty_response()
 
     def _empty_response(self) -> Dict[str, Any]:
         alts: List[str] = list(self.dictionary.keys())[:3]

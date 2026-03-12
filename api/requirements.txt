@@ -12,7 +12,7 @@ aiofiles
 websockets
 numpy
 scipy
-google-generativeai
+google-genai
 PyPDF2
 pdfplumber
 Pillow
