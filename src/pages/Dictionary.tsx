@@ -50,6 +50,11 @@ const Dictionary: React.FC = () => {
   const getHeaderSize = () => accessibility.largeText ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'
   const getButtonSize = () => accessibility.largeText ? 'p-5' : 'p-3'
 
+  const getImageUrl = (gloss: string, imgName: string) => {
+    // In production, images are served from /static/GLOSS/imagename.png
+    return `${API_BASE_URL}/static/${gloss}/${imgName}`
+  }
+
   const search = async (query: string, isVoice: boolean = false) => {
     if (!query) return
     try {
@@ -485,13 +490,11 @@ const Dictionary: React.FC = () => {
                           >
                             <div className="aspect-square flex items-center justify-center p-4">
                               <img
-                                src={`${API_BASE_URL}/static/${result.gloss}/${img}`}
-                                alt={`${result.gloss} sign ${i + 1}`}
-                                className="max-w-full max-h-full object-contain transition-transform duration-700 group-hover:scale-110"
-                                loading="lazy"
+                                src={getImageUrl(result.gloss, img)}
+                                alt={`${result.gloss} sign frame ${i + 1}`}
+                                className="w-full h-full object-contain transform group-hover:scale-110 transition-transform duration-700"
                                 onError={(e) => {
-                                  const el = e.target as HTMLImageElement
-                                  el.style.display = 'none'
+                                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x400?text=Sign+Image+Unavailable';
                                 }}
                               />
                             </div>
@@ -753,13 +756,11 @@ const Dictionary: React.FC = () => {
                           >
                             <div className="aspect-square flex items-center justify-center p-4">
                               <img
-                                src={`${API_BASE_URL}/static/${img}`}
-                                alt={`${result.gloss} sign ${i + 1}`}
-                                className="max-w-full max-h-full object-contain transition-transform duration-700 group-hover:scale-110"
-                                loading="lazy"
+                                src={getImageUrl(result.gloss, img)}
+                                alt={`${result.gloss} sign frame ${i + 1}`}
+                                className="w-full h-full object-contain transform group-hover:scale-110 transition-transform duration-700"
                                 onError={(e) => {
-                                  const el = e.target as HTMLImageElement
-                                  el.style.display = 'none'
+                                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x400?text=Sign+Image+Unavailable';
                                 }}
                               />
                             </div>

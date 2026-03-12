@@ -4,7 +4,9 @@ services:
     env: python
     buildCommand: |
       npm install && npm run build && \
-      pip install -r api/requirements.txt
+      pip install -r api/requirements.txt && \
+      python scripts/extract_gsl_dictionary.py && \
+      python scripts/build_dictionary_sign_embeddings.py
     startCommand: |
       # Serve frontend static files and backend API in one service to save RAM
       # Alternatively, use two services if RAM allows, but for free tier, 

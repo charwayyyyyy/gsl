@@ -73,9 +73,11 @@ _audio_buffers: Dict[str, Any] = {}
 
 # Serve extracted dictionary images
 try:
-    app.mount("/static", StaticFiles(directory=str(Path("data")/"processed"/"images")), name="static")
-except Exception:
-    pass
+    images_path = Path("data")/"processed"/"images"
+    images_path.mkdir(parents=True, exist_ok=True)
+    app.mount("/static", StaticFiles(directory=str(images_path)), name="static")
+except Exception as e:
+    logger.error(f"Failed to mount static files: {e}")
 
 @app.get("/api/dictionary-pdf")
 async def get_dictionary_pdf():
