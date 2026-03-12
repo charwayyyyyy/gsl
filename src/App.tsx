@@ -15,7 +15,7 @@ const Dictionary = lazy(() => import("@/pages/Dictionary"));
 const PageSkeleton = () => (
   <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-slate-50 dark:bg-slate-950">
     <div className="w-12 h-12 rounded-full border-4 border-amber-400 border-t-transparent animate-spin" />
-    <p className="text-slate-400 text-sm font-medium tracking-wide">Loading…</p>
+    <p className="text-slate-600 dark:text-slate-400 text-sm font-medium tracking-wide">Loading…</p>
   </div>
 );
 

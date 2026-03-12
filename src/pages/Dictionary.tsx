@@ -242,7 +242,7 @@ const Dictionary: React.FC = () => {
   }
 
   return (
-    <div className={`dark min-h-screen relative overflow-hidden ${accessibility.highContrast ? 'bg-black text-yellow-400' : 'bg-slate-50 dark:bg-slate-950'}`}>
+    <div className={`min-h-screen relative overflow-hidden ${accessibility.highContrast ? 'bg-black text-yellow-400' : 'bg-slate-50 dark:bg-slate-950'}`}>
       {/* Background Orbs */}
       {!accessibility.highContrast && (
         <>
@@ -513,7 +513,7 @@ const Dictionary: React.FC = () => {
                           </div>
                         ))
                       ) : (
-                        <div className="col-span-full py-20 flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-slate-400">
+                        <div className="col-span-full py-20 flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400">
                           <AlertTriangle size={48} className="mb-4 opacity-20" />
                           <span className="text-lg font-bold tracking-tight">Visual sequence unavailable</span>
                           <p className="text-sm font-medium mt-1">We're working on adding more signs.</p>
@@ -549,7 +549,7 @@ const Dictionary: React.FC = () => {
                     <AlertTriangle className="w-10 h-10 text-amber-500 opacity-80" />
                   </div>
                   <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tighter">No exact match found</h3>
-                  <p className={`${getTextSize()} text-slate-500 dark:text-slate-400 mb-10 max-w-md mx-auto leading-relaxed`}>
+                  <p className={`${getTextSize()} text-slate-600 dark:text-slate-400 mb-10 max-w-md mx-auto leading-relaxed`}>
                     We couldn't find a direct sign for <span className="text-blue-500 font-bold">"{q}"</span>. Try one of our suggested alternatives below.
                   </p>
 
@@ -605,7 +605,7 @@ const Dictionary: React.FC = () => {
                 absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-2xl transition-all duration-500
                 ${isListening
                   ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/40 animate-pulse'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-blue-500 hover:text-white dark:hover:bg-blue-500'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-blue-500 hover:text-white dark:hover:bg-blue-500'
                 }
               `}
               title={loading ? "Please wait..." : "Search by voice"}
@@ -631,7 +631,7 @@ const Dictionary: React.FC = () => {
           <div className="animate-fade-in space-y-4 order-3">
             <div className="flex items-center gap-3 px-2 mb-2">
               <Layers className="w-5 h-5 text-blue-500" />
-              <span className="text-xs font-black uppercase tracking-widest text-slate-400">Browse by letter</span>
+              <span className="text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">Browse by letter</span>
             </div>
             <div className="glass p-4 rounded-[2.5rem] flex flex-wrap gap-2 justify-center mb-12 shadow-inner">
               {alphabet.map((a) => (
@@ -830,7 +830,7 @@ const Dictionary: React.FC = () => {
                   <AlertTriangle className="w-10 h-10 text-amber-500 opacity-80" />
                 </div>
                 <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tighter">No exact match found</h3>
-                <p className={`${getTextSize()} text-slate-500 dark:text-slate-400 mb-10 max-w-md mx-auto leading-relaxed`}>
+                <p className={`${getTextSize()} text-slate-600 dark:text-slate-400 mb-10 max-w-md mx-auto leading-relaxed`}>
                   We couldn't find a direct sign for <span className="text-blue-500 font-bold">"{q}"</span>. Try one of our suggested alternatives below.
                 </p>
 
@@ -882,11 +882,11 @@ const Dictionary: React.FC = () => {
                     <span className="text-lg font-black text-slate-900 dark:text-white group-hover:text-indigo-500 transition-colors tracking-tight" >
                       {item.gloss}
                     </span>
-                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
                       {item.variants} Var
                     </span>
                   </div>
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">
                     <BookOpen size={14} />
                     Page {item.page || 'N/A'}
                   </div>

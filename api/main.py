@@ -76,6 +76,22 @@ try:
 except Exception:
     pass
 
+@app.get("/api/dictionary-pdf")
+async def get_dictionary_pdf():
+    pdf_path = Path("Ghanaian Sign Language Dictionary - 3rd Edition.pdf")
+    if not pdf_path.exists():
+        # Fallback if the path is slightly different
+        pdf_path = Path("data/raw_pdf/Ghanaian Sign Language Dictionary - 3rd Edition.pdf")
+        
+    if not pdf_path.exists():
+        raise HTTPException(status_code=404, detail="Dictionary PDF not found")
+        
+    return FileResponse(
+        pdf_path, 
+        media_type="application/pdf", 
+        filename="GSL_Dictionary_3rd_Edition.pdf"
+    )
+
 # WebSocket connection managers
 class ConnectionManager:
     def __init__(self):

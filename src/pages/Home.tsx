@@ -2,8 +2,9 @@ import { useNavigate } from 'react-router-dom'
 import DirectionSelection from '@/components/DirectionSelection'
 import CommunitySlider from '@/components/CommunitySlider'
 import { useAppStore, useAccessibilitySettings } from '@/stores/appStore'
-import { Sparkles, Shield, Accessibility, Zap, Sun, Moon } from 'lucide-react'
+import { BookOpen, Shield, Accessibility, Zap, Sun, Moon } from 'lucide-react'
 import { useTheme } from '@/hooks/useTheme'
+import { API_BASE_URL } from '@/config'
 
 
 export default function Home() {
@@ -79,11 +80,6 @@ export default function Home() {
       <div className="w-full max-w-7xl relative z-10 flex flex-col items-center">
         {/* Hero Section */}
         <div className="text-center mt-6 sm:mt-12 mb-10 sm:mb-20 animate-fade-in">
-          <div className="inline-flex items-center space-x-2 px-4 py-2 mb-8 rounded-full bg-blue-500/10 border border-blue-500/20 backdrop-blur-sm shadow-inner">
-            <Sparkles className="w-4 h-4 text-blue-500 dark:text-blue-400" />
-            <span className="text-blue-600 dark:text-blue-400 text-sm font-semibold tracking-wider uppercase">Next Gen Translation</span>
-          </div>
-
           <h1
             style={{
               color: accessibility.highContrast ? '#facc15' : isDark ? '#ffffff' : '#0f172a'
@@ -117,6 +113,17 @@ export default function Home() {
               <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
               Authentic GSL
             </div>
+            <button
+              onClick={() => window.open(`${API_BASE_URL}/api/dictionary-pdf`, '_blank')}
+              className={`px-6 py-3 rounded-2xl font-semibold flex items-center gap-2 transition-all duration-300 shadow-lg
+                ${accessibility.highContrast 
+                  ? 'bg-yellow-400 text-black hover:bg-yellow-300' 
+                  : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'}
+              `}
+            >
+              <BookOpen className="w-5 h-5" />
+              Full GSL Dictionary (PDF)
+            </button>
           </div>
         </div>
 
@@ -167,12 +174,12 @@ export default function Home() {
                 </div>
               ))}
             </div>
-            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
+            <p className="text-slate-700 dark:text-slate-300 text-sm font-medium">
               Trusted by <span className="text-slate-900 dark:text-white font-bold">1,000+</span> users in Ghana
             </p>
           </div>
 
-          <div className="flex items-center gap-3 text-slate-400 dark:text-slate-500 text-xs font-semibold tracking-widest uppercase">
+          <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400 text-xs font-semibold tracking-widest uppercase">
             <span>Privacy Focused</span>
             <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700" />
             <span>Secure Data</span>

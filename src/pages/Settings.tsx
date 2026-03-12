@@ -68,7 +68,7 @@ const Settings: React.FC = () => {
             <div className={`font-bold text-slate-900 dark:text-white mb-1 ${accessibilitySettings.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}`}>
               {label}
             </div>
-            <div className={`text-slate-400 leading-relaxed ${accessibilitySettings.largeText ? 'text-sm sm:text-xl' : 'text-xs sm:text-lg'}`}>
+            <div className={`text-slate-600 dark:text-slate-400 leading-relaxed ${accessibilitySettings.largeText ? 'text-sm sm:text-xl' : 'text-xs sm:text-lg'}`}>
               {desc}
             </div>
           </div>
@@ -107,7 +107,7 @@ const Settings: React.FC = () => {
           onChange={(e) => onChange(parseFloat(e.target.value))}
           className="w-full h-2.5 bg-slate-700/50 rounded-full appearance-none cursor-pointer accent-blue-500 transition-all hover:accent-blue-400"
         />
-        <div className="flex justify-between mt-6 text-slate-500 font-bold tracking-wider text-sm uppercase">
+        <div className="flex justify-between mt-6 text-slate-500 dark:text-slate-400 font-bold tracking-wider text-sm uppercase">
           <span>Min</span>
           <span>Max</span>
         </div>

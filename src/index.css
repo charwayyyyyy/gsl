@@ -24,7 +24,7 @@
     @apply m-0 min-h-screen overflow-x-hidden;
     /* Simple solid colors — identical on ALL devices (no fixed-attachment mobile bugs) */
     background-color: #f8fafc;
-    color: #0f172a;
+    color: #1e293b;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     line-height: 1.6;
     transition: background-color 0.3s, color 0.3s;
@@ -32,7 +32,7 @@
 
   .dark body {
     background-color: #050505;
-    color: #f8fafc;
+    color: #f1f5f9;
   }
 
   h1,
