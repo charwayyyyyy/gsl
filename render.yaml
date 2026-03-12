@@ -11,7 +11,11 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: DATABASE_URL
-        value: sqlite:///gsl_interpreter.db
+        value: sqlite:////data/gsl_interpreter.db
+    disk:
+      name: gsl-data
+      mountPath: /data
+      sizeGB: 1
 
   # Frontend Vite Static Site
   - type: static
