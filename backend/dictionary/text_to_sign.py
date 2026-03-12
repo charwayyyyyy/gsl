@@ -18,8 +18,14 @@ class TextToSignService:
         self._text_model = None
         self._index_matrix = None
         self._index_keys = []
+        self._search_cache: Dict[str, Dict[str, Any]] = {}  # Simple cache for results
         self._load_dictionary()
         self._preload_model()
+
+    def _load(self):
+        """Compatibility method for main.py."""
+        self._load_dictionary()
+        self._ensure_index_loaded()
 
     def _load_dictionary(self):
         """Load the GSL dictionary from JSON."""
@@ -87,44 +93,35 @@ class TextToSignService:
     def search(self, q: str) -> Dict[str, Any]:
         qn = (q or "").strip()
         if qn == "":
-            alts: List[str] = list(self.dictionary.keys())[:3]
-            g = alts[0] if alts else None
-            e = self.dictionary.get(g or "", {})
-            primitives = self._infer_primitives(g or "", e)
-            return {
-                "gloss": g,
-                "images": self._ensure_images(g or "", e) if g else [],
-                "description": e.get("description", "") if g else "",
-                "page": e.get("page") if g else None,
-                "confidence": 1.0 if g else 0.0,
-                "alternatives": alts[1:] if len(alts) > 1 else [],
-                "match_type": "Random" if not g else "Exact",
-                "variants": int(e.get("variants") or 0) if g else 0,
-                "primitives": primitives,
-            }
-        cand: List[str] = []
+            return self._empty_response()
+
+        # Check Cache
+        if qn.lower() in self._search_cache:
+            return self._search_cache[qn.lower()]
+
         qlow = qn.lower()
         qup = qn.upper()
-        forms = {qlow, qup}
-        if qlow.endswith("es"):
-            forms.add(qlow[:-2])
-        if qlow.endswith("s"):
-            forms.add(qlow[:-1])
+        
+        # 1. Exact Match (Gloss or English)
+        for gloss, entry in self.dictionary.items():
+            if gloss.lower() == qlow or entry.get("english", "").lower() == qlow:
+                res = self._build_match_response(gloss, entry, 1.0, "Exact")
+                self._search_cache[qlow] = res
+                return res
+
+        # 2. Heuristic Forms (Plurals etc)
+        forms = {qlow}
+        if qlow.endswith("es"): forms.add(qlow[:-2])
+        elif qlow.endswith("s"): forms.add(qlow[:-1])
+        
         for gloss, entry in self.dictionary.items():
             if gloss.lower() in forms or entry.get("english", "").lower() in forms:
-                imgs = self._ensure_images(gloss, entry)
-                primitives = self._infer_primitives(gloss, entry)
-                return {
-                    "gloss": gloss,
-                    "images": imgs,
-                    "description": entry.get("description", ""),
-                    "page": entry.get("page"),
-                    "confidence": 1.0,
-                    "alternatives": [],
-                    "match_type": "Exact",
-                    "variants": int(entry.get("variants") or 0),
-                    "primitives": primitives,
-                }
+                res = self._build_match_response(gloss, entry, 1.0, "Exact (Heuristic)")
+                self._search_cache[qlow] = res
+                return res
+
+        # 3. Partial / Prefix Match
+        cand: List[str] = []
         for gloss, entry in self.dictionary.items():
             if gloss.lower().startswith(qlow) or entry.get("english", "").lower().startswith(qlow):
                 cand.append(gloss)
@@ -138,19 +135,9 @@ class TextToSignService:
             cand.sort(key=len)
             g = cand[0]
             e = self.dictionary.get(g, {})
-            imgs = self._ensure_images(g, e)
-            primitives = self._infer_primitives(g, e)
-            return {
-                "gloss": g,
-                "images": imgs,
-                "description": e.get("description", ""),
-                "page": e.get("page"),
-                "confidence": 0.85,
-                "alternatives": cand[1:4],
-                "match_type": "Prefix/Contains",
-                "variants": int(e.get("variants") or 0),
-                "primitives": primitives,
-            }
+            res = self._build_match_response(g, e, 0.85, "Prefix/Contains", alts=cand[1:4])
+            self._search_cache[qlow] = res
+            return res
         
         # Semantic search fallback
         self._ensure_index_loaded()
@@ -174,7 +161,7 @@ class TextToSignService:
                 imgs = self._ensure_images(g, e)
                 primitives = self._infer_primitives(g, e)
                 
-                return {
+                res = {
                     "gloss": g,
                     "images": imgs,
                     "description": e.get("description", ""),
@@ -185,21 +172,44 @@ class TextToSignService:
                     "variants": int(e.get("variants") or 0),
                     "primitives": primitives,
                 }
+                self._search_cache[qlow] = res
+                return res
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).error(f"Vectorized search failed: {e}")
 
-        # Fallback to random if index/model fails
-        primitives = self._infer_primitives("", {})
+        # Fallback to empty
+        return self._empty_response()
+
+    def _empty_response(self) -> Dict[str, Any]:
+        alts: List[str] = list(self.dictionary.keys())[:3]
+        g = alts[0] if alts else None
+        e = self.dictionary.get(g or "", {})
+        primitives = self._infer_primitives(g or "", e)
         return {
-            "gloss": None,
-            "images": [],
-            "description": "",
-            "page": None,
+            "gloss": g if g else None,
+            "images": self._ensure_images(g or "", e) if g else [],
+            "description": e.get("description", "") if g else "",
+            "page": e.get("page") if g else None,
             "confidence": 0.0,
-            "alternatives": [],
+            "alternatives": alts[1:] if len(alts) > 1 else [],
             "match_type": "None",
-            "variants": 0,
+            "variants": int(e.get("variants") or 0) if g else 0,
+            "primitives": primitives,
+        }
+
+    def _build_match_response(self, gloss: str, entry: Dict[str, Any], confidence: float, match_type: str, alts: List[str] = None) -> Dict[str, Any]:
+        imgs = self._ensure_images(gloss, entry)
+        primitives = self._infer_primitives(gloss, entry)
+        return {
+            "gloss": gloss,
+            "images": imgs,
+            "description": entry.get("description", ""),
+            "page": entry.get("page"),
+            "confidence": confidence,
+            "alternatives": alts or [],
+            "match_type": match_type,
+            "variants": int(entry.get("variants") or 0),
             "primitives": primitives,
         }
 
