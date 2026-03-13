@@ -60,15 +60,64 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize services
-dictionary_service = GSLDictionaryService()
-text_to_sign_service = TextToSignService()
-dict_matcher = DictionaryMatcher()
-mediapipe_service = MediaPipeService()
-from .services.translation_service import TranslationConfig
-translation_service = TranslationService(TranslationConfig())
-avatar_service = AvatarService()
-speech_service = WhisperSpeechRecognitionService(SpeechRecognitionConfig(language="en"))
+# Initialize services lazily
+_dictionary_service = None
+_text_to_sign_service = None
+_dict_matcher = None
+_mediapipe_service = None
+_translation_service = None
+_avatar_service = None
+_speech_service = None
+
+def get_dictionary_service():
+    global _dictionary_service
+    if _dictionary_service is None:
+        from .services.gsl_dictionary_service import GSLDictionaryService
+        _dictionary_service = GSLDictionaryService()
+    return _dictionary_service
+
+def get_text_to_sign_service():
+    global _text_to_sign_service
+    if _text_to_sign_service is None:
+        from backend.dictionary.text_to_sign import TextToSignService
+        _text_to_sign_service = TextToSignService()
+    return _text_to_sign_service
+
+def get_dict_matcher():
+    global _dict_matcher
+    if _dict_matcher is None:
+        from backend.sign_matching.dictionary_matcher import DictionaryMatcher
+        _dict_matcher = DictionaryMatcher()
+    return _dict_matcher
+
+def get_mediapipe_service():
+    global _mediapipe_service
+    if _mediapipe_service is None:
+        from .services.mediapipe_service import MediaPipeService
+        _mediapipe_service = MediaPipeService()
+    return _mediapipe_service
+
+def get_translation_service():
+    global _translation_service
+    if _translation_service is None:
+        from .services.translation_service import TranslationService, TranslationConfig
+        _translation_service = TranslationService(TranslationConfig())
+    return _translation_service
+
+def get_avatar_service():
+    global _avatar_service
+    if _avatar_service is None:
+        from .services.avatar_service import AvatarService
+        _avatar_service = AvatarService()
+    return _avatar_service
+
+def get_speech_service():
+    global _speech_service
+    if _speech_service is None:
+        from .services.speech_recognition_service import WhisperSpeechRecognitionService, SpeechRecognitionConfig
+        _speech_service = WhisperSpeechRecognitionService(SpeechRecognitionConfig(language="en"))
+    return _speech_service
+
 _audio_buffers: Dict[str, Any] = {}
 
 # Serve extracted dictionary images
@@ -290,13 +339,11 @@ async def startup_event():
       except Exception as e:
         logger.warning(f"Dictionary seed failed: {e}")
       if build_sign_index and not Path("data/processed/gsl_sign_index.json").exists():
-        try: build_sign_index()
-        except Exception as e: logger.warning(f"build_sign_index failed: {e}")
+        logger.info("Sign index missing, but skipping build during startup for Render safety.")
       if build_motion_templates and not Path("data/processed/dictionary_motion_templates.json").exists():
-        try: build_motion_templates()
-        except Exception as e: logger.warning(f"build_motion_templates failed: {e}")
+        logger.info("Motion templates missing, but skipping build during startup for Render safety.")
       try:
-        text_to_sign_service._load()
+        get_text_to_sign_service()._load()
       except Exception as e:
         logger.warning(f"Reload text_to_sign_service failed: {e}")
       try:
@@ -340,9 +387,9 @@ async def startup_event():
       except Exception as e:
         logger.warning(f"Validation failed: {e}")
       try:
-        first_gloss = next(iter(text_to_sign_service.dictionary.keys()), None)
+        first_gloss = next(iter(get_text_to_sign_service().dictionary.keys()), None)
         ok1 = first_gloss is not None
-        ok2 = bool(text_to_sign_service.search(first_gloss or "").get("gloss"))
+        ok2 = bool(get_text_to_sign_service().search(first_gloss or "").get("gloss"))
         static_ok = (Path("data")/"processed"/"images").exists()
         logger.info(f"Self-test: dict_loaded={ok1} search_ok={ok2} static_ok={static_ok}")
       except Exception as e:
@@ -382,7 +429,7 @@ async def video_stream(websocket: WebSocket):
                 frame_data = base64.b64decode(message["data"])
                 
                 # Process frame with MediaPipe
-                pose_data = await mediapipe_service.process_frame(frame_data)
+                pose_data = await get_mediapipe_service().process_frame(frame_data)
                 
                 # Baseline classification (pose-only)
                 pose_lms = pose_data.get("landmarks", {}).get("pose")
@@ -401,8 +448,8 @@ async def video_stream(websocket: WebSocket):
                 try:
                     # Run CPU-bound DTW matchers in a thread so they don't block the WebSocket event loop
                     def run_matchers():
-                        g_best, s_best = dict_matcher.best_match(seq)
-                        t_best = dict_matcher.top_matches(seq, 3)
+                        g_best, s_best = get_dict_matcher().best_match(seq)
+                        t_best = get_dict_matcher().top_matches(seq, 3)
                         return g_best, s_best, t_best
 
                     g, score, tops = await asyncio.to_thread(run_matchers)
@@ -520,7 +567,7 @@ async def audio_stream(websocket: WebSocket):
                     try:
                         # Use transcribe_audio which handles numpy -> WAV conversion
                         # Pass sample_rate explicitly to ensure correct WAV header
-                        result = await speech_service.transcribe_audio(chunk, sample_rate=sample_rate)
+                        result = await get_speech_service().transcribe_audio(chunk, sample_rate=sample_rate)
                         
                         if result.get("text"):
                             response = {
@@ -550,7 +597,7 @@ async def audio_stream(websocket: WebSocket):
 async def translate_sign_to_speech(request: SignToSpeechRequest):
     try:
         # Process pose sequence with sign recognition
-        translation = await translation_service.translate_sign_to_speech(
+        translation = await get_translation_service().translate_sign_to_speech(
             request.pose_sequence, 
             request.context
         )
@@ -580,7 +627,7 @@ async def translate_sign_to_speech(request: SignToSpeechRequest):
 async def translate_speech_to_sign(request: SpeechToSignRequest):
     try:
         # Process text with speech-to-sign translation
-        translation = await translation_service.translate_speech_to_sign(
+        translation = await get_translation_service().translate_speech_to_sign(
             request.text,
             request.speed
         )
@@ -610,7 +657,7 @@ async def translate_speech_to_sign(request: SpeechToSignRequest):
 async def render_avatar(request: AvatarRequest):
     try:
         # Generate avatar animation data
-        animation_data = await avatar_service.render_avatar(
+        animation_data = await get_avatar_service().render_avatar(
             request.gsl_sequence,
             request.animation_mode,
             request.speed,
@@ -627,7 +674,7 @@ async def render_avatar(request: AvatarRequest):
 @app.get("/api/dictionary/search")
 async def search_dictionary(q: str):
     try:
-        r = text_to_sign_service.search(q)
+        r = get_text_to_sign_service().search(q)
         return {
             "gloss": r.get("gloss"),
             "images": r.get("images", []),
@@ -681,7 +728,7 @@ async def list_dictionary(letter: str = "A"):
     try:
         items = []
         l = (letter or "A").upper()
-        for gloss, e in text_to_sign_service.dictionary.items():
+        for gloss, e in get_text_to_sign_service().dictionary.items():
             if gloss.upper().startswith(l):
                 items.append({
                     "gloss": gloss,
@@ -697,7 +744,7 @@ async def list_dictionary(letter: str = "A"):
 @app.get("/api/dictionary/sign/{sign_id}")
 async def get_sign_details(sign_id: str):
     try:
-        sign = await dictionary_service.get_sign_by_id(sign_id)
+        sign = await get_dictionary_service().get_sign_by_id(sign_id)
         if not sign:
             raise HTTPException(status_code=404, detail="Sign not found")
         return sign

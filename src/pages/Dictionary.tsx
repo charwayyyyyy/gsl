@@ -65,10 +65,19 @@ const Dictionary: React.FC = () => {
       setLoading(true)
       setError(null)
       setReported(false) // Reset report status for new search
+      setResult(null) // Clear previous result to show loading state better
 
       const resp = await fetch(`${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(query)}`)
+      if (!resp.ok) throw new Error(`Search failed: ${resp.status}`)
+      
       const data = await resp.json()
-      setResult(data)
+      
+      // Handle the case where the API returns a success but no data (shouldn't happen with our backend but good to check)
+      if (!data) {
+        setResult({ gloss: '', images: [], description: 'No results found', match_type: 'None', confidence: 0, alternatives: [], variants: 0 })
+      } else {
+        setResult(data)
+      }
 
       // Track analytics
       analytics.track({
@@ -163,12 +172,17 @@ const Dictionary: React.FC = () => {
 
   const fetchList = async (ltr: string) => {
     try {
+      setLoading(true) // Show loading for alphabet browsing too
       setError(null)
       const resp = await fetch(`${API_BASE_URL}/api/dictionary/list?letter=${encodeURIComponent(ltr)}`)
+      if (!resp.ok) throw new Error('Failed to load dictionary list')
       const data = await resp.json()
       setList(Array.isArray(data?.items) ? data.items : [])
-    } catch {
+    } catch (e: any) {
+      setError(e.message || 'Failed to load signs starting with ' + ltr)
       setList([])
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -492,13 +506,18 @@ const Dictionary: React.FC = () => {
                             className="relative group cursor-pointer overflow-hidden rounded-3xl border border-amber-500/30 bg-white/50 dark:bg-slate-900/50 shadow-sm transition-all duration-500 hover:shadow-2xl hover:scale-[1.02] hover:border-amber-400/80"
                             onClick={() => openImageModal(`${API_BASE_URL}/static/${result.gloss}/${img}`, i)}
                           >
-                            <div className="aspect-square flex items-center justify-center p-4">
+                            <div className="aspect-square flex items-center justify-center p-4 bg-slate-50 dark:bg-slate-950/50">
                               <img
                                 src={getImageUrl(result.gloss, img)}
                                 alt={`${result.gloss} sign frame ${i + 1}`}
                                 className="w-full h-full object-contain transform group-hover:scale-110 transition-transform duration-700"
+                                loading="lazy"
                                 onError={(e) => {
-                                  (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x400?text=Sign+Image+Unavailable';
+                                  const target = e.target as HTMLImageElement;
+                                  if (target.src !== 'https://via.placeholder.com/400x400?text=Sign+Diagram+Unavailable') {
+                                    target.src = 'https://via.placeholder.com/400x400?text=Sign+Diagram+Unavailable';
+                                    target.classList.add('opacity-50', 'grayscale');
+                                  }
                                 }}
                               />
                             </div>
@@ -633,34 +652,41 @@ const Dictionary: React.FC = () => {
           )}
         </div>
 
-        {/* 3. Alphabet Navigation (Bottom on mobile) */}
-        {!q && (
-          <div className="animate-fade-in space-y-4 order-3">
-            <div className="flex items-center gap-3 px-2 mb-2">
+      {/* Alphabet Navigation */}
+      {!q && !loading && (
+        <div className="animate-fade-in space-y-6 mb-12">
+          <div className="flex items-center justify-between px-2">
+            <div className="flex items-center gap-3">
               <Layers className="w-5 h-5 text-blue-500" />
               <span className="text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">Browse by letter</span>
             </div>
-            <div className="glass p-4 rounded-[2.5rem] flex flex-wrap gap-2 justify-center mb-12 shadow-inner">
-              {alphabet.map((a) => (
-                <button
-                  key={a}
-                  onClick={() => setLetter(a)}
-                  className={`
-                    w-11 h-11 sm:w-14 sm:h-14 rounded-2xl font-bold transition-all duration-500 flex items-center justify-center
-                    ${letter === a
-                      ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/40 scale-110 -translate-y-1'
-                      : 'bg-white/40 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:scale-105'
-                    }
-                    ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}
-                    border border-white/20 dark:border-white/5
-                  `}
-                >
-                  {a}
-                </button>
-              ))}
-            </div>
+            {list && list.length > 0 && (
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                {list.length} signs found
+              </span>
+            )}
           </div>
-        )}
+          <div className="glass p-6 rounded-[2.5rem] flex flex-wrap gap-2 justify-center shadow-inner border border-white/20">
+            {alphabet.map((a) => (
+              <button
+                key={a}
+                onClick={() => setLetter(a)}
+                className={`
+                  w-12 h-12 sm:w-14 sm:h-14 rounded-2xl font-bold transition-all duration-500 flex items-center justify-center
+                  ${letter === a
+                    ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/40 scale-110 -translate-y-1'
+                    : 'bg-white/40 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:scale-105'
+                  }
+                  ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}
+                  border border-white/20 dark:border-white/5
+                `}
+              >
+                {a}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
         {/* Loading State */}
         {loading && (
@@ -861,8 +887,8 @@ const Dictionary: React.FC = () => {
           </div>
         )}
 
-        {/* 4. Letter Glosses List (Last on mobile) */}
-        {!q && list && list.length > 0 && (
+        {/* Letter Glosses List */}
+        {!q && !loading && list && list.length > 0 && (
           <div className="animate-fade-in order-4">
             <div className="flex items-center gap-4 mb-8">
               <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
@@ -898,6 +924,14 @@ const Dictionary: React.FC = () => {
                 </button>
               ))}
             </div>
+          </div>
+        )}
+        
+        {/* No results in list */}
+        {!q && !loading && list && list.length === 0 && (
+          <div className="py-20 flex flex-col items-center justify-center animate-fade-in opacity-50">
+            <BookOpen size={48} className="mb-4 text-slate-400" />
+            <p className="text-lg font-bold text-slate-500 uppercase tracking-widest">No signs found for letter "{letter}"</p>
           </div>
         )}
       </div>

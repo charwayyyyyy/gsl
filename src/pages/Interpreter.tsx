@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { API_BASE_URL, WS_BASE_URL } from '@/config'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX, Camera, CameraOff, ChevronLeft, ChevronRight, Play, Pause, AlertTriangle, BookOpen, User, Lightbulb, Keyboard, Sun, Moon } from 'lucide-react'
+import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX, Camera, CameraOff, ChevronLeft, ChevronRight, Play, Pause, AlertTriangle, BookOpen, User, Lightbulb, Keyboard, Sun, Moon, CheckCircle, Mic } from 'lucide-react'
 import { useTheme } from '@/hooks/useTheme'
 import { useAppStore } from '../stores/appStore'
 import { useWebRTC, useWebSocket } from '../hooks/useWebRTC'
@@ -70,6 +70,8 @@ const Interpreter: React.FC = () => {
   const [dictConfidence, setDictConfidence] = useState(0)
   const [lastUpdateTime, setLastUpdateTime] = useState<string | null>(null)
   const [manualInput, setManualInput] = useState('')
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [isSignRecognized, setIsSignRecognized] = useState(false)
   const [avatarStatus, setAvatarStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null)
   const [avatarKeyframes, setAvatarKeyframes] = useState<any[] | null>(null)
@@ -168,6 +170,7 @@ const Interpreter: React.FC = () => {
     async (text: string, tier: RecognitionTier, sttConf: number) => {
       const tokens = normalizeText(text)
       setRecognizedWords(tokens)
+      setIsProcessing(true)
       if (tokens.length === 0) {
         setTranslationText('')
         setTranslationText('')
@@ -274,6 +277,7 @@ const Interpreter: React.FC = () => {
         timestamp: Date.now()
       }
       setLastTranslation(summary)
+      setIsProcessing(false)
     },
     [setLastTranslation]
   )
@@ -294,8 +298,11 @@ const Interpreter: React.FC = () => {
       recognition.onstart = () => {
         setSpeechError(null)
         setRecognitionTier('browser')
+        setIsProcessing(true)
       }
-      recognition.onend = () => { }
+      recognition.onend = () => { 
+        setIsProcessing(false)
+      }
       recognition.onerror = (event: any) => {
         const code = event && event.error ? String(event.error) : ''
         if (code === 'not-allowed') {
@@ -457,7 +464,9 @@ const Interpreter: React.FC = () => {
       if (message.type === 'pose_data') {
         // Process pose data for sign recognition
         setConfidence(message.confidence || 0)
-
+        
+        // WebSocket health check/latency can be estimated here
+        
         // === Smart Tips: parse live prediction from backend ===
         const gloss = (message.predicted_gloss && message.predicted_gloss !== 'UNKNOWN')
           ? String(message.predicted_gloss).toUpperCase()
@@ -469,6 +478,8 @@ const Interpreter: React.FC = () => {
 
         // If high confidence new sign, update translation text and sequence
         if (gloss && conf > 0.65 && gloss !== livePredictedGloss) {
+          setIsProcessing(true)
+          setIsSignRecognized(true)
           // Add to sequence for visual feedback
           const key = gloss.toLowerCase()
           const cached = dictionaryCache[key]
@@ -516,6 +527,11 @@ const Interpreter: React.FC = () => {
             }
             return prev;
           });
+          
+          setTimeout(() => {
+            setIsProcessing(false)
+            setIsSignRecognized(false)
+          }, 1000)
         }
 
         setLivePredictedGloss(gloss)
@@ -913,18 +929,63 @@ const Interpreter: React.FC = () => {
             
             {/* Input Panel */}
             <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-4 sm:p-6' : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] p-4 sm:p-8'} overflow-hidden transition-all duration-500`}>
-              <div className="flex items-center gap-3 mb-6">
-                <div className={`w-3 h-3 rounded-full animate-pulse ${currentSession.direction === 'sign_to_speech' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
-                <h2 className={`${getTextSize()} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
-                  {currentSession.direction === 'sign_to_speech'
-                    ? 'Sign Language Input'
-                    : currentSession.direction === 'speech_to_sign'
-                      ? 'Speech Input'
-                      : 'Text Input'}
-                </h2>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full animate-pulse ${currentSession.direction === 'sign_to_speech' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
+                  <h2 className={`${getTextSize()} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                    {currentSession.direction === 'sign_to_speech'
+                      ? 'Sign Language Input'
+                      : currentSession.direction === 'speech_to_sign'
+                        ? 'Speech Input'
+                        : 'Text Input'}
+                  </h2>
+                </div>
+                
+                {/* Live Status Indicators */}
+                <div className="flex items-center gap-2">
+                  {currentSession.direction === 'sign_to_speech' && (
+                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all duration-300 ${isCameraActive ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'}`}>
+                      {isCameraActive ? <Camera size={12} /> : <CameraOff size={12} />}
+                      {isCameraActive ? 'Cam On' : 'Cam Off'}
+                    </div>
+                  )}
+                  {currentSession.direction === 'speech_to_sign' && (
+                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all duration-300 ${!isMuted ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'}`}>
+                      {!isMuted ? <Volume2 size={12} /> : <VolumeX size={12} />}
+                      {!isMuted ? 'Mic On' : 'Muted'}
+                    </div>
+                  )}
+                  <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all duration-300 ${(videoSocket.isConnected || audioSocket.isConnected) ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'}`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${(videoSocket.isConnected || audioSocket.isConnected) ? 'bg-green-500 animate-pulse' : 'bg-rose-500'}`} />
+                    {(videoSocket.isConnected || audioSocket.isConnected) ? 'Connected' : 'Offline'}
+                  </div>
+                </div>
               </div>
 
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-slate-900 ring-1 ring-white/10">
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-slate-900 ring-1 ring-white/10 group/input">
+                {/* Processing Overlay */}
+                {isProcessing && (
+                  <div className="absolute inset-0 z-20 bg-black/40 backdrop-blur-[2px] flex items-center justify-center animate-fade-in">
+                    <div className="flex flex-col items-center gap-4">
+                      {isSignRecognized ? (
+                        <div className="flex flex-col items-center gap-2 animate-bounce-slow">
+                          <div className="w-16 h-16 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/40">
+                            <CheckCircle size={32} />
+                          </div>
+                          <span className="text-sm font-black text-emerald-400 uppercase tracking-widest">Sign Detected</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="relative w-12 h-12">
+                            <div className="absolute inset-0 border-4 border-white/20 rounded-full" />
+                            <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                          </div>
+                          <span className="text-xs font-black text-white uppercase tracking-[0.2em] animate-pulse">Processing...</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
                 {currentSession.direction === 'sign_to_speech' ? (
                   <>
                     <VideoCapture
@@ -934,6 +995,19 @@ const Interpreter: React.FC = () => {
                       isActive={isCameraActive}
                       className="w-full h-[300px] sm:h-[380px] lg:h-[450px] object-cover"
                     />
+                    
+                    {/* Empty state for sign detection */}
+                    {!livePredictedGloss && isCameraActive && (
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="bg-black/60 backdrop-blur-md px-6 py-4 rounded-3xl border border-white/10 flex flex-col items-center gap-2 animate-fade-in transition-all duration-500 group-hover/input:bg-black/40">
+                          <div className="text-3xl animate-bounce-slow">🤟</div>
+                          <span className="text-[10px] font-black text-white/70 uppercase tracking-[0.2em] text-center leading-relaxed">
+                            Awaiting sign...<br/>Position yourself in frame
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    
                     <SmartTipsOverlay
                       predictedGloss={livePredictedGloss}
                       predictedConfidence={livePredictedConf}
@@ -944,12 +1018,25 @@ const Interpreter: React.FC = () => {
                     />
                   </>
                 ) : currentSession.direction === 'speech_to_sign' ? (
-                  <div className="p-12 bg-emerald-950/20">
+                  <div className="p-12 bg-emerald-950/20 relative">
                     <AudioCapture
                       onAudioData={handleAudioData}
                       showLevel={true}
                       className="w-full"
+                      disabled={isMuted}
                     />
+                    
+                    {/* Empty state for speech recognition */}
+                    {!translationText && !isMuted && (
+                      <div className="mt-8 flex flex-col items-center gap-2 animate-fade-in pointer-events-none">
+                        <div className="w-12 h-12 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 animate-pulse">
+                          <Mic size={24} />
+                        </div>
+                        <span className="text-[10px] font-black text-emerald-500/70 uppercase tracking-[0.2em] text-center leading-relaxed">
+                          Listening for speech...<br/>Results appear on the right
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="p-6 sm:p-10 bg-purple-900/10 space-y-6 border-t border-purple-500/20">
@@ -1280,6 +1367,14 @@ const Interpreter: React.FC = () => {
                                   src={imageSrc}
                                   alt={`${glossKey} sign`}
                                   className="max-h-[85%] max-w-[85%] object-contain transform transition-all duration-1000 group-hover:scale-105"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    if (target.src !== 'https://via.placeholder.com/400x400?text=Sign+Diagram+Unavailable') {
+                                      target.src = 'https://via.placeholder.com/400x400?text=Sign+Diagram+Unavailable';
+                                      target.classList.add('opacity-50', 'grayscale');
+                                    }
+                                  }}
                                 />
                                 <div className="absolute top-6 left-6 px-6 py-3 rounded-2xl bg-black/80 backdrop-blur-xl text-white text-base font-black border border-white/20 shadow-xl uppercase tracking-wider">
                                   {glossKey}
@@ -1415,7 +1510,19 @@ const Interpreter: React.FC = () => {
                                       ${accessibility.highContrast && isCurrent ? 'border-yellow-400 ring-yellow-400/40' : ''}
                                     `}>
                                       {firstImg ? (
-                                        <img src={firstImg} alt={gloss} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                        <img 
+                                          src={firstImg} 
+                                          alt={gloss} 
+                                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                                          loading="lazy"
+                                          onError={(e) => {
+                                            const target = e.target as HTMLImageElement;
+                                            if (target.src !== 'https://via.placeholder.com/400x400?text=Sign+Diagram+Unavailable') {
+                                              target.src = 'https://via.placeholder.com/400x400?text=Sign+Diagram+Unavailable';
+                                              target.classList.add('opacity-50', 'grayscale');
+                                            }
+                                          }}
+                                        />
                                       ) : (
                                         <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
                                           <BookOpen size={24} />
