@@ -60,9 +60,25 @@ def main():
     PROCESSED.mkdir(parents=True, exist_ok=True)
     src = PROCESSED / "gsl_dictionary.json"
     if not src.exists():
-        with open(OUT_PATH, "w", encoding="utf-8") as f:
-            json.dump({"index": {}, "count": 0}, f, indent=2)
+        print(f"Dictionary source {src} not found. Skipping embedding build.")
+        if not OUT_PATH.exists():
+            with open(OUT_PATH, "w", encoding="utf-8") as f:
+                json.dump({"index": {}, "count": 0}, f, indent=2)
+            print(f"Wrote empty index to {OUT_PATH}")
+        else:
+            print(f"Preserving existing index at {OUT_PATH}")
         return
+
+    # Check if we already have a built index with content
+    if OUT_PATH.exists():
+        try:
+            with open(OUT_PATH, "r", encoding="utf-8") as f:
+                existing = json.load(f)
+                if existing.get("count", 0) > 0:
+                    print(f"Index already exists with {existing['count']} entries. Skipping rebuild to save API calls.")
+                    return
+        except Exception:
+            pass
 
     with open(src, "r", encoding="utf-8") as f:
         dictionary: Dict[str, Any] = json.load(f)

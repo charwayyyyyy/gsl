@@ -84,16 +84,15 @@ async def get_dictionary_pdf():
     pdf_path = Path("Ghanaian Sign Language Dictionary - 3rd Edition.pdf")
     if not pdf_path.exists():
         # Fallback if the path is slightly different
-        pdf_path = Path("data/raw_pdf/Ghanaian Sign Language Dictionary - 3rd Edition.pdf")
+        pdf_path = Path("data/raw/gsl_dictionary.pdf")
         
     if not pdf_path.exists():
-        raise HTTPException(status_code=404, detail="Dictionary PDF not found")
-        
-    return FileResponse(
-        pdf_path, 
-        media_type="application/pdf", 
-        filename="GSL_Dictionary_3rd_Edition.pdf"
-    )
+        # On Render, the raw 250MB PDF is often missing to save space.
+        # The dictionary features still work because processed data is pushed.
+        raise HTTPException(
+            status_code=404, 
+            detail="The full PDF dictionary is unavailable in the web environment to optimize performance. However, you can still search all signs and view diagrams in the Dictionary section."
+        )
 
 # WebSocket connection managers
 class ConnectionManager:
