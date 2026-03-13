@@ -52,6 +52,10 @@ const Dictionary: React.FC = () => {
 
   const getImageUrl = (gloss: string, imgName: string) => {
     // In production, images are served from /static/GLOSS/imagename.png
+    // If imgName already contains the gloss prefix (e.g. "DOG/dog_p1.png"), don't duplicate it
+    if (imgName.includes('/')) {
+      return `${API_BASE_URL}/static/${imgName}`
+    }
     return `${API_BASE_URL}/static/${gloss}/${imgName}`
   }
 

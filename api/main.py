@@ -75,7 +75,11 @@ _audio_buffers: Dict[str, Any] = {}
 try:
     images_path = Path("data")/"processed"/"images"
     images_path.mkdir(parents=True, exist_ok=True)
+    # Explicitly check if directory is empty and warn
+    if not any(images_path.iterdir()):
+        logger.warning(f"Static images directory {images_path} is empty. Dictionary images will not show until extraction runs.")
     app.mount("/static", StaticFiles(directory=str(images_path)), name="static")
+    logger.info(f"Mounted static images from {images_path}")
 except Exception as e:
     logger.error(f"Failed to mount static files: {e}")
 
