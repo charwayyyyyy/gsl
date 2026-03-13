@@ -1049,6 +1049,41 @@ const Interpreter: React.FC = () => {
                 </div>
               </div>
             )}
+            {/* Session Info */}
+            <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 p-6 sm:p-8'} rounded-3xl shadow-xl transition-all duration-500`}>
+              <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold mb-6 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                Session Details
+              </h3>
+
+              <div className="space-y-4">
+                <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500 dark:text-slate-400'}`}>
+                    Direction
+                  </span>
+                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-bold ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                    {currentSession.direction === 'sign_to_speech' ? 'Sign → Speech' : currentSession.direction === 'speech_to_sign' ? 'Speech → Sign' : 'Text → Sign'}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500 dark:text-slate-400'}`}>
+                    Status
+                  </span>
+                  <span className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-tighter ${isTranslating ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'}`}>
+                    {isTranslating ? 'Active' : 'Standby'}
+                  </span>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500 dark:text-slate-400'}`}>
+                    Words Recognized
+                  </span>
+                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-bold ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                    {recognizedWords.length}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Right Panel - Output & Viz (7/12 columns) */}
@@ -1404,108 +1439,6 @@ const Interpreter: React.FC = () => {
                 )}
               </div>
             )}
-          </div>
-        </div>
-      </div>
-
-                          {/* If Avatar is disabled, show Smart Tips overlaid on the image view instead */}
-                          {!showAvatar && (
-                            <SmartTipsOverlay
-                              predictedGloss={livePredictedGloss}
-                              predictedConfidence={livePredictedConf}
-                              primitives={livePrimitives}
-                              topMatches={liveTopMatches}
-                              highContrast={accessibility.highContrast}
-                              visible={showSmartTips}
-                            />
-                          )}
-
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-8 relative z-10">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCurrentSignIndex(prev => Math.max(0, prev - 1))
-                                setCurrentFrameIndex(0)
-                              }}
-                              disabled={currentSignIndex === 0}
-                              className={`
-                                flex items-center justify-center gap-2 p-4 rounded-2xl font-bold transition-all duration-300
-                                ${currentSignIndex === 0
-                                  ? 'opacity-30 grayscale'
-                                  : 'hover:scale-105 active:scale-95 shadow-lg'
-                                }
-                                ${accessibility.highContrast
-                                  ? 'bg-gray-800 text-yellow-300 border-2 border-yellow-400'
-                                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700'
-                                }
-                                ${accessibility.largeText ? 'text-lg' : 'text-sm'}
-                              `}
-                            >
-                              <ChevronLeft size={20} />
-                              Previous
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setCurrentSignIndex(prev => prev + 1 < signSequence.length ? prev + 1 : prev)
-                                setCurrentFrameIndex(0)
-                              }}
-                              disabled={currentSignIndex >= signSequence.length - 1}
-                              className={`
-                                flex items-center justify-center gap-2 p-4 rounded-2xl font-bold transition-all duration-300
-                                ${currentSignIndex >= signSequence.length - 1
-                                  ? 'opacity-30 grayscale'
-                                  : 'hover:scale-105 active:scale-95 shadow-lg'
-                                }
-                                ${accessibility.highContrast
-                                  ? 'bg-gray-800 text-yellow-300 border-2 border-yellow-400'
-                                  : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700'
-                                }
-                                ${accessibility.largeText ? 'text-lg' : 'text-sm'}
-                              `}
-                            >
-                              Next
-                              <ChevronRight size={20} />
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => setAutoPlay(prev => !prev)}
-                              className={`
-                                flex items-center justify-center gap-2 p-4 rounded-2xl font-bold shadow-lg transition-all duration-300 col-span-2 sm:col-span-1
-                                ${autoPlay
-                                  ? 'bg-rose-500 text-white shadow-rose-500/20'
-                                  : 'bg-indigo-600 text-white shadow-indigo-500/20'
-                                }
-                                transform hover:scale-105 active:scale-95
-                                ${accessibility.largeText ? 'text-lg' : 'text-sm'}
-                              `}
-                            >
-                              {autoPlay ? <Pause size={20} /> : <Play size={20} />}
-                              {autoPlay ? 'Stop' : 'Play All'}
-                            </button>
-                          </div>
-
-                          <div className="mt-8 p-6 rounded-2xl bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
-                            <div className="flex items-center justify-between mb-2">
-                              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Translation Info</span>
-                              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${current.status === 'matched' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'
-                                }`}>
-                                {current.status === 'matched' ? 'Found in Dictionary' : 'Unknown Sign'}
-                              </span>
-                            </div>
-                            <div className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-bold text-slate-900 dark:text-white`}>
-                              Current word: <span className="text-blue-500">{current.word || (current.gloss || '').toLowerCase()}</span>
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    })()}
-                  </>
-                )}
-              </div>
-            )}
 
             {(currentSession.direction === 'speech_to_sign' || currentSession.direction === 'text_to_sign') && showAvatar && (
               <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card p-8'}`}>
@@ -1568,111 +1501,6 @@ const Interpreter: React.FC = () => {
                 </div>
               </div>
             )}
-
-            {/* Session Info */}
-            <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400' : 'bg-white'} rounded-2xl shadow-xl p-6 border-2`}>
-              <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold mb-4 ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                Session Information
-              </h3>
-
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                    Direction:
-                  </span>
-                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                    {currentSession.direction === 'sign_to_speech'
-                      ? 'Sign → Speech'
-                      : currentSession.direction === 'speech_to_sign'
-                        ? 'Speech → Sign'
-                        : 'Text → Sign'}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                    Status:
-                  </span>
-                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${isTranslating
-                    ? 'text-green-600'
-                    : accessibility.highContrast ? 'text-yellow-300' : 'text-gray-900'
-                    }`}>
-                    {isTranslating ? 'Active' : 'Ready'}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                    Events:
-                  </span>
-                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                    {currentSession.totalEvents}
-                  </span>
-                </div>
-
-                {currentSession.avgConfidence && (
-                  <div className="flex justify-between items-center">
-                    <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                      Avg Confidence:
-                    </span>
-                    <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${getConfidenceColor(currentSession.avgConfidence)}`}>
-                      {Math.round(currentSession.avgConfidence * 100)}%
-                    </span>
-                  </div>
-                )}
-
-                <div className="flex justify-between items-center">
-                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                    Recognition tier:
-                  </span>
-                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                    {lastTierUsed === 'browser'
-                      ? 'Browser (on-device)'
-                      : lastTierUsed === 'backend'
-                        ? 'Server (Whisper)'
-                        : 'Manual text'}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                    Words recognized:
-                  </span>
-                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                    {recognizedWords.length}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                    Words matched:
-                  </span>
-                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                    {matchedCount}
-                  </span>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                    Unknown words:
-                  </span>
-                  <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                    {unknownCount}
-                  </span>
-                </div>
-
-                {lastUpdateTime && (
-                  <div className="flex justify-between items-center">
-                    <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-gray-600'}`}>
-                      Last update:
-                    </span>
-                    <span className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-semibold ${accessibility.highContrast ? 'text-yellow-400' : 'text-gray-900'}`}>
-                      {lastUpdateTime}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
         </div>
       </div>
