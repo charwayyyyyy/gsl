@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { API_BASE_URL, WS_BASE_URL } from '@/config'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX, ChevronLeft, ChevronRight, Play, Pause, AlertTriangle, BookOpen, User, Lightbulb, Keyboard, Sun, Moon } from 'lucide-react'
+import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX, Camera, CameraOff, ChevronLeft, ChevronRight, Play, Pause, AlertTriangle, BookOpen, User, Lightbulb, Keyboard, Sun, Moon } from 'lucide-react'
 import { useTheme } from '@/hooks/useTheme'
 import { useAppStore } from '../stores/appStore'
 import { useWebRTC, useWebSocket } from '../hooks/useWebRTC'
