@@ -35,7 +35,7 @@ except Exception:
 from .services.mediapipe_service import MediaPipeService
 from .services.translation_service import TranslationService
 from .services.avatar_service import AvatarService
-from .services.speech_recognition_service import SpeechRecognitionService, SpeechRecognitionConfig
+from .services.speech_recognition_service import WhisperSpeechRecognitionService, SpeechRecognitionConfig
 from backend.sign_recognition.baseline import classify
 from pathlib import Path
 from .database.models import TranslationSession, TranslationEvent, AnalyticsEvent, FeedbackReport
@@ -68,7 +68,7 @@ mediapipe_service = MediaPipeService()
 from .services.translation_service import TranslationConfig
 translation_service = TranslationService(TranslationConfig())
 avatar_service = AvatarService()
-speech_service = SpeechRecognitionService(SpeechRecognitionConfig(language="en"))
+speech_service = WhisperSpeechRecognitionService(SpeechRecognitionConfig(language="en"))
 _audio_buffers: Dict[str, Any] = {}
 
 # Serve extracted dictionary images
@@ -491,43 +491,56 @@ async def audio_stream(websocket: WebSocket):
                 raw = base64.b64decode(message["data"])  
                 import numpy as np
                 audio = np.frombuffer(raw, dtype=np.float32)
+                
                 # Buffer audio and transcribe when chunk ready
                 buf = _audio_buffers.get(session_id)
                 if buf is None:
                     _audio_buffers[session_id] = []
                     buf = _audio_buffers[session_id]
                 buf.extend(audio.tolist())
-                chunk_size = int(speech_service.chunk_size) if hasattr(speech_service, 'chunk_size') else 32000
-                overlap = int(speech_service.overlap_size) if hasattr(speech_service, 'overlap_size') else int(0.5 * 16000)
+                
+                # Use smaller chunk size for more responsive transcription (e.g. ~2-3 seconds at 16kHz)
+                # Note: Browsers usually send 44.1kHz or 48kHz, so we need to account for that.
+                # Assuming 44.1kHz from frontend (as seen in Interpreter.tsx)
+                sample_rate = message.get("sample_rate", 44100)
+                
+                # Process every ~3 seconds of audio
+                chunk_seconds = 3
+                chunk_size = int(sample_rate * chunk_seconds)
+                overlap_seconds = 0.5
+                overlap = int(sample_rate * overlap_seconds)
+                
                 response = None
                 if len(buf) >= chunk_size:
                     chunk = np.array(buf[:chunk_size], dtype=np.float32)
-                    # keep overlap
+                    
+                    # Keep overlap for next chunk
                     _audio_buffers[session_id] = buf[chunk_size - overlap:]
+                    
                     try:
-                        result = await speech_service.transcribe_audio_chunk(chunk)
-                        response = {
-                            "type": "transcription",
-                            "text": result.get("text", ""),
-                            "confidence": result.get("confidence", 0.0),
-                            "timestamp": message["timestamp"],
-                            "session_id": session_id
-                        }
+                        # Use transcribe_audio which handles numpy -> WAV conversion
+                        # Pass sample_rate explicitly to ensure correct WAV header
+                        result = await speech_service.transcribe_audio(chunk, sample_rate=sample_rate)
+                        
+                        if result.get("text"):
+                            response = {
+                                "type": "transcription",
+                                "text": result.get("text", ""),
+                                "confidence": result.get("confidence", 0.0),
+                                "timestamp": message["timestamp"],
+                                "session_id": session_id
+                            }
                     except Exception as e:
-                        response = {
-                            "type": "transcription",
-                            "text": "",
-                            "confidence": 0.0,
-                            "error": str(e),
-                            "timestamp": message["timestamp"],
-                            "session_id": session_id
-                        }
+                        logger.error(f"Transcription error: {e}")
+                        # Don't send error to client for every chunk failure to avoid spam
                 
                 if response:
                     await manager.send_personal_message(json.dumps(response), session_id)
                 
     except WebSocketDisconnect:
         manager.disconnect(session_id)
+        if session_id in _audio_buffers:
+            del _audio_buffers[session_id]
     except Exception as e:
         logger.error(f"Error in audio stream: {str(e)}")
         await manager.send_personal_message(json.dumps({"error": str(e)}), session_id)
@@ -784,14 +797,17 @@ async def chat_with_gemini(request: ChatRequest):
 # Handle SPA routing: redirect unknown paths to index.html
 @app.get("/{catchall:path}")
 async def serve_frontend(catchall: str):
-    # Exclude /api, /health, /static from catchall if uvicorn didn't catch them
-    if catchall.startswith("api/") or catchall.startswith("health") or catchall.startswith("static/"):
+    # Exclude API and static paths explicitly
+    if catchall.startswith("api") or catchall.startswith("health") or catchall.startswith("static") or catchall.startswith("ws"):
         raise HTTPException(status_code=404)
         
     dist_path = Path("dist") / catchall
+    
+    # If the exact file exists in dist (like assets/index.js), serve it
     if dist_path.exists() and dist_path.is_file():
         return FileResponse(dist_path)
     
+    # For all other routes (like /interpreter, /dictionary), serve index.html for SPA routing
     index_path = Path("dist") / "index.html"
     if index_path.exists():
         return FileResponse(index_path)

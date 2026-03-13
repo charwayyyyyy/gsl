@@ -37,6 +37,7 @@ const HealthBanner = () => {
 };
 
 import Chatbot from "@/components/Chatbot";
+import Navbar from "@/components/Navbar";
 import { useVisualSettings } from "@/stores/appStore";
 import { useEffect } from "react";
 
@@ -57,16 +58,19 @@ export default function App() {
 
   return (
     <Router>
+      <Navbar />
       <HealthBanner />
       <ErrorBoundary>
         <Suspense fallback={<PageSkeleton />}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/interpreter" element={<Interpreter />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/help" element={<Help />} />
-            <Route path="/dictionary" element={<Dictionary />} />
-          </Routes>
+          <div className="pt-0 sm:pt-16 pb-20 sm:pb-0">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/interpreter" element={<Interpreter />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/help" element={<Help />} />
+              <Route path="/dictionary" element={<Dictionary />} />
+            </Routes>
+          </div>
         </Suspense>
       </ErrorBoundary>
       <Chatbot />

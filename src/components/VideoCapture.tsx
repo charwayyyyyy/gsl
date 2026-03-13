@@ -7,6 +7,7 @@ interface VideoCaptureProps {
   onFrameCapture?: (frameData: string) => void
   showLandmarks?: boolean
   showConfidence?: boolean
+  isActive?: boolean
   className?: string
 }
 
@@ -14,6 +15,7 @@ const VideoCapture: React.FC<VideoCaptureProps> = ({
   onFrameCapture,
   showLandmarks = true,
   showConfidence = true,
+  isActive = true,
   className = ''
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -39,13 +41,15 @@ const VideoCapture: React.FC<VideoCaptureProps> = ({
   
   // Initialize video when support is confirmed
   useEffect(() => {
-    if (isSupported && !isVideoEnabled) {
+    if (isSupported && isActive && !isVideoEnabled) {
       startVideo().catch(err => {
         setError('Failed to start video capture')
         console.error('Video initialization error:', err)
       })
+    } else if (!isActive && isVideoEnabled) {
+      stopVideo()
     }
-  }, [isSupported])
+  }, [isSupported, isActive, isVideoEnabled, startVideo, stopVideo])
 
   // Handle WebRTC errors
   useEffect(() => {

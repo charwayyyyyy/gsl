@@ -52,6 +52,7 @@ const Interpreter: React.FC = () => {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [showAvatar, setShowAvatar] = useState(true)
   const [isMuted, setIsMuted] = useState(false)
+  const [isCameraActive, setIsCameraActive] = useState(true)
   const [recognitionTier, setRecognitionTier] = useState<RecognitionTier>('backend')
   const [lastTierUsed, setLastTierUsed] = useState<RecognitionTier>('backend')
   const [speechError, setSpeechError] = useState<string | null>(null)
@@ -386,6 +387,69 @@ const Interpreter: React.FC = () => {
     }
   }, [audioSocket.isConnected, currentSession])
 
+  // Update sign sequence for speech-to-sign to show dictionary entries
+  const updateSpeechToSignSequence = useCallback(async (text: string) => {
+    const tokens = normalizeText(text)
+    if (tokens.length === 0) {
+      setSignSequence([])
+      return
+    }
+
+    const results: SignWord[] = []
+    
+    // Fetch all unknown tokens concurrently
+    const fetchPromises = tokens.map(async (token) => {
+      const key = token.toLowerCase()
+      let data = dictionaryCache[key]
+      
+      if (!data) {
+        try {
+          const resp = await fetch(`${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(key)}`)
+          if (resp.ok) {
+            data = await resp.json()
+            dictionaryCache[key] = data
+          }
+        } catch (e) {
+          console.error('Error fetching dictionary entry:', e)
+        }
+      }
+      return { token, data }
+    })
+
+    const resolvedTokens = await Promise.all(fetchPromises)
+
+    for (const { token, data } of resolvedTokens) {
+      if (data && data.gloss) {
+        results.push({
+          word: token,
+          gloss: data.gloss || null,
+          images: Array.isArray(data.images) ? data.images : [],
+          description: typeof data.description === 'string' ? data.description : '',
+          page: data.page,
+          confidence: data.confidence || 1.0,
+          match_type: data.match_type || 'Exact',
+          variants: typeof data.variants === 'number' ? data.variants : 0,
+          status: 'matched',
+          primitives: data.primitives
+        })
+      } else {
+        results.push({
+          word: token,
+          gloss: null,
+          images: [],
+          description: '',
+          confidence: 0,
+          match_type: 'None',
+          variants: 0,
+          status: 'unknown'
+        })
+      }
+    }
+    setSignSequence(results)
+    setCurrentSignIndex(0)
+    setAutoPlay(true)
+  }, [])
+
   // Handle WebSocket messages
   useEffect(() => {
     if (videoSocket.lastMessage) {
@@ -395,13 +459,64 @@ const Interpreter: React.FC = () => {
         setConfidence(message.confidence || 0)
 
         // === Smart Tips: parse live prediction from backend ===
-        const gloss = message.predicted_gloss && message.predicted_gloss !== 'UNKNOWN'
-          ? String(message.predicted_gloss)
+        const gloss = (message.predicted_gloss && message.predicted_gloss !== 'UNKNOWN')
+          ? String(message.predicted_gloss).toUpperCase()
           : null
         const conf = typeof message.predicted_confidence === 'number' ? message.predicted_confidence : 0
         const tops: Array<{ gloss: string; confidence: number }> = Array.isArray(message.top_matches)
           ? message.top_matches
           : []
+
+        // If high confidence new sign, update translation text and sequence
+        if (gloss && conf > 0.65 && gloss !== livePredictedGloss) {
+          // Add to sequence for visual feedback
+          const key = gloss.toLowerCase()
+          const cached = dictionaryCache[key]
+          
+          const newSign: SignWord = cached ? {
+            word: gloss,
+            gloss: cached.gloss,
+            images: cached.images || [],
+            description: cached.description || '',
+            confidence: conf,
+            match_type: 'Live',
+            variants: cached.variants || 0,
+            status: 'matched',
+            primitives: cached.primitives
+          } : {
+            word: gloss,
+            gloss: gloss,
+            images: [],
+            description: 'Detected from live sign',
+            confidence: conf,
+            match_type: 'Live',
+            variants: 0,
+            status: 'matched'
+          }
+
+          setSignSequence(prev => {
+            const last = prev[prev.length - 1]
+            if (last?.gloss === gloss) return prev
+            const next = [...prev, newSign]
+            // Keep last 5 signs for the sequence view
+            return next.slice(-5)
+          })
+
+          setTranslationText(prev => {
+            const words = prev.trim().split(' ');
+            if (words[words.length - 1] !== gloss) {
+              const newText = prev ? `${prev} ${gloss}` : gloss;
+              setLastTranslation({
+                input: 'Sign Language',
+                output: newText,
+                confidence: conf,
+                timestamp: Date.now()
+              });
+              return newText;
+            }
+            return prev;
+          });
+        }
 
         setLivePredictedGloss(gloss)
         setLivePredictedConf(conf)
@@ -478,8 +593,9 @@ const Interpreter: React.FC = () => {
       setSpeechError(null)
       setSilenceMessage(null)
       runTextToSignPipeline(text, 'backend', conf)
+      updateSpeechToSignSequence(text)
     }
-  }, [audioSocket.lastMessage, currentSession?.direction, runTextToSignPipeline])
+  }, [audioSocket.lastMessage, currentSession?.direction, runTextToSignPipeline, updateSpeechToSignSequence])
 
   useEffect(() => {
     if (currentSession?.direction !== 'speech_to_sign' && currentSession?.direction !== 'text_to_sign') {
@@ -633,6 +749,10 @@ const Interpreter: React.FC = () => {
     return accessibility.largeText ? 'w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16' : 'w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12'
   }
 
+  const getHeaderSize = () => {
+    return accessibility.largeText ? 'text-2xl sm:text-4xl' : 'text-xl sm:text-3xl'
+  }
+
   const getConfidenceColor = (level: number) => {
     if (level >= 0.7) return 'text-green-500'
     if (level >= 0.4) return 'text-yellow-500'
@@ -671,7 +791,7 @@ const Interpreter: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className={`sticky top-0 z-50 ${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-b-2' : 'glass border-b border-white/20'}`}>
+      <div className={`sticky top-0 sm:top-16 z-50 ${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-b-2' : 'glass border-b border-white/20'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-auto min-h-[4rem] sm:min-h-[5rem] py-2 sm:py-3 flex-wrap gap-y-3 sm:gap-y-4">
             <div className="flex items-center gap-3 sm:gap-6">
@@ -711,6 +831,13 @@ const Interpreter: React.FC = () => {
                   onClick: () => setIsMuted(!isMuted),
                   active: isMuted,
                   label: isMuted ? 'Unmute' : 'Mute',
+                  activeClass: 'bg-rose-500 text-white shadow-rose-500/20'
+                },
+                {
+                  icon: isCameraActive ? Camera : CameraOff,
+                  onClick: () => setIsCameraActive(!isCameraActive),
+                  active: !isCameraActive,
+                  label: isCameraActive ? 'Turn Camera Off' : 'Turn Camera On',
                   activeClass: 'bg-rose-500 text-white shadow-rose-500/20'
                 },
                 {
@@ -778,10 +905,13 @@ const Interpreter: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 pb-40 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8 animate-fade-in">
-          {/* Left Panel - Input (Sticky at Bottom on mobile) */}
-          <div className="space-y-4 sm:space-y-8 order-2 lg:order-1 sticky bottom-0 left-0 right-0 z-40 bg-white/60 dark:bg-slate-950/60 backdrop-blur-xl -mx-3 px-3 py-6 mt-auto border-t border-white/20 lg:static lg:z-auto lg:mx-0 lg:px-0 lg:py-0 lg:mt-0 lg:bg-transparent lg:dark:bg-transparent lg:backdrop-blur-none lg:border-none">
+      <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-12 py-4 sm:py-8 pb-40 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 animate-fade-in items-start">
+          
+          {/* Left Panel - Control & Input (5/12 columns) */}
+          <div className="lg:col-span-5 space-y-6 sm:space-y-10 order-2 lg:order-1">
+            
+            {/* Input Panel */}
             <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-4 sm:p-6' : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] p-4 sm:p-8'} overflow-hidden transition-all duration-500`}>
               <div className="flex items-center gap-3 mb-6">
                 <div className={`w-3 h-3 rounded-full animate-pulse ${currentSession.direction === 'sign_to_speech' ? 'bg-blue-500' : 'bg-emerald-500'}`} />
@@ -794,14 +924,15 @@ const Interpreter: React.FC = () => {
                 </h2>
               </div>
 
-              <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-slate-900">
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-slate-900 ring-1 ring-white/10">
                 {currentSession.direction === 'sign_to_speech' ? (
                   <>
                     <VideoCapture
                       onFrameCapture={handleVideoFrame}
                       showLandmarks={visual.showLandmarks}
                       showConfidence={visual.showConfidence}
-                      className="w-full h-[260px] sm:h-[340px] lg:h-[400px] object-cover"
+                      isActive={isCameraActive}
+                      className="w-full h-[300px] sm:h-[380px] lg:h-[450px] object-cover"
                     />
                     <SmartTipsOverlay
                       predictedGloss={livePredictedGloss}
@@ -813,7 +944,7 @@ const Interpreter: React.FC = () => {
                     />
                   </>
                 ) : currentSession.direction === 'speech_to_sign' ? (
-                  <div className="p-10">
+                  <div className="p-12 bg-emerald-950/20">
                     <AudioCapture
                       onAudioData={handleAudioData}
                       showLevel={true}
@@ -821,20 +952,20 @@ const Interpreter: React.FC = () => {
                     />
                   </div>
                 ) : (
-                  <div className="p-4 sm:p-8 bg-purple-900/10 space-y-4 border-t border-purple-500/20">
+                  <div className="p-6 sm:p-10 bg-purple-900/10 space-y-6 border-t border-purple-500/20">
                     <textarea
                       id="primary-text-input"
                       value={manualInput}
                       onChange={e => setManualInput(e.target.value)}
-                      rows={accessibility.largeText ? 4 : 3}
+                      rows={accessibility.largeText ? 5 : 4}
                       className={`
-                        w-full rounded-2xl border-2 px-4 py-3 transition-all duration-300
+                        w-full rounded-2xl border-2 px-6 py-5 transition-all duration-300
                         ${accessibility.highContrast
                           ? 'bg-black border-yellow-400 text-yellow-200 placeholder-yellow-500'
                           : 'bg-white/80 dark:bg-slate-900/80 border-purple-200 dark:border-purple-800/50 text-slate-900 dark:text-white placeholder-slate-400 focus:border-purple-500 dark:focus:border-purple-400 shadow-inner'
                         }
                         focus:outline-none focus:ring-4 focus:ring-purple-500/20
-                        ${accessibility.largeText ? 'text-xl' : 'text-lg'}
+                        ${accessibility.largeText ? 'text-2xl' : 'text-xl'}
                       `}
                       placeholder="Type exactly what you want to translate here..."
                       autoFocus
@@ -850,17 +981,17 @@ const Interpreter: React.FC = () => {
                         runTextToSignPipeline(text, 'manual', 0.9)
                       }}
                       className={`
-                        w-full flex items-center justify-center gap-3 px-6 py-4 rounded-2xl font-bold shadow-lg
+                        w-full flex items-center justify-center gap-4 px-8 py-5 rounded-2xl font-bold shadow-xl
                         ${accessibility.highContrast
                           ? 'bg-yellow-400 text-black hover:bg-yellow-500'
-                          : 'bg-purple-600 text-white hover:bg-purple-500 shadow-purple-500/25'
+                          : 'bg-purple-600 text-white hover:bg-purple-500 shadow-purple-500/30'
                         }
                         transform hover:-translate-y-1 active:scale-95 transition-all duration-300
                         focus:outline-none focus:ring-4 focus:ring-purple-300/50
-                        ${accessibility.largeText ? 'text-xl' : 'text-lg'}
+                        ${accessibility.largeText ? 'text-2xl' : 'text-xl'}
                       `}
                     >
-                      <Keyboard className="w-7 h-7" />
+                      <Keyboard className="w-8 h-8" />
                       Translate to Sign Language
                     </button>
                   </div>
@@ -868,6 +999,7 @@ const Interpreter: React.FC = () => {
               </div>
             </div>
 
+            {/* Confidence Panel */}
             {visual.showConfidence && (
               <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] p-8'} transition-all duration-500`}>
                 <div className="flex items-center justify-between mb-6">
@@ -906,241 +1038,182 @@ const Interpreter: React.FC = () => {
 
                 <div className="mt-6 grid grid-cols-2 gap-4">
                   {[
-                    { label: 'Speech Recognition', value: sttConfidence },
+                    { label: 'Input Quality', value: sttConfidence },
                     { label: 'Dictionary Match', value: dictConfidence }
                   ].map((stat, idx) => (
                     <div key={idx} className="p-4 rounded-2xl bg-white/50 dark:bg-slate-800/50 border border-amber-500/30 hover:border-amber-400/60 transition-all duration-300">
-                      <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">{stat.label}</div>
+                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">{stat.label}</div>
                       <div className="text-lg font-bold text-slate-900 dark:text-white">{Math.round((stat.value || 0) * 100)}%</div>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-
-            {(currentSession.direction === 'speech_to_sign' || currentSession.direction === 'text_to_sign') && (
-              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] p-8'} transition-all duration-500`}>
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-500">
-                    <Volume2 size={24} />
-                  </div>
-                  <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
-                    Speech Controls & Fallback
-                  </h3>
-                </div>
-
-                {speechError && (
-                  <div className={`mb-6 flex items-start gap-3 rounded-2xl p-4 ${accessibility.highContrast ? 'bg-black border border-yellow-400' : 'bg-rose-50/50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20'
-                    }`}>
-                    <AlertTriangle className={`${accessibility.largeText ? 'w-7 h-7' : 'w-5 h-5'} ${accessibility.highContrast ? 'text-yellow-400' : 'text-rose-500'} mt-0.5`} />
-                    <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-rose-700 dark:text-rose-300'}`}>
-                      {speechError}
-                    </p>
-                  </div>
-                )}
-
-                {silenceMessage && (
-                  <div className={`mb-6 flex items-start gap-3 rounded-2xl p-4 ${accessibility.highContrast ? 'bg-black border border-yellow-400' : 'bg-amber-50/50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20'
-                    }`}>
-                    <AlertTriangle className={`${accessibility.largeText ? 'w-7 h-7' : 'w-5 h-5'} ${accessibility.highContrast ? 'text-yellow-400' : 'text-amber-500'} mt-0.5`} />
-                    <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-amber-800 dark:text-amber-300'}`}>
-                      {silenceMessage}
-                    </p>
-                  </div>
-                )}
-
-                <div className="space-y-4">
-                  <label
-                    htmlFor="manual-speech-input"
-                    className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider`}
-                  >
-                    Manual Text Input
-                  </label>
-                  <textarea
-                    id="manual-speech-input"
-                    value={manualInput}
-                    onChange={e => setManualInput(e.target.value)}
-                    rows={accessibility.largeText ? 4 : 3}
-                    className={`
-                      w-full rounded-2xl border-2 px-5 py-4 transition-all duration-300
-                      ${accessibility.highContrast
-                        ? 'bg-black border-yellow-400 text-yellow-200 placeholder-yellow-500'
-                        : 'bg-white/50 dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:border-blue-500 dark:focus:border-blue-400'
-                      }
-                      focus:outline-none focus:ring-4 focus:ring-blue-500/20
-                      ${accessibility.largeText ? 'text-lg' : 'text-base'}
-                    `}
-                    placeholder={currentSession.direction === 'text_to_sign' ? "Type exactly what you want to translate here..." : "Type what was said here if the microphone has trouble..."}
-                  />
-
-                  <div className="flex flex-wrap gap-4 mt-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const text = manualInput.trim()
-                        if (!text) return
-                        setSilenceMessage(null)
-                        setSpeechError(null)
-                        setRecognitionTier('manual')
-                        runTextToSignPipeline(text, 'manual', 0.9)
-                      }}
-                      className={`
-                        inline-flex items-center justify-center px-8 py-3.5 rounded-2xl font-bold shadow-lg
-                        ${accessibility.highContrast
-                          ? 'bg-yellow-400 text-black hover:bg-yellow-500'
-                          : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/20'
-                        }
-                        transform hover:scale-105 active:scale-95 transition-all duration-300
-                        focus:outline-none focus:ring-4 focus:ring-blue-300/50
-                        ${accessibility.largeText ? 'text-lg' : 'text-base'}
-                      `}
-                    >
-                      Translate Text
-                    </button>
-
-                    {supportsBrowserRecognition && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSilenceMessage(null)
-                          setSpeechError(null)
-                          startBrowserRecognition()
-                        }}
-                        className={`
-                          inline-flex items-center justify-center px-8 py-3.5 rounded-2xl font-bold
-                          ${accessibility.highContrast
-                            ? 'bg-gray-800 text-yellow-300 border-2 border-yellow-400 hover:bg-gray-700'
-                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm'
-                          }
-                          transform hover:scale-105 active:scale-95 transition-all duration-300
-                          focus:outline-none focus:ring-4 focus:ring-blue-300/20
-                          ${accessibility.largeText ? 'text-lg' : 'text-base'}
-                        `}
-                      >
-                        Use Browser Speech
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Right Panel - Output (Moved above input on mobile) */}
-          <div className="space-y-8 order-1 lg:order-2">
-            <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] p-8'} transition-all duration-500`}>
+          {/* Right Panel - Output & Viz (7/12 columns) */}
+          <div className="lg:col-span-7 space-y-8 sm:space-y-10 order-1 lg:order-2">
+            
+            {/* Live Translation Output */}
+            <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card border-blue-500/30 hover:border-blue-400/80 hover:shadow-[0_0_40px_rgba(59,130,246,0.1)] p-8 sm:p-10'} transition-all duration-500`}>
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center text-blue-500 shadow-inner">
-                    <Play size={28} />
+                  <div className="w-14 h-14 rounded-2xl bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center text-blue-500 shadow-inner">
+                    <Volume2 size={32} />
                   </div>
                   <div>
-                    <h2 className={`${getTextSize()} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'} mb-0`}>
+                    <h2 className={`${getHeaderSize()} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'} mb-0`}>
                       Live Translation
                     </h2>
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-widest">
                       Real-time output stream
                     </p>
                   </div>
                 </div>
                 {lastUpdateTime && (
-                  <div className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest border border-slate-200/50 dark:border-slate-700/50">
+                  <div className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border border-slate-200/50 dark:border-slate-700/50 shadow-sm">
                     Updated {lastUpdateTime}
                   </div>
                 )}
               </div>
 
-              <div className={`min-h-[200px] p-8 rounded-[1.5rem] border-2 transition-all duration-500 flex items-center justify-center ${accessibility.highContrast
+              <div className={`min-h-[220px] p-10 rounded-[2rem] border-2 transition-all duration-500 flex items-center justify-center ${accessibility.highContrast
                 ? 'bg-black border-yellow-400 text-yellow-200'
-                : 'bg-white/40 dark:bg-slate-950/40 border-amber-500/20 hover:border-amber-400/40 text-slate-900 dark:text-white shadow-[inset_0_2px_10px_rgba(0,0,0,0.02)] dark:shadow-[inset_0_2px_10px_rgba(0,0,0,0.2)]'
+                : 'bg-white/40 dark:bg-slate-950/40 border-blue-500/20 hover:border-blue-400/40 text-slate-900 dark:text-white shadow-[inset_0_2px_15px_rgba(0,0,0,0.03)] dark:shadow-[inset_0_2px_15px_rgba(0,0,0,0.3)]'
                 }`}>
                 {translationText ? (
-                  <div className="w-full">
-                    <p className={`${accessibility.largeText ? 'text-4xl' : 'text-3xl'} font-bold leading-tight animate-fade-in text-center bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent`}>
+                  <div className="w-full text-center space-y-6">
+                    <p className={`${accessibility.largeText ? 'text-5xl' : 'text-4xl'} font-extrabold leading-tight animate-fade-in bg-gradient-to-br from-blue-600 to-indigo-700 dark:from-blue-400 dark:to-indigo-500 bg-clip-text text-transparent px-4`}>
                       {translationText}
                     </p>
                     {confidence > 0 && (
-                      <div className="mt-6 flex items-center justify-center gap-2">
-                        <div className="h-1.5 w-32 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="h-2 w-48 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 shadow-inner">
                           <div
-                            className={`h-full transition-all duration-1000 ${confidence >= 0.7 ? 'bg-emerald-500' : confidence >= 0.4 ? 'bg-amber-500' : 'bg-rose-500'
+                            className={`h-full rounded-full transition-all duration-1000 ${confidence >= 0.7 ? 'bg-emerald-500' : confidence >= 0.4 ? 'bg-amber-500' : 'bg-rose-500'
                               }`}
                             style={{ width: `${confidence * 100}%` }}
                           />
                         </div>
-                        <span className={`text-xs font-black uppercase tracking-widest ${getConfidenceColor(confidence)}`}>
-                          {Math.round(confidence * 100)}% Match
+                        <span className={`text-[10px] font-black uppercase tracking-widest ${getConfidenceColor(confidence)} bg-white/50 dark:bg-black/20 px-3 py-1 rounded-full border border-current/20`}>
+                          {Math.round(confidence * 100)}% Confidence
                         </span>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-full space-y-4 py-10 opacity-40">
-                    <div className="w-16 h-16 rounded-full bg-slate-200 dark:bg-slate-800 animate-pulse flex items-center justify-center">
-                      <div className="w-8 h-8 rounded-full bg-slate-300 dark:bg-slate-700 animate-ping" />
+                  <div className="flex flex-col items-center justify-center h-full space-y-6 py-12 opacity-40 group">
+                    <div className="w-20 h-20 rounded-3xl bg-slate-200 dark:bg-slate-800 animate-pulse flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                      <div className="w-10 h-10 rounded-full bg-slate-300 dark:bg-slate-700 animate-ping" />
                     </div>
                     <div className="text-center">
-                      <p className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500'}`}>
+                      <p className={`${accessibility.largeText ? 'text-2xl' : 'text-xl'} font-bold ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500'}`}>
                         {currentSession.direction === 'sign_to_speech'
-                          ? 'Waiting for sign...'
+                          ? 'Position yourself in frame...'
                           : currentSession.direction === 'speech_to_sign'
-                            ? 'Waiting for speech...'
-                            : 'Type text to begin'
+                            ? 'Listening for speech...'
+                            : 'Enter text to visualize'
                         }
                       </p>
-                      <p className="text-sm font-medium text-slate-400 dark:text-slate-600 mt-1">
-                        System is ready and listening
+                      <p className="text-sm font-medium text-slate-400 dark:text-slate-600 mt-2 uppercase tracking-widest">
+                        System ready and active
                       </p>
                     </div>
                   </div>
                 )}
               </div>
+
+              {/* Detected Word Sequence (Always show for Sign-to-Speech) */}
+              {currentSession.direction === 'sign_to_speech' && signSequence.length > 0 && (
+                <div className="mt-8 animate-slide-up">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                      Detected Sign Sequence
+                    </h4>
+                    <button 
+                      onClick={() => {
+                        setSignSequence([]);
+                        setTranslationText('');
+                      }}
+                      className="text-[10px] font-bold text-rose-500 uppercase hover:text-rose-400 transition-colors"
+                    >
+                      Clear Sequence
+                    </button>
+                  </div>
+                  
+                  <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
+                    {signSequence.map((entry, idx) => {
+                      const gloss = (entry.gloss || entry.word || '').toUpperCase();
+                      const hasImagesEntry = entry.images && entry.images.length > 0;
+                      const firstImg = hasImagesEntry ? (entry.images[0].includes('/') ? `${API_BASE_URL}/static/${entry.images[0]}` : `${API_BASE_URL}/static/${gloss}/${entry.images[0]}`) : null;
+
+                      return (
+                        <div
+                          key={idx}
+                          className="flex-shrink-0 w-28 sm:w-32 snap-start animate-fade-in"
+                        >
+                          <div className={`
+                            relative aspect-square rounded-2xl overflow-hidden mb-2 border-2 shadow-lg bg-white dark:bg-slate-900
+                            ${accessibility.highContrast ? 'border-yellow-400' : 'border-slate-200 dark:border-slate-800'}
+                          `}>
+                            {firstImg ? (
+                              <img src={firstImg} alt={gloss} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                <BookOpen size={20} />
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                            <div className="absolute bottom-1 left-1 right-1 text-[8px] font-black text-white truncate text-center uppercase tracking-wider">
+                              {gloss}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
+            {/* Visualizer & Dictionary Results */}
             {(currentSession.direction === 'speech_to_sign' || currentSession.direction === 'text_to_sign') && (
-              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] p-8'} transition-all duration-500`}>
+              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card border-emerald-500/30 hover:border-emerald-400/80 hover:shadow-[0_0_40px_rgba(16,185,129,0.1)] p-8 sm:p-10'} transition-all duration-500`}>
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-500 shadow-inner">
-                      <Eye size={28} />
+                    <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-500 shadow-inner">
+                      <Eye size={32} />
                     </div>
                     <div>
-                      <h3 className={`${accessibility.largeText ? 'text-2xl' : 'text-xl'} font-bold ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'} mb-0`}>
+                      <h3 className={`${getHeaderSize()} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'} mb-0`}>
                         Sign Visualization
                       </h3>
-                      <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">
-                        GSL dictionary-based animation
+                      <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-widest">
+                        GSL dictionary-based results
                       </p>
                     </div>
                   </div>
                   {signSequence.length > 0 && (
-                    <div className="px-4 py-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-black uppercase tracking-widest border border-blue-500/20">
-                      WORD {currentSignIndex + 1} / {signSequence.length}
+                    <div className="flex gap-2">
+                      <div className="px-4 py-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest border border-blue-500/20 shadow-sm">
+                        ENTRY {currentSignIndex + 1} / {signSequence.length}
+                      </div>
                     </div>
                   )}
                 </div>
 
-                {dictionaryOffline && (
-                  <div className={`mb-6 rounded-2xl p-4 flex items-center gap-3 ${accessibility.highContrast ? 'bg-black border border-yellow-400' : 'bg-amber-50/50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20'
-                    }`}>
-                    <AlertTriangle size={20} className="text-amber-500" />
-                    <p className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-amber-800 dark:text-amber-300'}`}>
-                      Using cached results (Offline Mode)
-                    </p>
-                  </div>
-                )}
-
                 {signSequence.length === 0 ? (
-                  <div className="py-12 flex flex-col items-center justify-center space-y-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl opacity-40">
-                    <div className="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
-                      <Play size={32} />
+                  <div className="py-20 flex flex-col items-center justify-center space-y-6 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-[2rem] opacity-40 bg-slate-50/30 dark:bg-slate-900/30">
+                    <div className="w-20 h-20 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                      <Play size={40} className="ml-1" />
                     </div>
-                    <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium italic ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500 text-center px-10'}`}>
-                      Signs will appear here as you speak or type.
+                    <p className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-medium italic ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500 text-center px-16 leading-relaxed'}`}>
+                      Dictionary diagrams will appear here as you speak or type.
                     </p>
                   </div>
                 ) : (
-                  <>
+                  <div className="space-y-10">
+                    {/* Main Viz Area */}
                     {(() => {
                       const current = signSequence[currentSignIndex] || signSequence[0]
                       const hasImages = current.images && current.images.length > 0
@@ -1150,98 +1223,190 @@ const Interpreter: React.FC = () => {
                         frameCount - 1,
                         Math.max(0, currentFrameIndex)
                       )
-                      const imageSrc =
-                        hasImages && glossKey
-                          ? `${API_BASE_URL}/static/${current.images[clampedFrame]}`
-                          : null
-                      const statusText =
-                        current.status === 'matched'
-                          ? 'Dictionary Match'
-                          : 'Unknown Word (Fallback)'
+                      
+                      // Fix: Handle dictionary structure variations
+                      const getImageUrlLocal = (img: string) => {
+                        if (!img) return null;
+                        if (img.includes('/')) return `${API_BASE_URL}/static/${img}`;
+                        return `${API_BASE_URL}/static/${glossKey}/${img}`;
+                      };
+
+                      const imageSrc = hasImages ? getImageUrlLocal(current.images[clampedFrame]) : null;
 
                       return (
-                        <div className="animate-fade-in relative rounded-3xl overflow-hidden border-2 border-transparent">
+                        <div className="animate-fade-in space-y-8">
                           {imageSrc ? (
-                            <div className="space-y-6">
-                              <div className={`relative group w-full aspect-video rounded-3xl border-2 overflow-hidden flex items-center justify-center shadow-2xl transition-all duration-500 ${accessibility.highContrast
+                            <div className="space-y-8">
+                              <div className={`relative group w-full aspect-video rounded-[2.5rem] border-2 overflow-hidden flex items-center justify-center shadow-2xl transition-all duration-700 hover:shadow-emerald-500/10 ${accessibility.highContrast
                                 ? 'bg-black border-yellow-400'
-                                : 'bg-slate-900 border-slate-200 dark:border-slate-800'
+                                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
                                 }`}>
                                 <img
                                   src={imageSrc}
-                                  alt={`${glossKey} sign ${clampedFrame + 1}`}
-                                  className="max-h-full max-w-full object-contain transform transition-transform duration-700 group-hover:scale-105"
-                                  onError={e => {
-                                    const el = e.target as HTMLImageElement
-                                    el.style.display = 'none'
-                                  }}
+                                  alt={`${glossKey} sign`}
+                                  className="max-h-[85%] max-w-[85%] object-contain transform transition-all duration-1000 group-hover:scale-105"
                                 />
-                                <div className="absolute top-4 left-4 px-4 py-2 rounded-2xl bg-black/60 backdrop-blur-md text-white text-sm font-bold border border-white/20">
+                                <div className="absolute top-6 left-6 px-6 py-3 rounded-2xl bg-black/80 backdrop-blur-xl text-white text-base font-black border border-white/20 shadow-xl uppercase tracking-wider">
                                   {glossKey}
+                                </div>
+                                <div className="absolute bottom-6 right-6 px-4 py-2 rounded-xl bg-white/10 backdrop-blur-md text-white/60 text-[10px] font-bold border border-white/10 uppercase tracking-widest">
+                                  Frame {clampedFrame + 1} / {frameCount}
                                 </div>
                               </div>
 
                               {frameCount > 1 && (
-                                <div className="flex items-center justify-between p-2 rounded-2xl bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50">
+                                <div className="flex items-center justify-between p-3 rounded-[1.5rem] bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 shadow-inner">
                                   <button
                                     type="button"
-                                    onClick={() => setCurrentFrameIndex(prev => prev > 0 ? prev - 1 : frameCount - 1)}
+                                    onClick={() => {
+                                      setAutoPlay(false);
+                                      setCurrentFrameIndex(prev => prev > 0 ? prev - 1 : frameCount - 1);
+                                    }}
                                     className={`
-                                      p-3 rounded-xl transition-all duration-300
+                                      p-4 rounded-2xl transition-all duration-300
                                       ${accessibility.highContrast
                                         ? 'bg-gray-800 text-yellow-300 border border-yellow-400'
-                                        : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600'
+                                        : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-md hover:bg-slate-50 dark:hover:bg-slate-600 hover:-translate-x-1 active:scale-95'
                                       }
                                     `}
                                   >
-                                    <ChevronLeft size={24} />
+                                    <ChevronLeft size={28} />
                                   </button>
-                                  <div className={`${accessibility.largeText ? 'text-lg' : 'text-sm'} font-bold text-slate-700 dark:text-slate-300`}>
-                                    Frame <span className="text-blue-500">{clampedFrame + 1}</span> of {frameCount}
+                                  
+                                  <div className="flex items-center gap-4">
+                                    <button 
+                                      onClick={() => setAutoPlay(!autoPlay)}
+                                      className={`p-4 rounded-full ${autoPlay ? 'bg-blue-500 text-white animate-pulse' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'} transition-all duration-300 shadow-lg`}
+                                    >
+                                      {autoPlay ? <Pause size={24} /> : <Play size={24} />}
+                                    </button>
+                                    <div className={`${accessibility.largeText ? 'text-xl' : 'text-base'} font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest`}>
+                                      Sequence <span className="text-blue-500 tabular-nums">{clampedFrame + 1}</span>
+                                    </div>
                                   </div>
+
                                   <button
                                     type="button"
-                                    onClick={() => setCurrentFrameIndex(prev => prev + 1 < frameCount ? prev + 1 : 0)}
+                                    onClick={() => {
+                                      setAutoPlay(false);
+                                      setCurrentFrameIndex(prev => prev + 1 < frameCount ? prev + 1 : 0);
+                                    }}
                                     className={`
-                                      p-3 rounded-xl transition-all duration-300
+                                      p-4 rounded-2xl transition-all duration-300
                                       ${accessibility.highContrast
                                         ? 'bg-gray-800 text-yellow-300 border border-yellow-400'
-                                        : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-600'
+                                        : 'bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-md hover:bg-slate-50 dark:hover:bg-slate-600 hover:translate-x-1 active:scale-95'
                                       }
                                     `}
                                   >
-                                    <ChevronRight size={24} />
+                                    <ChevronRight size={28} />
                                   </button>
                                 </div>
                               )}
                             </div>
                           ) : (
-                            <div className={`p-8 rounded-3xl border-2 shadow-xl ${accessibility.highContrast
+                            <div className={`p-12 rounded-[2.5rem] border-2 shadow-2xl ${accessibility.highContrast
                               ? 'bg-black border-yellow-400 text-yellow-200'
-                              : 'bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white'
+                              : 'bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white'
                               }`}>
-                              <div className="flex items-center gap-3 mb-4">
-                                <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-500">
-                                  <BookOpen size={18} />
+                              <div className="flex items-center gap-4 mb-8">
+                                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 shadow-sm">
+                                  <BookOpen size={28} />
                                 </div>
-                                <div className={`${getTextSize()} font-extrabold tracking-tight`}>
-                                  {(current.gloss || current.word || '').toUpperCase() || 'UNKNOWN'}
+                                <div className={`${getHeaderSize()} font-black tracking-tight uppercase`}>
+                                  {glossKey || 'UNKNOWN'}
                                 </div>
                               </div>
                               {current.description && (
-                                <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium leading-relaxed mb-4 opacity-80`}>
-                                  {current.description}
-                                </p>
+                                <div className="space-y-4">
+                                  <div className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Description & Usage</div>
+                                  <p className={`${accessibility.largeText ? 'text-2xl' : 'text-xl'} font-medium leading-relaxed opacity-90 text-slate-700 dark:text-slate-300`}>
+                                    {current.description}
+                                  </p>
+                                </div>
                               )}
                               {current.page && (
-                                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/50 dark:bg-black/20 border border-white/20">
-                                  <span className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} font-bold text-slate-500 dark:text-slate-400`}>
-                                    GSL Dictionary Page {current.page}
+                                <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                                  <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-slate-100 dark:bg-black/20 border border-slate-200/50 dark:border-white/5 shadow-inner">
+                                    <span className={`${accessibility.largeText ? 'text-base' : 'text-[10px]'} font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest`}>
+                                      Dictionary Source: Page {current.page}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest bg-emerald-500/10 px-3 py-1 rounded-full">
+                                    Text Match
                                   </span>
                                 </div>
                               )}
                             </div>
                           )}
+
+                          {/* Dictionary Entries Grid (User Centric Feature) */}
+                          <div className="mt-12 space-y-6">
+                            <div className="flex items-center justify-between">
+                              <h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em]">
+                                Detected Word Sequence
+                              </h4>
+                              <span className="text-[10px] font-bold text-slate-400 tabular-nums">
+                                {signSequence.length} {signSequence.length === 1 ? 'Entry' : 'Entries'}
+                              </span>
+                            </div>
+                            
+                            <div className="flex gap-4 overflow-x-auto pb-6 px-1 scrollbar-hide snap-x">
+                              {signSequence.map((entry, idx) => {
+                                const isCurrent = idx === currentSignIndex;
+                                const gloss = (entry.gloss || entry.word || '').toUpperCase();
+                                const hasImagesEntry = entry.images && entry.images.length > 0;
+                                const firstImg = hasImagesEntry ? getImageUrlLocal(entry.images[0]) : null;
+
+                                return (
+                                  <button
+                                    key={idx}
+                                    onClick={() => {
+                                      setCurrentSignIndex(idx);
+                                      setCurrentFrameIndex(0);
+                                      setAutoPlay(false);
+                                    }}
+                                    className={`
+                                      flex-shrink-0 w-36 sm:w-44 snap-start group transition-all duration-500
+                                      ${isCurrent ? 'scale-105' : 'opacity-60 hover:opacity-100 hover:scale-102'}
+                                    `}
+                                  >
+                                    <div className={`
+                                      relative aspect-square rounded-2xl overflow-hidden mb-3 border-2 transition-all duration-500 shadow-lg
+                                      ${isCurrent 
+                                        ? 'border-emerald-500 ring-4 ring-emerald-500/20' 
+                                        : 'border-slate-200 dark:border-slate-800'
+                                      }
+                                      ${accessibility.highContrast && isCurrent ? 'border-yellow-400 ring-yellow-400/40' : ''}
+                                    `}>
+                                      {firstImg ? (
+                                        <img src={firstImg} alt={gloss} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                      ) : (
+                                        <div className="w-full h-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                                          <BookOpen size={24} />
+                                        </div>
+                                      )}
+                                      <div className={`absolute inset-0 bg-gradient-to-t from-black/60 to-transparent transition-opacity duration-500 ${isCurrent ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
+                                      <div className="absolute bottom-2 left-2 right-2 text-[10px] font-black text-white truncate text-center uppercase tracking-wider">
+                                        {gloss}
+                                      </div>
+                                    </div>
+                                    <div className={`h-1 w-full rounded-full transition-all duration-500 ${isCurrent ? 'bg-emerald-500' : 'bg-transparent'}`} />
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
                           {/* If Avatar is disabled, show Smart Tips overlaid on the image view instead */}
                           {!showAvatar && (
@@ -1327,7 +1492,7 @@ const Interpreter: React.FC = () => {
                               <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Translation Info</span>
                               <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${current.status === 'matched' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' : 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400'
                                 }`}>
-                                {statusText}
+                                {current.status === 'matched' ? 'Found in Dictionary' : 'Unknown Sign'}
                               </span>
                             </div>
                             <div className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-bold text-slate-900 dark:text-white`}>
