@@ -1,19 +1,27 @@
 # SignBridge Ghana 🤟
 
-**SignBridge Ghana** is an AI-powered Ghana Sign Language (GSL) interpreter and dictionary system. It bridges the communication gap between the Deaf community in Ghana and the hearing public by providing real-time sign-to-speech and speech-to-sign translation services.
+**SignBridge Ghana** is an offline-first, rule-based Ghana Sign Language (GSL) platform built directly from the official GSL dictionary. It provides authoritative sign lookup and on-device sign interpretation to bridge the communication gap between the Deaf community and the hearing public.
 
 ---
 
-## 🌟 Project Overview
+## 🌟 Project Positioning
 
-This project is a full-stack web application designed to facilitate seamless communication using Ghana Sign Language. It leverages modern AI techniques, including pose estimation (MediaPipe) and large language models (Gemini), to interpret signs and transcribe speech. The system is optimized for performance and accessibility, featuring a modern, user-centric interface.
+Unlike "black-box" AI systems, SignBridge Ghana uses a deterministic, rule-based matching engine. This ensures linguistic accuracy, privacy, and reliability.
 
-### Key Capabilities:
-- **Sign-to-Speech**: Real-time interpretation of GSL signs into text and audible speech.
-- **Speech-to-Sign**: Transcription of spoken English into a sequence of GSL dictionary diagrams.
-- **Interactive Dictionary**: A searchable database of over 1,700 GSL signs with detailed diagrams and descriptions.
-- **AI Chatbot**: An integrated assistant to help users learn GSL and navigate the platform.
-- **Accessibility-First**: Built-in support for high contrast, large text, and visual feedback.
+### Key Value Props:
+- **Privacy-First**: All sign recognition happens on-device. Your video feed never leaves your browser.
+- **Offline-Ready**: Built to function in environments with limited or no internet connectivity.
+- **Dictionary-Authoritative**: Every sign pattern is mapped directly from the official Ghana Sign Language Dictionary.
+- **Lightweight**: Optimized for performance on mobile devices and low-resource hosting.
+
+---
+
+## 🚀 How It Works (The Technology)
+
+1. **Pose Estimation**: Using **MediaPipe**, the application identifies 3D body and hand landmarks directly in the user's browser.
+2. **Deterministic Matching**: Landmark sequences are processed using **Dynamic Time Warping (DTW)** against a pre-defined set of motion templates derived from the dictionary.
+3. **Authoritative Verification**: Matches are verified against the system's rule-base to ensure they correspond to valid GSL signs.
+4. **Authoritative Dictionary**: A local database provides instant access to instructional diagrams and usage notes for over 1,700 signs.
 
 ---
 
@@ -155,6 +163,15 @@ This project is optimized for the **Render Free Tier**:
 - **Static Assets**: Frontend is built and served by the FastAPI backend.
 - **Memory Management**: Heavy ML models are removed or replaced with lightweight alternatives (like DTW matching) to fit within 512MB RAM.
 - **Startup**: Services are initialized lazily to ensure the web service starts within the time limit.
+
+---
+
+## ⚠️ Limitations
+
+While SignBridge Ghana is highly capable, it has the following constraints:
+- **Dictionary Coverage**: The system currently supports a core subset of signs from the official dictionary.
+- **Environmental Factors**: Recognition accuracy is sensitive to lighting conditions and background clutter.
+- **Framing**: For optimal results, the user's upper body and hands must be clearly visible within the camera frame.
 
 ---
 

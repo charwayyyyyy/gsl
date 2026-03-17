@@ -922,10 +922,10 @@ const Interpreter: React.FC = () => {
 
       {/* Main Content */}
       <div className="max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-12 py-4 sm:py-8 pb-40 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-10 animate-fade-in items-start">
+        <div className="flex flex-col lg:flex-row gap-6 sm:gap-10 animate-fade-in items-start">
           
-          {/* Left Panel - Control & Input (5/12 columns) */}
-          <div className="lg:col-span-5 space-y-6 sm:space-y-10 order-2 lg:order-1">
+          {/* Left Panel - Control & Input (Fixed width on desktop, full width on mobile) */}
+          <div className="w-full lg:w-[450px] xl:w-[550px] space-y-6 sm:space-y-10">
             
             {/* Input Panel */}
             <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-4 sm:p-6' : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] p-4 sm:p-8'} overflow-hidden transition-all duration-500`}>
@@ -1173,8 +1173,8 @@ const Interpreter: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Panel - Output & Viz (7/12 columns) */}
-          <div className="lg:col-span-7 space-y-8 sm:space-y-10 order-1 lg:order-2">
+          {/* Right Panel - Output & Viz (Takes remaining space on desktop) */}
+          <div className="flex-1 min-w-0 space-y-8 sm:space-y-10 order-1 lg:order-2">
             
             {/* Live Translation Output */}
             <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card border-blue-500/30 hover:border-blue-400/80 hover:shadow-[0_0_40px_rgba(59,130,246,0.1)] p-8 sm:p-10'} transition-all duration-500`}>
