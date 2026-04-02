@@ -351,7 +351,7 @@ const Help: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen relative overflow-hidden p-4 md:p-8 transition-colors duration-500 ${
+    <div className={`min-h-screen relative overflow-hidden p-4 md:p-8 pt-20 sm:pt-24 transition-colors duration-500 ${
       accessibility.highContrast ? 'bg-white dark:bg-black' : 'bg-slate-50 dark:bg-[#050505]'
     }`}>
       {/* Background Orbs */}

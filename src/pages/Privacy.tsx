@@ -35,7 +35,7 @@ const Privacy: React.FC = () => {
   ]
 
   return (
-    <div className={`min-h-screen bg-slate-50 dark:bg-[#050505] p-6 sm:p-12 ${accessibility.highContrast ? '!bg-black' : ''}`}>
+    <div className={`min-h-screen bg-slate-50 dark:bg-[#050505] p-6 sm:p-12 pt-20 sm:pt-24 ${accessibility.highContrast ? '!bg-black' : ''}`}>
       <div className="max-w-4xl mx-auto">
         <button
           onClick={() => navigate(-1)}

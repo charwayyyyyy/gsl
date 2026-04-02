@@ -42,7 +42,7 @@ export default function Home() {
   ]
 
   return (
-    <div className={`min-h-screen relative overflow-hidden flex flex-col items-center p-4 md:p-8
+    <div className={`min-h-screen relative overflow-hidden flex flex-col items-center p-4 md:p-8 pt-20 sm:pt-24
       bg-slate-50 dark:bg-[#050505]
       ${accessibility.highContrast ? '!bg-black' : ''}
     `}>
@@ -54,16 +54,18 @@ export default function Home() {
         </>
       )}
 
-      {/* Theme Toggle */}
-      <button
-        onClick={toggleTheme}
-        aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-        className="fixed top-4 right-4 z-50 w-10 h-10 rounded-full flex items-center justify-center
-          bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700
-          hover:scale-110 transition-all duration-300 shadow-lg"
-      >
-        {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
-      </button>
+      {/* Theme Toggle moved to Navbar or made less intrusive on Home */}
+      <div className="fixed top-20 right-4 z-40 hidden md:block">
+        <button
+          onClick={toggleTheme}
+          aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+          className="w-10 h-10 rounded-full flex items-center justify-center
+            bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700
+            hover:scale-110 transition-all duration-300 shadow-lg backdrop-blur-md"
+        >
+          {isDark ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
+        </button>
+      </div>
 
       <div className="w-full max-w-7xl relative z-10 flex flex-col items-center">
         {/* Hero Section */}

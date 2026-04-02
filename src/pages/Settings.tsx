@@ -585,7 +585,7 @@ const Settings: React.FC = () => {
   )
 
   return (
-    <div className={`min-h-screen relative overflow-hidden p-4 md:p-8 transition-colors duration-500 ${accessibilitySettings.highContrast
+    <div className={`min-h-screen relative overflow-hidden p-4 md:p-8 pt-20 sm:pt-24 transition-colors duration-500 ${accessibilitySettings.highContrast
       ? 'bg-black'
       : 'bg-slate-50 dark:bg-[#050505]'
       }`}>

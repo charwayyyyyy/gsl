@@ -814,8 +814,8 @@ const Interpreter: React.FC = () => {
         </>
       )}
 
-      {/* Header */}
-      <div className={`sticky top-0 sm:top-16 z-50 ${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-b-2' : 'glass border-b border-white/20'}`}>
+      {/* Mode Header */}
+      <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-b-2' : 'bg-white/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-white/5'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-auto min-h-[4rem] sm:min-h-[5rem] py-2 sm:py-3 flex-wrap gap-y-3 sm:gap-y-4">
             <div className="flex items-center gap-3 sm:gap-6">
@@ -825,7 +825,7 @@ const Interpreter: React.FC = () => {
                   ${getButtonSize()} rounded-2xl flex items-center justify-center
                   ${accessibility.highContrast
                     ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400 border-2 border-yellow-400'
-                    : 'bg-white/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-white/40 dark:border-white/10'
+                    : 'bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-slate-200/60 dark:border-white/10'
                   }
                   transform hover:scale-110 active:scale-95 transition-all duration-300
                   focus:outline-none focus:ring-4 focus:ring-blue-300/50
@@ -897,7 +897,7 @@ const Interpreter: React.FC = () => {
                     ${item.active && item.activeClass ? item.activeClass :
                       accessibility.highContrast
                         ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400 border-2 border-yellow-400'
-                        : 'bg-white/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-white/40 dark:border-white/10'
+                        : 'bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-slate-200/60 dark:border-white/10'
                     }
                     transform hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-blue-300/30
                   `}
@@ -913,8 +913,8 @@ const Interpreter: React.FC = () => {
                 aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
                 className={`
                   ${getButtonSize()} rounded-2xl flex items-center justify-center transition-all duration-300
-                  bg-white/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200
-                  hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-white/40 dark:border-white/10
+                  bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200
+                  hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-slate-200/60 dark:border-white/10
                   transform hover:scale-110 active:scale-95 focus:outline-none
                 `}
               >
