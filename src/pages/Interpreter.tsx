@@ -93,6 +93,12 @@ const Interpreter: React.FC = () => {
 
   const { accessibility, visual, audio } = settings
 
+  const demoScenariosMap = {
+    sign_to_speech: SIGN_TO_SPEECH_DEMO,
+    speech_to_sign: SPEECH_TO_SIGN_DEMO,
+    text_to_sign: TEXT_TO_SIGN_DEMO,
+  }
+
   // Demo simulation state
   const [isDemoRunning, setIsDemoRunning] = useState(false)
   const [demoStep, setDemoStep] = useState<'idle' | 'detecting' | 'processing' | 'success'>('idle')
@@ -1113,6 +1119,24 @@ const Interpreter: React.FC = () => {
                       highContrast={accessibility.highContrast}
                       visible={showSmartTips}
                     />
+
+                    {/* Demo Example Controls */}
+                    {visual.demoMode && !isDemoRunning && (
+                      <div className="absolute bottom-4 left-4 right-4 z-40 flex flex-col gap-2 animate-slide-up pointer-events-auto">
+                        <span className="text-[8px] font-black text-white/50 uppercase tracking-[0.2em]">Sample Gestures</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {SIGN_TO_SPEECH_DEMO.map((scenario) => (
+                            <button
+                              key={scenario.id}
+                              onClick={() => runDemoScenario(scenario)}
+                              className="px-3 py-1.5 rounded-lg bg-black/60 hover:bg-blue-600/80 backdrop-blur-md border border-white/10 text-[8px] font-black text-white uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
+                            >
+                              {scenario.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </>
                 ) : currentSession.direction === 'speech_to_sign' ? (
                   <div className="p-8 sm:p-12 bg-emerald-950/20 relative">
@@ -1134,9 +1158,27 @@ const Interpreter: React.FC = () => {
                         </span>
                       </div>
                     )}
+
+                    {/* Demo Example Controls */}
+                    {visual.demoMode && !isDemoRunning && (
+                      <div className="mt-8 flex flex-col gap-3 animate-slide-up">
+                        <span className="text-[10px] font-black text-emerald-500/50 uppercase tracking-[0.2em]">Sample Phrases</span>
+                        <div className="flex flex-wrap gap-2">
+                          {SPEECH_TO_SIGN_DEMO.map((scenario) => (
+                            <button
+                              key={scenario.id}
+                              onClick={() => runDemoScenario(scenario)}
+                              className="px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-[10px] font-black text-emerald-400 uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
+                            >
+                              {scenario.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
-                  <div className="p-4 sm:p-10 bg-purple-900/10 space-y-6 border-t border-purple-500/20">
+                  <div className="p-4 sm:p-10 bg-purple-900/10 space-y-6 border-t border-purple-500/20 relative">
                     <textarea
                       id="primary-text-input"
                       value={manualInput}
@@ -1181,17 +1223,15 @@ const Interpreter: React.FC = () => {
                     {/* Demo Example Controls */}
                     {visual.demoMode && !isDemoRunning && (
                       <div className="mt-8 flex flex-col gap-3 animate-slide-up">
-                        <span className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em] mb-1">Demo Scenarios</span>
+                        <span className="text-[10px] font-black text-purple-500/50 uppercase tracking-[0.2em]">Sample Inputs</span>
                         <div className="flex flex-wrap gap-2">
-                          {(currentSession.direction === 'sign_to_speech' ? SIGN_TO_SPEECH_DEMO : 
-                            currentSession.direction === 'speech_to_sign' ? SPEECH_TO_SIGN_DEMO : 
-                            TEXT_TO_SIGN_DEMO).map((scenario) => (
+                          {TEXT_TO_SIGN_DEMO.map((scenario) => (
                             <button
                               key={scenario.id}
                               onClick={() => runDemoScenario(scenario)}
-                              className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-black text-white/80 uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
+                              className="px-4 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-[10px] font-black text-purple-400 uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
                             >
-                              Run: {scenario.label}
+                              {scenario.label}
                             </button>
                           ))}
                         </div>
