@@ -702,6 +702,9 @@ const Interpreter: React.FC = () => {
   // Text-to-speech functionality
   const speakText = useCallback((text: string) => {
     if ('speechSynthesis' in window && !isMuted) {
+      // Cancel any ongoing speech to avoid overlap
+      speechSynthesis.cancel()
+      
       const utterance = new SpeechSynthesisUtterance(text)
       const rate = Number.isFinite(settings.translation.speechSpeed) ? Math.min(2, Math.max(0.1, settings.translation.speechSpeed)) : 1
       const volume = Number.isFinite(audio.volumeLevel) ? Math.min(1, Math.max(0, audio.volumeLevel)) : 1
@@ -725,19 +728,20 @@ const Interpreter: React.FC = () => {
 
       utterance.onstart = () => setIsSpeaking(true)
       utterance.onend = () => setIsSpeaking(false)
+      utterance.onerror = () => setIsSpeaking(false)
 
       speechSynthesis.speak(utterance)
     }
   }, [settings.translation.speechSpeed, audio.volumeLevel, audio.ghanaianAccent, isMuted])
 
-  // Auto-speak translations for sign-to-speech
+  // Auto-speak translations for sign-to-speech and text-to-sign
   useEffect(() => {
-    if (currentSession?.direction === 'sign_to_speech' &&
-      lastTranslation?.output &&
+    if ((currentSession?.direction === 'sign_to_speech' || currentSession?.direction === 'text_to_sign') &&
+      translationText &&
       !isSpeaking) {
-      speakText(lastTranslation.output)
+      speakText(translationText)
     }
-  }, [lastTranslation?.output, currentSession?.direction, speakText, isSpeaking])
+  }, [translationText, currentSession?.direction, speakText, isSpeaking])
 
   // Fetch primitives for active sign in speech-to-sign mode for Smart Tips overlay
   useEffect(() => {
@@ -778,27 +782,29 @@ const Interpreter: React.FC = () => {
   }
 
   const getConfidenceColor = (level: number) => {
+    if (level === 0) return 'text-slate-400'
     if (level >= 0.7) return 'text-green-500'
     if (level >= 0.4) return 'text-yellow-500'
     return 'text-red-500'
   }
 
   const getConfidenceLabel = (level: number) => {
+    if (level === 0) return isCameraActive ? 'Analyzing frame...' : 'Waiting for input...'
     if (level >= 0.7) return 'Clear'
     if (level >= 0.4) return 'Fair'
-    if (level === 0) return 'No speech detected'
     return 'Unclear'
   }
 
   if (!currentSession) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${accessibility.highContrast ? 'bg-black text-yellow-400' : 'bg-gray-100'}`}>
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4" />
-          <h2 className={`${getTextSize()} font-bold mb-2`}>Initializing Session...</h2>
-          <p className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} text-gray-600 ${accessibility.highContrast ? 'text-yellow-300' : ''}`}>
-            Preparing translation system
-          </p>
+      <div className={`min-h-screen flex flex-col items-center justify-center gap-6 ${accessibility.highContrast ? 'bg-black text-yellow-400' : 'bg-slate-50 dark:bg-[#050505]'}`}>
+        <div className="relative w-20 h-20">
+          <div className="absolute inset-0 border-4 border-blue-500/20 rounded-3xl" />
+          <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-3xl animate-spin" />
+        </div>
+        <div className="flex flex-col items-center gap-2 text-center">
+          <p className={`${getTextSize()} font-black uppercase tracking-[0.2em] animate-pulse`}>Initializing System</p>
+          <p className="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-widest">Preparing translation environment...</p>
         </div>
       </div>
     )
@@ -1102,11 +1108,12 @@ const Interpreter: React.FC = () => {
                     System Confidence
                   </h3>
                   {(() => {
-                    const effective = silenceMessage ? 0 : Math.max(0.01, confidence || 0)
+                    const effective = silenceMessage ? 0 : (confidence || 0)
+                    const showValue = effective > 0.05 // Hide < 5% as it looks like noise
                     return (
-                      <div className="text-right">
-                        <div className={`text-3xl font-bold ${getConfidenceColor(effective)}`}>
-                          {Math.round(effective * 100)}%
+                      <div className="text-right transition-all duration-500">
+                        <div className={`text-3xl font-bold ${getConfidenceColor(effective)} ${!showValue ? 'opacity-30' : 'animate-fade-in'}`}>
+                          {showValue ? `${Math.round(effective * 100)}%` : '--%'}
                         </div>
                         <div className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} font-medium ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500'}`}>
                           {getConfidenceLabel(effective)}
@@ -1116,7 +1123,7 @@ const Interpreter: React.FC = () => {
                   })()}
                 </div>
 
-                <div className={`w-full ${accessibility.largeText ? 'h-5' : 'h-4'} bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden p-1 shadow-inner`}>
+                <div className={`w-full ${accessibility.largeText ? 'h-5' : 'h-4'} bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden p-1 shadow-inner relative`}>
                   <div
                     className={`h-full rounded-full transition-all duration-700 ease-out shadow-sm ${(!silenceMessage && confidence >= 0.7) ? 'bg-gradient-to-r from-emerald-400 to-emerald-600' :
                       (!silenceMessage && confidence >= 0.4) ? 'bg-gradient-to-r from-amber-400 to-amber-600' :
@@ -1125,10 +1132,14 @@ const Interpreter: React.FC = () => {
                     style={{
                       width: `${Math.min(
                         100,
-                        (silenceMessage ? 0 : Math.max(0.01, confidence || 0)) * 100
+                        (silenceMessage || confidence < 0.05 ? 0 : confidence) * 100
                       )}%`
                     }}
                   />
+                  {/* Activity shimmer when active but no match */}
+                  {isCameraActive && confidence < 0.05 && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
+                  )}
                 </div>
 
                 <div className="mt-6 grid grid-cols-2 gap-4">
@@ -1201,23 +1212,32 @@ const Interpreter: React.FC = () => {
                   </div>
                 </div>
                 {lastUpdateTime && (
-                  <div className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border border-slate-200/50 dark:border-slate-700/50 shadow-sm">
+                  <div className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border border-slate-200/50 dark:border-slate-700/50 shadow-sm flex items-center gap-2">
+                    {isTranslating && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                    )}
                     Updated {lastUpdateTime}
                   </div>
                 )}
               </div>
 
-              <div className={`min-h-[220px] p-10 rounded-[2rem] border-2 transition-all duration-500 flex items-center justify-center ${accessibility.highContrast
+              <div className={`min-h-[220px] p-10 rounded-[2rem] border-2 transition-all duration-500 flex items-center justify-center relative overflow-hidden ${accessibility.highContrast
                 ? 'bg-black border-yellow-400 text-yellow-200'
                 : 'bg-white/40 dark:bg-slate-950/40 border-blue-500/20 hover:border-blue-400/40 text-slate-900 dark:text-white shadow-[inset_0_2px_15px_rgba(0,0,0,0.03)] dark:shadow-[inset_0_2px_15px_rgba(0,0,0,0.3)]'
                 }`}>
+                
+                {/* Background pulse when detecting */}
+                {!translationText && isCameraActive && (
+                  <div className="absolute inset-0 bg-blue-500/5 dark:bg-blue-400/5 animate-pulse-slow pointer-events-none" />
+                )}
+
                 {translationText ? (
-                  <div className="w-full text-center space-y-6">
-                    <p className={`${accessibility.largeText ? 'text-5xl' : 'text-4xl'} font-extrabold leading-tight animate-fade-in bg-gradient-to-br from-blue-600 to-indigo-700 dark:from-blue-400 dark:to-indigo-500 bg-clip-text text-transparent px-4`}>
+                  <div className="w-full text-center space-y-6 relative z-10">
+                    <p className={`${accessibility.largeText ? 'text-6xl' : 'text-5xl'} font-extrabold leading-tight animate-fade-in-up bg-gradient-to-br from-blue-600 to-indigo-700 dark:from-blue-400 dark:to-indigo-500 bg-clip-text text-transparent px-4 drop-shadow-sm`}>
                       {translationText}
                     </p>
-                    {confidence > 0 && (
-                      <div className="flex flex-col items-center gap-3">
+                    {confidence > 0.05 && (
+                      <div className="flex flex-col items-center gap-3 animate-fade-in" style={{ animationDelay: '200ms' }}>
                         <div className="h-2 w-48 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 shadow-inner">
                           <div
                             className={`h-full rounded-full transition-all duration-1000 ${confidence >= 0.7 ? 'bg-emerald-500' : confidence >= 0.4 ? 'bg-amber-500' : 'bg-rose-500'
@@ -1232,9 +1252,20 @@ const Interpreter: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-full space-y-6 py-12 opacity-40 group">
-                    <div className="w-20 h-20 rounded-3xl bg-slate-200 dark:bg-slate-800 animate-pulse flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
-                      <div className="w-10 h-10 rounded-full bg-slate-300 dark:bg-slate-700 animate-ping" />
+                  <div className="flex flex-col items-center justify-center h-full space-y-6 py-12 relative z-10">
+                    <div className="relative">
+                      <div className="w-20 h-20 rounded-3xl bg-slate-200 dark:bg-slate-800 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                        {currentSession.direction === 'sign_to_speech' ? (
+                          <Camera className="w-10 h-10 text-slate-400 animate-pulse" />
+                        ) : currentSession.direction === 'speech_to_sign' ? (
+                          <Mic className="w-10 h-10 text-slate-400 animate-pulse" />
+                        ) : (
+                          <Keyboard className="w-10 h-10 text-slate-400 animate-pulse" />
+                        )}
+                      </div>
+                      {/* Pulse rings */}
+                      <div className="absolute inset-0 rounded-3xl border-2 border-blue-500/20 animate-ping-slow" />
+                      <div className="absolute inset-0 rounded-3xl border-2 border-blue-500/10 animate-ping-slow" style={{ animationDelay: '1s' }} />
                     </div>
                     <div className="text-center">
                       <p className={`${accessibility.largeText ? 'text-2xl' : 'text-xl'} font-bold ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500'}`}>
@@ -1245,9 +1276,30 @@ const Interpreter: React.FC = () => {
                             : 'Enter text to visualize'
                         }
                       </p>
-                      <p className="text-sm font-medium text-slate-400 dark:text-slate-600 mt-2 uppercase tracking-widest">
-                        System ready and active
-                      </p>
+                      <div className="flex items-center justify-center gap-2 mt-2">
+                        <div className="flex gap-1">
+                          <div className="w-1 h-1 rounded-full bg-blue-500 animate-bounce" />
+                          <div className="w-1 h-1 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0.2s' }} />
+                          <div className="w-1 h-1 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0.4s' }} />
+                        </div>
+                        <p className="text-sm font-medium text-slate-400 dark:text-slate-600 uppercase tracking-widest">
+                          System ready and active
+                        </p>
+                      </div>
+                      {/* Demo suggestion */}
+                      {currentSession.direction === 'text_to_sign' && (
+                        <div className="mt-6">
+                          <button 
+                            onClick={() => {
+                              setManualInput('Hello');
+                              runTextToSignPipeline('Hello', 'manual', 0.9);
+                            }}
+                            className="text-[10px] font-black uppercase tracking-widest text-blue-500 hover:text-blue-400 px-4 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 transition-all hover:scale-105 active:scale-95"
+                          >
+                            Try example: "Hello"
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
