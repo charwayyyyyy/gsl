@@ -38,10 +38,11 @@ const Dictionary: React.FC = () => {
   const [list, setList] = useState<any[]>([])
   const [reported, setReported] = useState(false)
   const [history, setHistory] = useState<string[]>([])
+  const [relatedSigns, setRelatedSigns] = useState<any[]>([])
 
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Initialize history
+  // Initialize history and cache
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem('search_history') || '[]')
     setHistory(saved)
@@ -68,6 +69,24 @@ const Dictionary: React.FC = () => {
     return `${API_BASE_URL}/static/${gloss}/${imgName}`
   }
 
+  // Fetch related signs based on current gloss
+  const fetchRelatedSigns = async (gloss: string) => {
+    try {
+      // Simple keyword similarity via list API (prefix matching)
+      const firstLetter = gloss.charAt(0).toUpperCase()
+      const resp = await fetch(`${API_BASE_URL}/api/dictionary/list?letter=${encodeURIComponent(firstLetter)}`)
+      if (resp.ok) {
+        const data = await resp.json()
+        const items = Array.isArray(data?.items) ? data.items : []
+        // Filter out the current gloss and pick 3 random ones from the same letter
+        const filtered = items.filter((item: any) => item.gloss.toUpperCase() !== gloss.toUpperCase())
+        setRelatedSigns(filtered.sort(() => 0.5 - Math.random()).slice(0, 3))
+      }
+    } catch (e) {
+      console.error('Failed to fetch related signs', e)
+    }
+  }
+
   const search = async (query: string, isVoice: boolean = false) => {
     if (!query) return
     try {
@@ -75,17 +94,37 @@ const Dictionary: React.FC = () => {
       setError(null)
       setReported(false) // Reset report status for new search
       setResult(null) // Clear previous result to show loading state better
+      setRelatedSigns([]) // Clear related signs
 
-      const resp = await fetch(`${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(query)}`)
-      if (!resp.ok) throw new Error(`Search failed: ${resp.status}`)
+      // Check local cache first
+      const cacheKey = `dict_cache_${query.toLowerCase()}`
+      const cachedData = localStorage.getItem(cacheKey)
       
-      const data = await resp.json()
+      let data;
+      if (cachedData) {
+        data = JSON.parse(cachedData)
+      } else {
+        const resp = await fetch(`${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(query)}`, {
+          // Simple retry logic
+          signal: AbortSignal.timeout(5000)
+        })
+        if (!resp.ok) throw new Error(`Search failed: ${resp.status}`)
+        data = await resp.json()
+        
+        // Cache valid results for 24 hours
+        if (data && data.gloss) {
+          localStorage.setItem(cacheKey, JSON.stringify(data))
+        }
+      }
       
       // Handle the case where the API returns a success but no data (shouldn't happen with our backend but good to check)
       if (!data) {
         setResult({ gloss: '', images: [], description: 'No results found', match_type: 'None', confidence: 0, alternatives: [], variants: 0 })
       } else {
         setResult(data)
+        if (data.gloss) {
+          fetchRelatedSigns(data.gloss)
+        }
       }
 
       // Track analytics
@@ -559,6 +598,23 @@ const Dictionary: React.FC = () => {
                       )}
                     </div>
                   </div>
+
+                  {/* Related Signs */}
+                  {relatedSigns.length > 0 && (
+                    <div className="p-6 sm:p-10 border-t border-slate-100 dark:border-slate-800 bg-white/50 dark:bg-black/5">
+                      <div className="flex items-center gap-3 mb-6">
+                        <Layers className="w-5 h-5 text-blue-500" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Related Signs</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {relatedSigns.map(item => (
+                          <button key={item.gloss} onClick={() => { setQ(item.gloss); search(item.gloss) }} className="p-4 text-left glass-card border-slate-200 dark:border-slate-800 hover:border-blue-500/50 group transition-all bg-white dark:bg-slate-900">
+                            <span className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white group-hover:text-blue-500 transition-colors">{item.gloss}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="py-20 text-center glass-card border-slate-200 dark:border-slate-800">

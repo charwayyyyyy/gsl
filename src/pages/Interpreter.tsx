@@ -7,7 +7,7 @@ import { useAppStore } from '../stores/appStore'
 import { useWebRTC, useWebSocket } from '../hooks/useWebRTC'
 import VideoCapture from '../components/VideoCapture'
 import AudioCapture from '../components/AudioCapture'
-import Avatar3D from '../components/Avatar3D'
+const Avatar3D = React.lazy(() => import('../components/Avatar3D'))
 import SmartTipsOverlay from '../components/SmartTipsOverlay'
 
 interface SignPrimitives {
@@ -196,7 +196,9 @@ const Interpreter: React.FC = () => {
         
         if (!data) {
           try {
-            const resp = await fetch(`${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(key)}`)
+            const resp = await fetch(`${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(key)}`, {
+              signal: AbortSignal.timeout(5000)
+            })
             if (resp.ok) {
               data = await resp.json()
               dictionaryCache[key] = data
@@ -411,7 +413,9 @@ const Interpreter: React.FC = () => {
       
       if (!data) {
         try {
-          const resp = await fetch(`${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(key)}`)
+          const resp = await fetch(`${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(key)}`, {
+            signal: AbortSignal.timeout(5000)
+          })
           if (resp.ok) {
             data = await resp.json()
             dictionaryCache[key] = data
@@ -554,7 +558,9 @@ const Interpreter: React.FC = () => {
             })
           } else {
             // Async fetch & cache
-            fetch(`${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(key)}`)
+            fetch(`${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(key)}`, {
+              signal: AbortSignal.timeout(5000)
+            })
               .then(r => r.ok ? r.json() : null)
               .then(data => {
                 if (data) {
@@ -762,7 +768,9 @@ const Interpreter: React.FC = () => {
   }
 
   const getButtonSize = () => {
-    return accessibility.largeText ? 'w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16' : 'w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12'
+    // Ensure minimum 44px for touch targets on mobile (11rem = 44px)
+    const base = accessibility.largeText ? 'w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16' : 'w-11 h-11 sm:w-12 sm:h-12 lg:w-12 lg:h-12'
+    return base
   }
 
   const getHeaderSize = () => {
@@ -993,7 +1001,7 @@ const Interpreter: React.FC = () => {
                       showLandmarks={visual.showLandmarks}
                       showConfidence={visual.showConfidence}
                       isActive={isCameraActive}
-                      className="w-full h-[300px] sm:h-[380px] lg:h-[450px] object-cover"
+                      className="w-full h-[400px] sm:h-[450px] lg:h-[500px] object-cover"
                     />
                     
                     {/* Empty state for sign detection */}
@@ -1018,7 +1026,7 @@ const Interpreter: React.FC = () => {
                     />
                   </>
                 ) : currentSession.direction === 'speech_to_sign' ? (
-                  <div className="p-12 bg-emerald-950/20 relative">
+                  <div className="p-8 sm:p-12 bg-emerald-950/20 relative">
                     <AudioCapture
                       onAudioData={handleAudioData}
                       showLevel={true}
@@ -1039,7 +1047,7 @@ const Interpreter: React.FC = () => {
                     )}
                   </div>
                 ) : (
-                  <div className="p-6 sm:p-10 bg-purple-900/10 space-y-6 border-t border-purple-500/20">
+                  <div className="p-4 sm:p-10 bg-purple-900/10 space-y-6 border-t border-purple-500/20">
                     <textarea
                       id="primary-text-input"
                       value={manualInput}
@@ -1079,7 +1087,7 @@ const Interpreter: React.FC = () => {
                       `}
                     >
                       <Keyboard className="w-8 h-8" />
-                      Translate to Sign Language
+                      Translate
                     </button>
                   </div>
                 )}
@@ -1560,21 +1568,28 @@ const Interpreter: React.FC = () => {
 
                 <div className="space-y-6">
                   <div className="h-96 relative rounded-3xl overflow-hidden bg-slate-900 shadow-2xl border border-white/10">
-                    <Avatar3D
-                      isVisible={avatarStatus === 'ready' && !!avatarKeyframes && avatarKeyframes.length > 0}
-                      signSequence={
-                        avatarKeyframes
-                          ? avatarKeyframes
-                            .map(kf => String(kf.sign || kf.gloss || '').toUpperCase())
-                            .filter(label => label.length > 0)
-                          : []
-                      }
-                      currentSign={
-                        avatarKeyframes && avatarKeyframes.length > 0
-                          ? String(avatarKeyframes[0].sign || avatarKeyframes[0].gloss || '').toUpperCase()
-                          : undefined
-                      }
-                    />
+                    <React.Suspense fallback={
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-white">
+                        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
+                        <span className="text-xs font-black uppercase tracking-widest animate-pulse">Loading Avatar...</span>
+                      </div>
+                    }>
+                      <Avatar3D
+                        isVisible={avatarStatus === 'ready' && !!avatarKeyframes && avatarKeyframes.length > 0}
+                        signSequence={
+                          avatarKeyframes
+                            ? avatarKeyframes
+                              .map(kf => String(kf.sign || kf.gloss || '').toUpperCase())
+                              .filter(label => label.length > 0)
+                            : []
+                        }
+                        currentSign={
+                          avatarKeyframes && avatarKeyframes.length > 0
+                            ? String(avatarKeyframes[0].sign || avatarKeyframes[0].gloss || '').toUpperCase()
+                            : undefined
+                        }
+                      />
+                    </React.Suspense>
 
                     <SmartTipsOverlay
                       predictedGloss={livePredictedGloss}
