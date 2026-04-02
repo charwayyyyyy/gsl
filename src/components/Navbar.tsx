@@ -1,7 +1,8 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, MessageSquare, Book, Settings, HelpCircle, Layout } from 'lucide-react';
+import { Home, MessageSquare, Book, Settings, HelpCircle } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
+import logo from '@/assets/signbridge.png';
 
 const Navbar: React.FC = () => {
   const { isDark } = useTheme();
@@ -17,11 +18,11 @@ const Navbar: React.FC = () => {
   return (
     <nav className={`fixed bottom-0 left-0 right-0 z-[100] sm:top-0 sm:bottom-auto glass border-t sm:border-t-0 sm:border-b border-white/20 px-4 py-2 sm:py-3 transition-all duration-300`}>
       <div className="max-w-7xl mx-auto flex items-center justify-between">
-        <div className="hidden sm:flex items-center gap-2 group cursor-pointer" onClick={() => window.location.href = '/'}>
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform">
-            <Layout size={18} />
+        <div className="hidden sm:flex items-center gap-3 group cursor-pointer" onClick={() => window.location.href = '/'}>
+          <div className="w-12 h-12 rounded-xl overflow-hidden bg-black flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform duration-300 p-1 border border-white/10">
+            <img src={logo} alt="SignBridge Ghana Logo" className="w-full h-full object-contain" />
           </div>
-          <span className="font-serif italic font-bold text-slate-900 dark:text-white tracking-tight">
+          <span className="font-serif italic font-bold text-slate-900 dark:text-white tracking-tight text-lg">
             SignBridge Ghana
           </span>
         </div>

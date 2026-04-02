@@ -11,6 +11,7 @@ const Avatar3D = React.lazy(() => import('../components/Avatar3D'))
 import SmartTipsOverlay from '../components/SmartTipsOverlay'
 
 import { SIGN_TO_SPEECH_DEMO, SPEECH_TO_SIGN_DEMO, TEXT_TO_SIGN_DEMO, DemoScenario } from '../config/demoData'
+import logo from '@/assets/signbridge.png'
 
 interface SignPrimitives {
   direction: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT' | 'FORWARD' | 'CIRCULAR' | 'TAP' | 'HOLD' | 'NONE'
@@ -898,17 +899,22 @@ const Interpreter: React.FC = () => {
               >
                 <ArrowLeft className={`${accessibility.largeText ? 'w-6 h-6 sm:w-8 sm:h-8' : 'w-5 h-5 sm:w-6 sm:h-6'}`} />
               </button>
-              <div className="translate-y-0.5 sm:translate-y-1">
-                <h1 className={`${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'} font-serif italic tracking-tight leading-none mb-0.5 sm:mb-1 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
-                  SignBridge Ghana
-                </h1>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 dark:text-blue-400 leading-none">
-                  {currentSession.direction === 'sign_to_speech'
-                    ? 'Sign → Speech'
-                    : currentSession.direction === 'speech_to_sign'
-                      ? 'Speech → Sign'
-                      : 'Text → Sign'}
-                </p>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl overflow-hidden bg-black hidden sm:flex items-center justify-center shadow-lg border border-white/10 p-1">
+                  <img src={logo} alt="Logo" className="w-full h-full object-contain" />
+                </div>
+                <div className="translate-y-0.5 sm:translate-y-1">
+                  <h1 className={`${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'} font-serif italic tracking-tight leading-none mb-0.5 sm:mb-1 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                    SignBridge Ghana
+                  </h1>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-500 dark:text-blue-400 leading-none">
+                    {currentSession.direction === 'sign_to_speech'
+                      ? 'Sign → Speech'
+                      : currentSession.direction === 'speech_to_sign'
+                        ? 'Speech → Sign'
+                        : 'Text → Sign'}
+                  </p>
+                </div>
               </div>
             </div>
 

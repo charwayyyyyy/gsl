@@ -5,6 +5,7 @@ import { useAppStore, useAccessibilitySettings } from '@/stores/appStore'
 import { BookOpen, Shield, Accessibility, Zap, Sun, Moon, Info, AlertTriangle, Cpu, Globe, Lock, CheckCircle2 } from 'lucide-react'
 import { useTheme } from '@/hooks/useTheme'
 import { API_BASE_URL } from '@/config'
+import logo from '@/assets/signbridge.png'
 
 export default function Home() {
   const navigate = useNavigate()
@@ -68,6 +69,13 @@ export default function Home() {
       </div>
 
       <div className="w-full max-w-7xl relative z-10 flex flex-col items-center">
+        {/* Logo Section */}
+        <div className="mt-4 sm:mt-8 mb-6 animate-fade-in flex flex-col items-center">
+          <div className="w-32 h-32 sm:w-48 sm:h-48 rounded-[2.5rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.3)] bg-black p-4 border border-white/10 hover:scale-105 transition-transform duration-500">
+            <img src={logo} alt="SignBridge Ghana Logo" className="w-full h-full object-contain" />
+          </div>
+        </div>
+
         {/* Hero Section */}
         <div className="text-center mt-6 sm:mt-12 mb-10 sm:mb-16 animate-fade-in">
           <h1 className={`font-bold tracking-tight mb-6 leading-[1.1]

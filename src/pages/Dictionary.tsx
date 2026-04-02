@@ -8,6 +8,7 @@ import {
 import { analytics } from '../services/analytics'
 import { useAppStore } from '../stores/appStore'
 import { API_BASE_URL } from '@/config'
+import logo from '@/assets/signbridge.png'
 
 // Add interface for SpeechRecognition
 interface IWindow extends Window {
@@ -345,13 +346,18 @@ const Dictionary: React.FC = () => {
                 <ArrowLeft className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
               </button>
 
-              <div>
-                <h1 className={`${accessibility.largeText ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'} font-serif italic tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
-                  SignBridge Ghana
-                </h1>
-                <p className={`${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-sm'} font-sans font-black uppercase tracking-[0.2em] ${accessibility.highContrast ? 'text-yellow-300' : 'text-blue-500 dark:text-blue-400'}`}>
-                  Visual Reference
-                </p>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl overflow-hidden bg-black hidden sm:flex items-center justify-center shadow-lg border border-white/10 p-1">
+                  <img src={logo} alt="Logo" className="w-full h-full object-contain" />
+                </div>
+                <div>
+                  <h1 className={`${accessibility.largeText ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'} font-serif italic tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                    SignBridge Ghana
+                  </h1>
+                  <p className={`${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-sm'} font-sans font-black uppercase tracking-[0.2em] ${accessibility.highContrast ? 'text-yellow-300' : 'text-blue-500 dark:text-blue-400'}`}>
+                    Visual Reference
+                  </p>
+                </div>
               </div>
             </div>
 
