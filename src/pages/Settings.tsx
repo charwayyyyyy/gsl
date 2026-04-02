@@ -464,6 +464,17 @@ const Settings: React.FC = () => {
               setHasChanges(true)
             }
           )}
+
+          {renderToggle(
+            'Demo Presentation Mode',
+            'Enable simulated inputs for smooth presentations',
+            <span className="text-2xl">📽️</span>,
+            visual.demoMode,
+            (val) => {
+              visual.updateVisual({ demoMode: val })
+              setHasChanges(true)
+            }
+          )}
         </div>
       </div>
 

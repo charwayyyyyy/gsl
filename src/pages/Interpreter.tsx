@@ -10,6 +10,8 @@ import AudioCapture from '../components/AudioCapture'
 const Avatar3D = React.lazy(() => import('../components/Avatar3D'))
 import SmartTipsOverlay from '../components/SmartTipsOverlay'
 
+import { SIGN_TO_SPEECH_DEMO, SPEECH_TO_SIGN_DEMO, TEXT_TO_SIGN_DEMO, DemoScenario } from '../config/demoData'
+
 interface SignPrimitives {
   direction: 'UP' | 'DOWN' | 'LEFT' | 'RIGHT' | 'FORWARD' | 'CIRCULAR' | 'TAP' | 'HOLD' | 'NONE'
   repetition: 'SINGLE' | 'REPEAT'
@@ -90,6 +92,56 @@ const Interpreter: React.FC = () => {
   const audioSocket = useWebSocket(`${WS_BASE_URL}/api/audio/stream`)
 
   const { accessibility, visual, audio } = settings
+
+  // Demo simulation state
+  const [isDemoRunning, setIsDemoRunning] = useState(false)
+  const [demoStep, setDemoStep] = useState<'idle' | 'detecting' | 'processing' | 'success'>('idle')
+
+  const runDemoScenario = useCallback(async (scenario: DemoScenario) => {
+    if (isDemoRunning) return
+    setIsDemoRunning(true)
+    setDemoStep('detecting')
+    setConfidence(0)
+    setLivePredictedGloss(null)
+    setLivePredictedConf(0)
+    
+    // Step 1: Detecting (800ms)
+    await new Promise(r => setTimeout(r, 800))
+    setDemoStep('processing')
+    setConfidence(0.2)
+    
+    // Step 2: Processing (1000ms)
+    await new Promise(r => setTimeout(r, 1000))
+    setDemoStep('success')
+    
+    // Apply results based on mode
+    if (currentSession?.direction === 'sign_to_speech') {
+      setLivePredictedGloss(scenario.output)
+      setLivePredictedConf(scenario.confidence)
+      setConfidence(scenario.confidence)
+      setTranslationText(scenario.output)
+      setLastUpdateTime(new Date().toLocaleTimeString())
+      
+      // Update sequence
+      const newSign: SignWord = {
+        word: scenario.output,
+        gloss: scenario.output,
+        images: [],
+        description: 'Demo simulated sign',
+        confidence: scenario.confidence,
+        match_type: 'Demo',
+        variants: 0,
+        status: 'matched'
+      }
+      setSignSequence(prev => [...prev.slice(-4), newSign])
+    } else {
+      // Speech to sign / Text to sign
+      runTextToSignPipeline(scenario.input, 'manual', scenario.confidence)
+    }
+
+    setIsDemoRunning(false)
+    setTimeout(() => setDemoStep('idle'), 2000)
+  }, [currentSession?.direction, isDemoRunning])
 
   useEffect(() => {
     if (!currentSession) {
@@ -1000,6 +1052,37 @@ const Interpreter: React.FC = () => {
                     </div>
                   </div>
                 )}
+                {/* Demo Mode Overlay */}
+                {visual.demoMode && (
+                  <div className="absolute inset-0 z-30 pointer-events-none">
+                    <div className="absolute top-4 right-4 px-3 py-1 rounded-full bg-blue-600/80 backdrop-blur-md text-white text-[8px] font-black uppercase tracking-widest border border-white/20 shadow-lg animate-pulse">
+                      Demo Mode Active
+                    </div>
+                    
+                    {isDemoRunning && (
+                      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center animate-fade-in pointer-events-auto">
+                        <div className="flex flex-col items-center gap-4">
+                          <div className="relative w-16 h-16">
+                            <div className="absolute inset-0 border-4 border-white/10 rounded-full" />
+                            <div className={`absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full ${demoStep !== 'idle' ? 'animate-spin' : ''}`} />
+                          </div>
+                          <div className="text-center">
+                            <span className="text-xs font-black text-white uppercase tracking-[0.2em] block mb-1">
+                              {demoStep === 'detecting' ? 'Analyzing Movement...' : 
+                               demoStep === 'processing' ? 'Matching Patterns...' : 
+                               'Recognition Success'}
+                            </span>
+                            <div className="flex gap-1 justify-center">
+                              <div className={`w-1 h-1 rounded-full bg-blue-500 ${demoStep === 'detecting' ? 'animate-bounce' : ''}`} />
+                              <div className={`w-1 h-1 rounded-full bg-blue-500 ${demoStep === 'detecting' ? 'animate-bounce' : ''}`} style={{ animationDelay: '0.2s' }} />
+                              <div className={`w-1 h-1 rounded-full bg-blue-500 ${demoStep === 'detecting' ? 'animate-bounce' : ''}`} style={{ animationDelay: '0.4s' }} />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
                 {currentSession.direction === 'sign_to_speech' ? (
                   <>
                     <VideoCapture
@@ -1095,6 +1178,25 @@ const Interpreter: React.FC = () => {
                       <Keyboard className="w-8 h-8" />
                       Translate
                     </button>
+                    {/* Demo Example Controls */}
+                    {visual.demoMode && !isDemoRunning && (
+                      <div className="mt-8 flex flex-col gap-3 animate-slide-up">
+                        <span className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em] mb-1">Demo Scenarios</span>
+                        <div className="flex flex-wrap gap-2">
+                          {(currentSession.direction === 'sign_to_speech' ? SIGN_TO_SPEECH_DEMO : 
+                            currentSession.direction === 'speech_to_sign' ? SPEECH_TO_SIGN_DEMO : 
+                            TEXT_TO_SIGN_DEMO).map((scenario) => (
+                            <button
+                              key={scenario.id}
+                              onClick={() => runDemoScenario(scenario)}
+                              className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] font-black text-white/80 uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
+                            >
+                              Run: {scenario.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
