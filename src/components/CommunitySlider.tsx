@@ -70,7 +70,7 @@ export default function CommunitySlider() {
                 <h2 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white mb-2">
                     Who We <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-500 to-indigo-500">Serve</span>
                 </h2>
-                <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base max-w-xl mx-auto">
+                <p className="text-slate-600 dark:text-slate-400 text-sm sm:text-base max-w-xl mx-auto">
                     Real people across Ghana whose lives are transformed through accessible sign language technology.
                 </p>
             </div>

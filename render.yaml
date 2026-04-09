@@ -1,11 +1,26 @@
 services:
   - type: web
-    name: gsl-interpreter-backend
+    name: gsl-fullstack
     env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    buildCommand: |
+      npm install && npm run build && \
+      pip install -r api/requirements.txt && \
+      python scripts/extract_gsl_dictionary.py && \
+      python scripts/build_dictionary_sign_embeddings.py
+    startCommand: |
+      # Serve frontend static files and backend API in one service to save RAM
+      # Alternatively, use two services if RAM allows, but for free tier, 
+      # we can use a small script or just uvicorn to serve both if configured.
+      # For now, we assume a standard setup.
+      python -m uvicorn api.main:app --host 0.0.0.0 --port $PORT
     envVars:
+      - key: NODE_VERSION
+        value: 18.17.0
       - key: PYTHON_VERSION
-        value: 3.11.0
+        value: 3.10.12
+      - key: API_BASE_URL
+        value: https://gsl-fullstack.onrender.com
       - key: GEMINI_API_KEY
-        sync: false
+        generateValue: false # Set this manually in Render Dashboard
+    plan: free
+    region: ohio

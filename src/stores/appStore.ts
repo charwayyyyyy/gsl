@@ -31,6 +31,7 @@ export interface VisualSettings {
   animationQuality: 'low' | 'medium' | 'high'
   colorScheme: 'default' | 'high_contrast' | 'dark' | 'light'
   signingSpaceOverlay: boolean
+  demoMode: boolean
 }
 
 export interface GhanaSpecificSettings {
@@ -118,7 +119,8 @@ const defaultSettings: AppSettings = {
     showLandmarks: true,
     animationQuality: 'high',
     colorScheme: 'default',
-    signingSpaceOverlay: true
+    signingSpaceOverlay: true,
+    demoMode: false
   },
   ghana: {
     localDialects: true,

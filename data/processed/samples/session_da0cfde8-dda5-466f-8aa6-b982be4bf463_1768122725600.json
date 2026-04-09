@@ -1,0 +1,14 @@
+{
+  "frames": [
+    {
+      "hands": [],
+      "pose": [],
+      "face": []
+    }
+  ],
+  "start_time": 1768122724.61933,
+  "end_time": 1768122725.600025,
+  "fps": 1.0196850096989474,
+  "predicted_gloss": null,
+  "confidence": 0.0
+}

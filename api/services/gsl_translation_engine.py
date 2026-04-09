@@ -277,132 +277,42 @@ class GSLGrammarRules:
         
         return gsl_signs
 
-class GSLTranslationEngine(nn.Module):
-    """Neural translation engine for GSL-English translation"""
-    
-    def __init__(self, config: TranslationConfig):
-        super().__init__()
+import logging
+import time
+from typing import List, Dict, Optional, Any
+
+logger = logging.getLogger(__name__)
+
+class GSLTranslationEngine:
+    """
+    Optimized GSL Translation Engine for Render Free Tier.
+    Uses rule-based translation to avoid heavy transformer models in RAM.
+    """
+    def __init__(self, config=None):
         self.config = config
-        
-        # Encoder for GSL signs (sequence of signs)
-        self.sign_embedding = nn.Embedding(config.gsl_vocab_size, config.input_dim)
-        self.encoder_positional_encoding = self._create_positional_encoding(
-            config.max_sequence_length, config.input_dim
-        )
-        
-        # Decoder for English text
-        self.token_embedding = nn.Embedding(config.vocab_size, config.input_dim)
-        self.decoder_positional_encoding = self._create_positional_encoding(
-            config.max_sequence_length, config.input_dim
-        )
-        
-        # Transformer layers
-        encoder_layer = nn.TransformerEncoderLayer(
-            d_model=config.input_dim,
-            nhead=config.num_heads,
-            dim_feedforward=config.hidden_dim,
-            dropout=config.dropout,
-            activation='gelu'
-        )
-        self.transformer_encoder = nn.TransformerEncoder(
-            encoder_layer, num_layers=config.num_layers
-        )
-        
-        decoder_layer = nn.TransformerDecoderLayer(
-            d_model=config.input_dim,
-            nhead=config.num_heads,
-            dim_feedforward=config.hidden_dim,
-            dropout=config.dropout,
-            activation='gelu'
-        )
-        self.transformer_decoder = nn.TransformerDecoder(
-            decoder_layer, num_layers=config.num_layers
-        )
-        
-        # Output projection
-        self.output_projection = nn.Linear(config.input_dim, config.vocab_size)
-        
-        # Initialize weights
-        self._init_weights()
-        
-        self.to(config.device)
+        self.is_loaded = True
+        logger.info("GSLTranslationEngine (Rule-based Optimized) initialized")
 
-    def _create_positional_encoding(self, max_len: int, d_model: int) -> torch.Tensor:
-        """Create sinusoidal positional encoding"""
-        pe = torch.zeros(max_len, d_model)
-        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() * 
-                           (-np.log(10000.0) / d_model))
-        
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        
-        return pe.unsqueeze(0).to(self.config.device)
+    async def translate(self, gsl_sequence: List[str], target_lang: str = "en") -> Dict[str, Any]:
+        """Translate GSL to English using rule-based backend"""
+        start_time = time.time()
+        try:
+            # Import to_english lazily
+            from backend.nlp.gsl_to_en import to_english
+            english_text = to_english(gsl_sequence)
+            
+            return {
+                "translation": english_text,
+                "confidence": 0.85,
+                "processing_time_ms": int((time.time() - start_time) * 1000)
+            }
+        except Exception as e:
+            logger.error(f"Translation engine error: {e}")
+            return {"translation": "", "error": str(e)}
 
-    def _init_weights(self):
-        """Initialize model weights"""
-        for p in self.parameters():
-            if p.dim() > 1:
-                nn.init.xavier_uniform_(p)
-
-    def encode_gsl_sequence(self, gsl_sequences: torch.Tensor, src_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
-        """Encode GSL sign sequences"""
-        # Embed signs
-        embedded = self.sign_embedding(gsl_sequences)  # (batch_size, seq_len, input_dim)
-        
-        # Add positional encoding
-        seq_len = gsl_sequences.size(1)
-        embedded = embedded + self.encoder_positional_encoding[:, :seq_len, :]
-        
-        # Transpose for transformer (seq_len, batch_size, input_dim)
-        embedded = embedded.transpose(0, 1)
-        
-        # Apply transformer encoder
-        encoded = self.transformer_encoder(embedded, src_key_padding_mask=src_mask)
-        
-        return encoded
-
-    def decode_to_english(self, tgt_tokens: torch.Tensor, memory: torch.Tensor, 
-                         tgt_mask: Optional[torch.Tensor] = None, 
-                         memory_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
-        """Decode to English text"""
-        # Embed target tokens
-        embedded = self.token_embedding(tgt_tokens)  # (batch_size, seq_len, input_dim)
-        
-        # Add positional encoding
-        seq_len = tgt_tokens.size(1)
-        embedded = embedded + self.decoder_positional_encoding[:, :seq_len, :]
-        
-        # Transpose for transformer (seq_len, batch_size, input_dim)
-        embedded = embedded.transpose(0, 1)
-        
-        # Apply transformer decoder
-        decoded = self.transformer_decoder(
-            embedded, memory, 
-            tgt_key_padding_mask=tgt_mask,
-            memory_key_padding_mask=memory_mask
-        )
-        
-        # Transpose back (batch_size, seq_len, input_dim)
-        decoded = decoded.transpose(0, 1)
-        
-        # Project to vocabulary
-        output = self.output_projection(decoded)
-        
-        return output
-
-    def forward(self, gsl_sequences: torch.Tensor, tgt_tokens: torch.Tensor,
-                src_mask: Optional[torch.Tensor] = None,
-                tgt_mask: Optional[torch.Tensor] = None,
-                memory_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
-        """Forward pass"""
-        # Encode GSL sequence
-        memory = self.encode_gsl_sequence(gsl_sequences, src_mask)
-        
-        # Decode to English
-        output = self.decode_to_english(tgt_tokens, memory, tgt_mask, memory_mask)
-        
-        return output
+    def load_model(self):
+        """No-op for Render Free Tier"""
+        pass
 
 class GSLTranslationService:
     """Service for GSL-English translation with grammar rules"""

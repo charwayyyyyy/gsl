@@ -13,7 +13,8 @@ import logging
 import os
 from dotenv import load_dotenv
 load_dotenv()
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import uuid
 
 from .services.gsl_dictionary_service import GSLDictionaryService
@@ -34,7 +35,7 @@ except Exception:
 from .services.mediapipe_service import MediaPipeService
 from .services.translation_service import TranslationService
 from .services.avatar_service import AvatarService
-from .services.speech_recognition_service import SpeechRecognitionService, SpeechRecognitionConfig
+from .services.speech_recognition_service import WhisperSpeechRecognitionService, SpeechRecognitionConfig
 from backend.sign_recognition.baseline import classify
 from pathlib import Path
 from .database.models import TranslationSession, TranslationEvent, AnalyticsEvent, FeedbackReport
@@ -50,6 +51,15 @@ app = FastAPI(
     version="1.0.0"
 )
 
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "version": "1.0.0",
+        "processed_data": (Path("data")/"processed"/"images").exists()
+    }
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -59,22 +69,92 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize services
-dictionary_service = GSLDictionaryService()
-text_to_sign_service = TextToSignService()
-dict_matcher = DictionaryMatcher()
-mediapipe_service = MediaPipeService()
-from .services.translation_service import TranslationConfig
-translation_service = TranslationService(TranslationConfig())
-avatar_service = AvatarService()
-speech_service = SpeechRecognitionService(SpeechRecognitionConfig(device="cpu", language="en", fp16=False, chunk_duration=2.0, overlap_duration=0.5))
+# Initialize services lazily
+_dictionary_service = None
+_text_to_sign_service = None
+_dict_matcher = None
+_mediapipe_service = None
+_translation_service = None
+_avatar_service = None
+_speech_service = None
+
+def get_dictionary_service():
+    global _dictionary_service
+    if _dictionary_service is None:
+        from .services.gsl_dictionary_service import GSLDictionaryService
+        _dictionary_service = GSLDictionaryService()
+    return _dictionary_service
+
+def get_text_to_sign_service():
+    global _text_to_sign_service
+    if _text_to_sign_service is None:
+        from backend.dictionary.text_to_sign import TextToSignService
+        _text_to_sign_service = TextToSignService()
+    return _text_to_sign_service
+
+def get_dict_matcher():
+    global _dict_matcher
+    if _dict_matcher is None:
+        from backend.sign_matching.dictionary_matcher import DictionaryMatcher
+        _dict_matcher = DictionaryMatcher()
+    return _dict_matcher
+
+def get_mediapipe_service():
+    global _mediapipe_service
+    if _mediapipe_service is None:
+        from .services.mediapipe_service import MediaPipeService
+        _mediapipe_service = MediaPipeService()
+    return _mediapipe_service
+
+def get_translation_service():
+    global _translation_service
+    if _translation_service is None:
+        from .services.translation_service import TranslationService, TranslationConfig
+        _translation_service = TranslationService(TranslationConfig())
+    return _translation_service
+
+def get_avatar_service():
+    global _avatar_service
+    if _avatar_service is None:
+        from .services.avatar_service import AvatarService
+        _avatar_service = AvatarService()
+    return _avatar_service
+
+def get_speech_service():
+    global _speech_service
+    if _speech_service is None:
+        from .services.speech_recognition_service import WhisperSpeechRecognitionService, SpeechRecognitionConfig
+        _speech_service = WhisperSpeechRecognitionService(SpeechRecognitionConfig(language="en"))
+    return _speech_service
+
 _audio_buffers: Dict[str, Any] = {}
 
 # Serve extracted dictionary images
 try:
-    app.mount("/static", StaticFiles(directory=str(Path("data")/"processed"/"images")), name="static")
-except Exception:
-    pass
+    images_path = Path("data")/"processed"/"images"
+    images_path.mkdir(parents=True, exist_ok=True)
+    # Explicitly check if directory is empty and warn
+    if not any(images_path.iterdir()):
+        logger.warning(f"Static images directory {images_path} is empty. Dictionary images will not show until extraction runs.")
+    app.mount("/static", StaticFiles(directory=str(images_path)), name="static")
+    logger.info(f"Mounted static images from {images_path}")
+except Exception as e:
+    logger.error(f"Failed to mount static files: {e}")
+
+@app.get("/api/dictionary-pdf")
+async def get_dictionary_pdf():
+    pdf_path = Path("Ghanaian Sign Language Dictionary - 3rd Edition.pdf")
+    if not pdf_path.exists():
+        # Fallback if the path is slightly different
+        pdf_path = Path("data/raw/gsl_dictionary.pdf")
+        
+    if not pdf_path.exists():
+        # On Render, the raw 250MB PDF is often missing to save space.
+        # The dictionary features still work because processed data is pushed.
+        raise HTTPException(
+            status_code=404, 
+            detail="The full PDF dictionary is unavailable in the web environment to optimize performance. However, you can still search all signs and view diagrams in the Dictionary section."
+        )
 
 # WebSocket connection managers
 class ConnectionManager:
@@ -184,9 +264,10 @@ class ChatRequest(BaseModel):
 
 # Configure Gemini AI
 api_key = os.getenv("GEMINI_API_KEY")
+gemini_client = None
 if api_key:
-    genai.configure(api_key=api_key)
-    logger.info("Gemini AI configured successfully")
+    gemini_client = genai.Client(api_key=api_key)
+    logger.info("Gemini AI (google-genai) configured successfully")
 else:
     logger.warning("GEMINI_API_KEY environment variable not set. Chatbot will not work.")
 
@@ -267,13 +348,11 @@ async def startup_event():
       except Exception as e:
         logger.warning(f"Dictionary seed failed: {e}")
       if build_sign_index and not Path("data/processed/gsl_sign_index.json").exists():
-        try: build_sign_index()
-        except Exception as e: logger.warning(f"build_sign_index failed: {e}")
+        logger.info("Sign index missing, but skipping build during startup for Render safety.")
       if build_motion_templates and not Path("data/processed/dictionary_motion_templates.json").exists():
-        try: build_motion_templates()
-        except Exception as e: logger.warning(f"build_motion_templates failed: {e}")
+        logger.info("Motion templates missing, but skipping build during startup for Render safety.")
       try:
-        text_to_sign_service._load()
+        get_text_to_sign_service()._load()
       except Exception as e:
         logger.warning(f"Reload text_to_sign_service failed: {e}")
       try:
@@ -317,9 +396,9 @@ async def startup_event():
       except Exception as e:
         logger.warning(f"Validation failed: {e}")
       try:
-        first_gloss = next(iter(text_to_sign_service.dictionary.keys()), None)
+        first_gloss = next(iter(get_text_to_sign_service().dictionary.keys()), None)
         ok1 = first_gloss is not None
-        ok2 = bool(text_to_sign_service.search(first_gloss or "").get("gloss"))
+        ok2 = bool(get_text_to_sign_service().search(first_gloss or "").get("gloss"))
         static_ok = (Path("data")/"processed"/"images").exists()
         logger.info(f"Self-test: dict_loaded={ok1} search_ok={ok2} static_ok={static_ok}")
       except Exception as e:
@@ -359,7 +438,7 @@ async def video_stream(websocket: WebSocket):
                 frame_data = base64.b64decode(message["data"])
                 
                 # Process frame with MediaPipe
-                pose_data = await mediapipe_service.process_frame(frame_data)
+                pose_data = await get_mediapipe_service().process_frame(frame_data)
                 
                 # Baseline classification (pose-only)
                 pose_lms = pose_data.get("landmarks", {}).get("pose")
@@ -378,8 +457,8 @@ async def video_stream(websocket: WebSocket):
                 try:
                     # Run CPU-bound DTW matchers in a thread so they don't block the WebSocket event loop
                     def run_matchers():
-                        g_best, s_best = dict_matcher.best_match(seq)
-                        t_best = dict_matcher.top_matches(seq, 3)
+                        g_best, s_best = get_dict_matcher().best_match(seq)
+                        t_best = get_dict_matcher().top_matches(seq, 3)
                         return g_best, s_best, t_best
 
                     g, score, tops = await asyncio.to_thread(run_matchers)
@@ -468,43 +547,56 @@ async def audio_stream(websocket: WebSocket):
                 raw = base64.b64decode(message["data"])  
                 import numpy as np
                 audio = np.frombuffer(raw, dtype=np.float32)
+                
                 # Buffer audio and transcribe when chunk ready
                 buf = _audio_buffers.get(session_id)
                 if buf is None:
                     _audio_buffers[session_id] = []
                     buf = _audio_buffers[session_id]
                 buf.extend(audio.tolist())
-                chunk_size = int(speech_service.chunk_size) if hasattr(speech_service, 'chunk_size') else 32000
-                overlap = int(speech_service.overlap_size) if hasattr(speech_service, 'overlap_size') else int(0.5 * 16000)
+                
+                # Use smaller chunk size for more responsive transcription (e.g. ~2-3 seconds at 16kHz)
+                # Note: Browsers usually send 44.1kHz or 48kHz, so we need to account for that.
+                # Assuming 44.1kHz from frontend (as seen in Interpreter.tsx)
+                sample_rate = message.get("sample_rate", 44100)
+                
+                # Process every ~3 seconds of audio
+                chunk_seconds = 3
+                chunk_size = int(sample_rate * chunk_seconds)
+                overlap_seconds = 0.5
+                overlap = int(sample_rate * overlap_seconds)
+                
                 response = None
                 if len(buf) >= chunk_size:
                     chunk = np.array(buf[:chunk_size], dtype=np.float32)
-                    # keep overlap
+                    
+                    # Keep overlap for next chunk
                     _audio_buffers[session_id] = buf[chunk_size - overlap:]
+                    
                     try:
-                        result = await speech_service.transcribe_audio_chunk(chunk)
-                        response = {
-                            "type": "transcription",
-                            "text": result.get("text", ""),
-                            "confidence": result.get("confidence", 0.0),
-                            "timestamp": message["timestamp"],
-                            "session_id": session_id
-                        }
+                        # Use transcribe_audio which handles numpy -> WAV conversion
+                        # Pass sample_rate explicitly to ensure correct WAV header
+                        result = await get_speech_service().transcribe_audio(chunk, sample_rate=sample_rate)
+                        
+                        if result.get("text"):
+                            response = {
+                                "type": "transcription",
+                                "text": result.get("text", ""),
+                                "confidence": result.get("confidence", 0.0),
+                                "timestamp": message["timestamp"],
+                                "session_id": session_id
+                            }
                     except Exception as e:
-                        response = {
-                            "type": "transcription",
-                            "text": "",
-                            "confidence": 0.0,
-                            "error": str(e),
-                            "timestamp": message["timestamp"],
-                            "session_id": session_id
-                        }
+                        logger.error(f"Transcription error: {e}")
+                        # Don't send error to client for every chunk failure to avoid spam
                 
                 if response:
                     await manager.send_personal_message(json.dumps(response), session_id)
                 
     except WebSocketDisconnect:
         manager.disconnect(session_id)
+        if session_id in _audio_buffers:
+            del _audio_buffers[session_id]
     except Exception as e:
         logger.error(f"Error in audio stream: {str(e)}")
         await manager.send_personal_message(json.dumps({"error": str(e)}), session_id)
@@ -514,7 +606,7 @@ async def audio_stream(websocket: WebSocket):
 async def translate_sign_to_speech(request: SignToSpeechRequest):
     try:
         # Process pose sequence with sign recognition
-        translation = await translation_service.translate_sign_to_speech(
+        translation = await get_translation_service().translate_sign_to_speech(
             request.pose_sequence, 
             request.context
         )
@@ -544,7 +636,7 @@ async def translate_sign_to_speech(request: SignToSpeechRequest):
 async def translate_speech_to_sign(request: SpeechToSignRequest):
     try:
         # Process text with speech-to-sign translation
-        translation = await translation_service.translate_speech_to_sign(
+        translation = await get_translation_service().translate_speech_to_sign(
             request.text,
             request.speed
         )
@@ -574,7 +666,7 @@ async def translate_speech_to_sign(request: SpeechToSignRequest):
 async def render_avatar(request: AvatarRequest):
     try:
         # Generate avatar animation data
-        animation_data = await avatar_service.render_avatar(
+        animation_data = await get_avatar_service().render_avatar(
             request.gsl_sequence,
             request.animation_mode,
             request.speed,
@@ -591,7 +683,7 @@ async def render_avatar(request: AvatarRequest):
 @app.get("/api/dictionary/search")
 async def search_dictionary(q: str):
     try:
-        r = text_to_sign_service.search(q)
+        r = get_text_to_sign_service().search(q)
         return {
             "gloss": r.get("gloss"),
             "images": r.get("images", []),
@@ -645,7 +737,7 @@ async def list_dictionary(letter: str = "A"):
     try:
         items = []
         l = (letter or "A").upper()
-        for gloss, e in text_to_sign_service.dictionary.items():
+        for gloss, e in get_text_to_sign_service().dictionary.items():
             if gloss.upper().startswith(l):
                 items.append({
                     "gloss": gloss,
@@ -661,7 +753,7 @@ async def list_dictionary(letter: str = "A"):
 @app.get("/api/dictionary/sign/{sign_id}")
 async def get_sign_details(sign_id: str):
     try:
-        sign = await dictionary_service.get_sign_by_id(sign_id)
+        sign = await get_dictionary_service().get_sign_by_id(sign_id)
         if not sign:
             raise HTTPException(status_code=404, detail="Sign not found")
         return sign
@@ -726,12 +818,10 @@ async def end_translation_session(session_id: str):
 # Gemini Help Chatbot endpoint
 @app.post("/api/chat")
 async def chat_with_gemini(request: ChatRequest):
-    if not os.getenv("GEMINI_API_KEY"):
+    if not gemini_client:
         raise HTTPException(status_code=500, detail="Gemini API is not configured on the server.")
     
     try:
-        model = genai.GenerativeModel('gemini-2.5-flash')
-        
         # Convert simple message format to Gemini format
         history = []
         for msg in request.messages[:-1]:
@@ -744,11 +834,15 @@ async def chat_with_gemini(request: ChatRequest):
             "Keep your answers concise, clear, and very friendly. If they ask about sign language, provide brief tips."
         )
         
-        model = genai.GenerativeModel('gemini-2.5-flash', system_instruction=system_prompt)
-        chat = model.start_chat(history=history)
-        
         last_message = request.messages[-1].content
-        response = chat.send_message(last_message)
+        
+        response = gemini_client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=history + [{"role": "user", "parts": [{"text": last_message}]}],
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+            )
+        )
         
         return {"response": response.text}
     except Exception as e:
@@ -759,14 +853,17 @@ async def chat_with_gemini(request: ChatRequest):
 # Handle SPA routing: redirect unknown paths to index.html
 @app.get("/{catchall:path}")
 async def serve_frontend(catchall: str):
-    # Exclude /api, /health, /static from catchall if uvicorn didn't catch them
-    if catchall.startswith("api/") or catchall.startswith("health") or catchall.startswith("static/"):
+    # Exclude API and static paths explicitly
+    if catchall.startswith("api") or catchall.startswith("health") or catchall.startswith("static") or catchall.startswith("ws"):
         raise HTTPException(status_code=404)
         
     dist_path = Path("dist") / catchall
+    
+    # If the exact file exists in dist (like assets/index.js), serve it
     if dist_path.exists() and dist_path.is_file():
         return FileResponse(dist_path)
     
+    # For all other routes (like /interpreter, /dictionary), serve index.html for SPA routing
     index_path = Path("dist") / "index.html"
     if index_path.exists():
         return FileResponse(index_path)

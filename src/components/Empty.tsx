@@ -8,7 +8,7 @@ export default function Empty() {
         <Search className="w-10 h-10 text-slate-400" />
       </div>
       <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">No results found</h3>
-      <p className="text-slate-500 dark:text-slate-400 max-w-xs">
+      <p className="text-slate-600 dark:text-slate-400 max-w-xs">
         Try adjusting your search or filters to find what you're looking for.
       </p>
     </div>

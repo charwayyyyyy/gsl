@@ -179,17 +179,20 @@ if __name__ == "__main__":
 
     ensure_dirs()
     if not pdf_path.exists():
-        print(f"PDF not found at {pdf_path}. Place the official dictionary as 'data/raw/gsl_dictionary.pdf'.")
-        # Write empty JSON to keep pipeline consistent
+        print(f"PDF not found at {pdf_path}. Skipping extraction.")
+        # Do not overwrite existing JSON if it exists
         out_path = PROCESSED_DIR / "gsl_dictionary.json"
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump({"entries": [], "count": 0}, f, ensure_ascii=False, indent=2)
-        print(f"Wrote empty dataset to {out_path}")
+        if not out_path.exists():
+            with open(out_path, "w", encoding="utf-8") as f:
+                json.dump({}, f, ensure_ascii=False, indent=2)
+            print(f"Wrote empty dataset to {out_path}")
+        else:
+            print(f"Preserving existing dataset at {out_path}")
     else:
         entries = pdf_to_strict_json(pdf_path)
         validate_schema(entries)
         out_path = PROCESSED_DIR / "gsl_dictionary.json"
         with open(out_path, "w", encoding="utf-8") as f:
             json.dump(entries, f, ensure_ascii=False, indent=2)
-        print(f"Wrote {len(entries)} entries to {out_path}")
+        print(f"Successfully extracted {len(entries)} entries to {out_path}")
 

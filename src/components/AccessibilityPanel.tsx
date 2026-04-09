@@ -37,7 +37,7 @@ const AccessibilityPanel: React.FC = () => {
               <label className={`font-semibold text-slate-800 dark:text-slate-200 ${accessibility.largeText ? 'text-xl' : 'text-lg'}`}>
                 High Contrast
               </label>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Enhance visual clarity</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Enhance visual clarity</p>
             </div>
           </div>
           <button
@@ -65,7 +65,7 @@ const AccessibilityPanel: React.FC = () => {
               <label className={`font-semibold text-slate-800 dark:text-slate-200 ${accessibility.largeText ? 'text-xl' : 'text-lg'}`}>
                 Large Text
               </label>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Better readability</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Better readability</p>
             </div>
           </div>
           <button
@@ -93,7 +93,7 @@ const AccessibilityPanel: React.FC = () => {
               <label className={`font-semibold text-slate-800 dark:text-slate-200 ${accessibility.largeText ? 'text-xl' : 'text-lg'}`}>
                 Reduced Motion
               </label>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Minimize animations</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">Minimize animations</p>
             </div>
           </div>
           <button

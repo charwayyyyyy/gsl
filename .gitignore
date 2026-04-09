@@ -37,7 +37,7 @@ data/raw_pdf/
 data/chunks_pdf/
 data/images/
 data/embeddings/
-data/processed/
+# data/processed/  <-- ALLOW THIS to be pushed so dictionary works on Render
 data/raw/*.pdf
 data/images/signs/
 models/
