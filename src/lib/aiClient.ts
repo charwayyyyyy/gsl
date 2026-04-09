@@ -1,6 +1,20 @@
 import { API_BASE_URL } from '@/config';
 
-export const fetchAiResponse = async (userInput: string): Promise<string> => {
+export interface DictionarySource {
+  gloss: string;
+  english: string;
+  page: number;
+  description: string;
+  images: string[];
+}
+
+export interface AssistantResponse {
+  answer: string;
+  sources: DictionarySource[];
+  used_fallback: boolean;
+}
+
+export const fetchAiResponse = async (userInput: string): Promise<AssistantResponse> => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/ai/chat`, {
       method: "POST",
@@ -9,24 +23,22 @@ export const fetchAiResponse = async (userInput: string): Promise<string> => {
     });
 
     if (!response.ok) {
-      return "Connection issue. Please try again.";
+      return {
+        answer: "Connection issue. Please try again.",
+        sources: [],
+        used_fallback: true
+      };
     }
 
     const data = await response.json();
-    
-    // In case fallback is triggered
-    if (data.fallback) {
-      return data.candidates?.[0]?.content?.parts?.[0]?.text || "Assistant is temporarily unavailable.";
-    }
+    return data as AssistantResponse;
 
-    // Google Gemini API typical nested structure
-    const text =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "Sorry, I couldn’t process that.";
-
-    return text;
   } catch (error) {
     console.error("AI Assistant Error:", error);
-    return "Connection issue. Please try again.";
+    return {
+      answer: "Connection issue. Please try again.",
+      sources: [],
+      used_fallback: true
+    };
   }
 };
