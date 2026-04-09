@@ -8,6 +8,7 @@ import VideoCapture from '../components/VideoCapture'
 import AudioCapture from '../components/AudioCapture'
 const Avatar3D = React.lazy(() => import('../components/Avatar3D'))
 import SmartTipsOverlay from '../components/SmartTipsOverlay'
+import { useSignRecognition } from '../hooks/useSignRecognition'
 
 import { SIGN_TO_SPEECH_DEMO, SPEECH_TO_SIGN_DEMO, TEXT_TO_SIGN_DEMO, DemoScenario } from '../config/demoData'
 import logo from '@/assets/signbridge.png'
@@ -95,6 +96,9 @@ const Interpreter: React.FC = () => {
   const [livePrimitives, setLivePrimitives] = useState<SignPrimitives | null>(null)
 
   const { startTranslationSession, endTranslationSession, setLastTranslation } = useAppStore.getState()
+
+  // Local MediaPipe Pipeline
+  const { isReady, isDetecting, predictedGloss, confidence: localConfidence, processVideoFrame } = useSignRecognition()
 
   // WebSocket connections
   const videoSocket = useWebSocket(`${WS_BASE_URL}/api/video/stream`)
@@ -428,18 +432,10 @@ const Interpreter: React.FC = () => {
     return () => clearInterval(interval)
   }, [autoPlay, signSequence, currentSignIndex])
 
-  // Handle video frame processing
+  // Handle video frame processing (disabled websocket transfer for frontend recognition)
   const handleVideoFrame = useCallback((frameData: string) => {
-    if (videoSocket.isConnected && currentSession) {
-      videoSocket.sendMessage({
-        type: 'video_frame',
-        data: frameData,
-        timestamp: Date.now(),
-        session_id: currentSession.id,
-        resolution: { width: 640, height: 480 }
-      })
-    }
-  }, [videoSocket.isConnected, currentSession])
+    // No-op string processing - handled via requestAnimationFrame
+  }, [])
 
   // Handle audio data processing
   const handleAudioData = useCallback((audioData: Float32Array) => {
@@ -528,6 +524,81 @@ const Interpreter: React.FC = () => {
     setAutoPlay(true)
   }, [])
 
+  // Frame capture loop for local recognition
+  useEffect(() => {
+    let animId: number;
+    const loop = () => {
+      const vid = document.querySelector('video');
+      if (vid && isReady) {
+        processVideoFrame(vid, performance.now());
+      }
+      animId = requestAnimationFrame(loop);
+    };
+    loop();
+    return () => cancelAnimationFrame(animId);
+  }, [isReady, processVideoFrame]);
+
+  // Local Recognition State Sync
+  useEffect(() => {
+    if (predictedGloss && predictedGloss !== 'UNKNOWN' && localConfidence > 0.65 && predictedGloss !== livePredictedGloss) {
+      setIsProcessing(true);
+      setIsSignRecognized(true);
+      setConfidence(localConfidence);
+      setLivePredictedGloss(predictedGloss);
+      setLivePredictedConf(localConfidence);
+
+      const key = predictedGloss.toLowerCase();
+      const cached = dictionaryCache[key];
+
+      const newSign: SignWord = cached ? {
+        word: predictedGloss,
+        gloss: cached.gloss,
+        images: cached.images || [],
+        description: cached.description || '',
+        confidence: localConfidence,
+        match_type: 'Live',
+        variants: cached.variants || 0,
+        status: 'matched',
+        primitives: cached.primitives
+      } : {
+        word: predictedGloss,
+        gloss: predictedGloss,
+        images: [],
+        description: 'Detected from live sign',
+        confidence: localConfidence,
+        match_type: 'Live',
+        variants: 0,
+        status: 'matched'
+      };
+
+      setSignSequence(prev => {
+        const last = prev[prev.length - 1];
+        if (last?.gloss === predictedGloss) return prev;
+        const next = [...prev, newSign];
+        return next.slice(-5);
+      });
+
+      setTranslationText(prev => {
+        const words = prev.trim().split(' ');
+        if (words[words.length - 1] !== predictedGloss) {
+          const newText = prev ? `${prev} ${predictedGloss}` : predictedGloss;
+          setLastTranslation({
+            input: 'Sign Language',
+            output: newText,
+            confidence: localConfidence,
+            timestamp: Date.now()
+          });
+          return newText;
+        }
+        return prev;
+      });
+      setTimeout(() => {
+        setIsProcessing(false);
+        setIsSignRecognized(false);
+      }, 1000);
+    }
+  }, [predictedGloss, localConfidence, livePredictedGloss, setLastTranslation]);
+
   // Handle WebSocket messages
   useEffect(() => {
     if (videoSocket.lastMessage) {
@@ -546,64 +617,6 @@ const Interpreter: React.FC = () => {
         const tops: Array<{ gloss: string; confidence: number }> = Array.isArray(message.top_matches)
           ? message.top_matches
           : []
-
-        // If high confidence new sign, update translation text and sequence
-        if (gloss && conf > 0.65 && gloss !== livePredictedGloss) {
-          setIsProcessing(true)
-          setIsSignRecognized(true)
-          // Add to sequence for visual feedback
-          const key = gloss.toLowerCase()
-          const cached = dictionaryCache[key]
-          
-          const newSign: SignWord = cached ? {
-            word: gloss,
-            gloss: cached.gloss,
-            images: cached.images || [],
-            description: cached.description || '',
-            confidence: conf,
-            match_type: 'Live',
-            variants: cached.variants || 0,
-            status: 'matched',
-            primitives: cached.primitives
-          } : {
-            word: gloss,
-            gloss: gloss,
-            images: [],
-            description: 'Detected from live sign',
-            confidence: conf,
-            match_type: 'Live',
-            variants: 0,
-            status: 'matched'
-          }
-
-          setSignSequence(prev => {
-            const last = prev[prev.length - 1]
-            if (last?.gloss === gloss) return prev
-            const next = [...prev, newSign]
-            // Keep last 5 signs for the sequence view
-            return next.slice(-5)
-          })
-
-          setTranslationText(prev => {
-            const words = prev.trim().split(' ');
-            if (words[words.length - 1] !== gloss) {
-              const newText = prev ? `${prev} ${gloss}` : gloss;
-              setLastTranslation({
-                input: 'Sign Language',
-                output: newText,
-                confidence: conf,
-                timestamp: Date.now()
-              });
-              return newText;
-            }
-            return prev;
-          });
-          
-          setTimeout(() => {
-            setIsProcessing(false)
-            setIsSignRecognized(false)
-          }, 1000)
-        }
 
         setLivePredictedGloss(gloss)
         setLivePredictedConf(conf)
