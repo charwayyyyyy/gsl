@@ -7,7 +7,7 @@ import Navbar from "@/components/Navbar";
 import { useVisualSettings } from "@/stores/appStore";
 import { useSystemHealth } from "@/hooks/useSystemHealth";
 
-const Home = lazy(() => import("@/pages/Home"));
+import Home from "@/pages/Home";
 const Interpreter = lazy(() => import("@/pages/Interpreter"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const Help = lazy(() => import("@/pages/Help"));

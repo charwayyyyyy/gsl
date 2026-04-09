@@ -1,11 +1,9 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { Home, MessageSquare, Book, Settings, HelpCircle } from 'lucide-react';
-import { useTheme } from '@/hooks/useTheme';
 import logo from '@/assets/signbridge.png';
 
 const Navbar: React.FC = () => {
-  const { isDark } = useTheme();
 
   const navItems = [
     { to: '/', icon: Home, label: 'Home' },

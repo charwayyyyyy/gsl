@@ -463,6 +463,7 @@ const AvatarRenderer: React.FC<AvatarRendererProps> = ({
         </div>
       )}
 
+
       {/* Background Glow */}
       {!accessibility.highContrast && (
         <div className="absolute -z-10 inset-0 pointer-events-none overflow-hidden rounded-3xl">

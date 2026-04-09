@@ -2,11 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import DirectionSelection from '@/components/DirectionSelection'
 import CommunitySlider from '@/components/CommunitySlider'
 import { useAppStore, useAccessibilitySettings, useVisualSettings } from '@/stores/appStore'
-import { Sparkles, Shield, Accessibility, Zap, Sun, Moon, Laptop } from 'lucide-react'
-
-import { useAppStore, useAccessibilitySettings } from '@/stores/appStore'
-import { BookOpen, Shield, Accessibility, Zap, Sun, Moon, Info, AlertTriangle, Cpu, Globe, Lock, CheckCircle2 } from 'lucide-react'
-import { useTheme } from '@/hooks/useTheme'
+import { Sparkles, Shield, Accessibility, Zap, Sun, Moon, Laptop, BookOpen, Info, AlertTriangle, Cpu, Globe, Lock, CheckCircle2 } from 'lucide-react'
 import { API_BASE_URL } from '@/config'
 import logo from '@/assets/signbridge.png'
 
