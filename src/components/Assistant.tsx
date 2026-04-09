@@ -146,7 +146,7 @@ export default function Assistant() {
                         {src.english && src.english.toUpperCase() !== src.gloss.toUpperCase() && (
                           <span className="text-xs text-slate-500 dark:text-slate-400 capitalize">{src.english}</span>
                         )}
-                        <Link to={`/dictionary?search=${encodeURIComponent(src.gloss)}`} className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline mt-1 self-start">
+                        <Link onClick={() => setIsOpen(false)} to={`/dictionary?search=${encodeURIComponent(src.gloss)}&source=assistant`} className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline mt-1 self-start">
                           Open in Dictionary →
                         </Link>
                       </div>
