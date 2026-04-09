@@ -53,12 +53,6 @@ export default function App() {
     if (colorScheme === 'default') {
       mediaQuery.addEventListener('change', applyTheme);
       return () => mediaQuery.removeEventListener('change', applyTheme);
-    if (colorScheme === 'dark' || (colorScheme === 'default' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      root.classList.add('dark');
-    } else if (colorScheme === 'light') {
-      root.classList.remove('dark');
-    } else {
-      root.classList.remove('dark');
     }
   }, [colorScheme]);
 
