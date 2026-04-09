@@ -125,7 +125,7 @@ const AudioCapture: React.FC<AudioCaptureProps> = ({
           <AlertCircle className={`${accessibility.largeText ? 'w-10 h-10' : 'w-8 h-8'} text-red-500`} />
         </div>
         <h3 className={`${getTextSize()} font-bold mb-2 text-slate-900 dark:text-white`}>Audio Error</h3>
-        <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} text-slate-500 dark:text-slate-400 text-center mb-8`}>
+        <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} text-slate-600 dark:text-slate-400 text-center mb-8`}>
           {error}
         </p>
         <button

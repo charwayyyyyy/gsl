@@ -7,6 +7,7 @@ interface VideoCaptureProps {
   onFrameCapture?: (frameData: string) => void
   showLandmarks?: boolean
   showConfidence?: boolean
+  isActive?: boolean
   className?: string
 }
 
@@ -14,6 +15,7 @@ const VideoCapture: React.FC<VideoCaptureProps> = ({
   onFrameCapture,
   showLandmarks = true,
   showConfidence = true,
+  isActive = true,
   className = ''
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -39,13 +41,15 @@ const VideoCapture: React.FC<VideoCaptureProps> = ({
   
   // Initialize video when support is confirmed
   useEffect(() => {
-    if (isSupported && !isVideoEnabled) {
+    if (isSupported && isActive && !isVideoEnabled) {
       startVideo().catch(err => {
         setError('Failed to start video capture')
         console.error('Video initialization error:', err)
       })
+    } else if (!isActive && isVideoEnabled) {
+      stopVideo()
     }
-  }, [isSupported])
+  }, [isSupported, isActive, isVideoEnabled, startVideo, stopVideo])
 
   // Handle WebRTC errors
   useEffect(() => {
@@ -145,7 +149,7 @@ const VideoCapture: React.FC<VideoCaptureProps> = ({
           <AlertCircle className={`${accessibility.largeText ? 'w-10 h-10' : 'w-8 h-8'} text-red-500`} />
         </div>
         <h3 className={`${getTextSize()} font-bold mb-2 text-slate-900 dark:text-white`}>Video Error</h3>
-        <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} text-slate-500 dark:text-slate-400 text-center mb-8`}>
+        <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} text-slate-600 dark:text-slate-400 text-center mb-8`}>
           {error}
         </p>
         <button

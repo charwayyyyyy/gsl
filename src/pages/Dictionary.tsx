@@ -8,6 +8,7 @@ import {
 import { analytics } from '../services/analytics'
 import { useAppStore } from '../stores/appStore'
 import { API_BASE_URL } from '@/config'
+import logo from '@/assets/signbridge.png'
 
 // Add interface for SpeechRecognition
 interface IWindow extends Window {
@@ -37,8 +38,18 @@ const Dictionary: React.FC = () => {
   const [letter, setLetter] = useState<string>('A')
   const [list, setList] = useState<any[]>([])
   const [reported, setReported] = useState(false)
+  const [history, setHistory] = useState<string[]>([])
+  const [relatedSigns, setRelatedSigns] = useState<any[]>([])
 
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Initialize history and cache
+  useEffect(() => {
+    const saved = JSON.parse(localStorage.getItem('search_history') || '[]')
+    setHistory(saved)
+  }, [])
+
+  const suggestions = ['Hello', 'Thank you', 'Teacher', 'Student', 'Ghana', 'Water']
 
   // Image zoom modal state
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
@@ -50,16 +61,72 @@ const Dictionary: React.FC = () => {
   const getHeaderSize = () => accessibility.largeText ? 'text-3xl sm:text-4xl' : 'text-2xl sm:text-3xl'
   const getButtonSize = () => accessibility.largeText ? 'p-5' : 'p-3'
 
+  const getImageUrl = (gloss: string, imgName: string) => {
+    // In production, images are served from /static/GLOSS/imagename.png
+    // If imgName already contains the gloss prefix (e.g. "DOG/dog_p1.png"), don't duplicate it
+    if (imgName.includes('/')) {
+      return `${API_BASE_URL}/static/${imgName}`
+    }
+    return `${API_BASE_URL}/static/${gloss}/${imgName}`
+  }
+
+  // Fetch related signs based on current gloss
+  const fetchRelatedSigns = async (gloss: string) => {
+    try {
+      // Simple keyword similarity via list API (prefix matching)
+      const firstLetter = gloss.charAt(0).toUpperCase()
+      const resp = await fetch(`${API_BASE_URL}/api/dictionary/list?letter=${encodeURIComponent(firstLetter)}`)
+      if (resp.ok) {
+        const data = await resp.json()
+        const items = Array.isArray(data?.items) ? data.items : []
+        // Filter out the current gloss and pick 3 random ones from the same letter
+        const filtered = items.filter((item: any) => item.gloss.toUpperCase() !== gloss.toUpperCase())
+        setRelatedSigns(filtered.sort(() => 0.5 - Math.random()).slice(0, 3))
+      }
+    } catch (e) {
+      console.error('Failed to fetch related signs', e)
+    }
+  }
+
   const search = async (query: string, isVoice: boolean = false) => {
     if (!query) return
     try {
       setLoading(true)
       setError(null)
       setReported(false) // Reset report status for new search
+      setResult(null) // Clear previous result to show loading state better
+      setRelatedSigns([]) // Clear related signs
 
-      const resp = await fetch(`${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(query)}`)
-      const data = await resp.json()
-      setResult(data)
+      // Check local cache first
+      const cacheKey = `dict_cache_${query.toLowerCase()}`
+      const cachedData = localStorage.getItem(cacheKey)
+      
+      let data;
+      if (cachedData) {
+        data = JSON.parse(cachedData)
+      } else {
+        const resp = await fetch(`${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(query)}`, {
+          // Simple retry logic
+          signal: AbortSignal.timeout(5000)
+        })
+        if (!resp.ok) throw new Error(`Search failed: ${resp.status}`)
+        data = await resp.json()
+        
+        // Cache valid results for 24 hours
+        if (data && data.gloss) {
+          localStorage.setItem(cacheKey, JSON.stringify(data))
+        }
+      }
+      
+      // Handle the case where the API returns a success but no data (shouldn't happen with our backend but good to check)
+      if (!data) {
+        setResult({ gloss: '', images: [], description: 'No results found', match_type: 'None', confidence: 0, alternatives: [], variants: 0 })
+      } else {
+        setResult(data)
+        if (data.gloss) {
+          fetchRelatedSigns(data.gloss)
+        }
+      }
 
       // Track analytics
       analytics.track({
@@ -73,9 +140,11 @@ const Dictionary: React.FC = () => {
       })
 
       // Save to local history
-      const history = JSON.parse(localStorage.getItem('search_history') || '[]')
-      if (!history.includes(query)) {
-        localStorage.setItem('search_history', JSON.stringify([query, ...history].slice(0, 10)))
+      const savedHistory = JSON.parse(localStorage.getItem('search_history') || '[]')
+      if (!savedHistory.includes(query)) {
+        const newHistory = [query, ...savedHistory].slice(0, 5)
+        localStorage.setItem('search_history', JSON.stringify(newHistory))
+        setHistory(newHistory)
       }
     } catch (e: any) {
       setError('Failed to search dictionary')
@@ -154,12 +223,17 @@ const Dictionary: React.FC = () => {
 
   const fetchList = async (ltr: string) => {
     try {
+      setLoading(true) // Show loading for alphabet browsing too
       setError(null)
       const resp = await fetch(`${API_BASE_URL}/api/dictionary/list?letter=${encodeURIComponent(ltr)}`)
+      if (!resp.ok) throw new Error('Failed to load dictionary list')
       const data = await resp.json()
       setList(Array.isArray(data?.items) ? data.items : [])
-    } catch {
+    } catch (e: any) {
+      setError(e.message || 'Failed to load signs starting with ' + ltr)
       setList([])
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -243,6 +317,7 @@ const Dictionary: React.FC = () => {
 
   return (
     <div className={`min-h-screen relative overflow-hidden ${accessibility.highContrast ? 'bg-black text-yellow-400' : 'bg-slate-50 dark:bg-[#050505]'}`}>
+    <div className={`min-h-screen relative overflow-hidden ${accessibility.highContrast ? 'bg-black text-yellow-400' : 'bg-slate-50 dark:bg-slate-950'}`}>
       {/* Background Orbs */}
       {!accessibility.highContrast && (
         <>
@@ -251,8 +326,8 @@ const Dictionary: React.FC = () => {
         </>
       )}
 
-      {/* Header */}
-      <div className={`sticky top-0 z-50 ${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-b-2' : 'glass border-b border-white/20'}`}>
+      {/* Mode Header */}
+      <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-b-2' : 'bg-white/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-white/5'}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center gap-3 sm:gap-6">
@@ -262,7 +337,7 @@ const Dictionary: React.FC = () => {
                   ${getButtonSize()} rounded-2xl flex items-center justify-center
                   ${accessibility.highContrast
                     ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400 border-2 border-yellow-400'
-                    : 'bg-white/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-white/40 dark:border-white/10'
+                    : 'bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-slate-200/60 dark:border-white/10'
                   }
                   transform hover:scale-110 active:scale-95 transition-all duration-300
                   focus:outline-none focus:ring-4 focus:ring-blue-300/50
@@ -272,13 +347,18 @@ const Dictionary: React.FC = () => {
                 <ArrowLeft className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
               </button>
 
-              <div>
-                <h1 className={`${accessibility.largeText ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'} font-serif italic tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
-                  SignBridge Ghana
-                </h1>
-                <p className={`${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-sm'} font-sans font-black uppercase tracking-[0.2em] ${accessibility.highContrast ? 'text-yellow-300' : 'text-blue-500 dark:text-blue-400'}`}>
-                  Visual Reference
-                </p>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl overflow-hidden bg-black hidden sm:flex items-center justify-center shadow-lg border border-white/10 p-1">
+                  <img src={logo} alt="Logo" className="w-full h-full object-contain" />
+                </div>
+                <div>
+                  <h1 className={`${accessibility.largeText ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'} font-serif italic tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
+                    SignBridge Ghana
+                  </h1>
+                  <p className={`${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-sm'} font-sans font-black uppercase tracking-[0.2em] ${accessibility.highContrast ? 'text-yellow-300' : 'text-blue-500 dark:text-blue-400'}`}>
+                    Visual Reference
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -289,7 +369,7 @@ const Dictionary: React.FC = () => {
                   ${getButtonSize()} rounded-2xl flex items-center justify-center transition-all duration-300
                   ${accessibility.highContrast
                     ? 'bg-gray-800 hover:bg-gray-700 text-yellow-400 border-2 border-yellow-400'
-                    : 'bg-white/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-white/40 dark:border-white/10'
+                    : 'bg-white/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200 hover:bg-white dark:hover:bg-slate-700 shadow-sm border border-slate-200/60 dark:border-white/10'
                   }
                   transform hover:scale-110 active:scale-95 focus:outline-none focus:ring-4 focus:ring-blue-300/30
                 `}
@@ -374,211 +454,12 @@ const Dictionary: React.FC = () => {
         </div>
       )}
 
-      {/* Main Container with bottom padding for sticky mobile input */}
-      <div className="max-w-5xl mx-auto px-6 py-12 pb-32 relative z-10 flex flex-col">
-        {/* 1. Search Results (Top on mobile) */}
-        <div className="order-1">
-          {/* Loading State */}
-          {loading && (
-            <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
-              <div className="relative w-20 h-20 mb-6">
-                <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full"></div>
-                <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-              </div>
-              <p className="text-xl font-bold text-slate-900 dark:text-white animate-pulse tracking-tight">Accessing Dictionary...</p>
-            </div>
-          )}
-
-          {/* Error State */}
-          {error && (
-            <div className="glass-card p-6 border-rose-500/20 bg-rose-50/50 dark:bg-rose-500/5 flex items-center gap-4 mb-12 animate-slide-up">
-              <div className="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500">
-                <AlertTriangle size={24} />
-              </div>
-              <p className={`${getTextSize()} font-bold text-rose-700 dark:text-rose-400`}>{error}</p>
-            </div>
-          )}
-
-          {/* Actual Results */}
-          {result && !loading && (
-            <div className="animate-slide-up">
-              {result.gloss ? (
-                <div className="glass-card overflow-hidden border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] transition-all duration-500 mb-12">
-                  {/* Result Header */}
-                  <div className="p-6 sm:p-8 border-b border-white/20 bg-white/30 dark:bg-white/5 backdrop-blur-md">
-                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500">
-                            <BookOpen size={24} />
-                          </div>
-                          <h2 className={`${getHeaderSize()} font-black text-slate-900 dark:text-white tracking-tighter`}>
-                            {result.gloss}
-                          </h2>
-                        </div>
-
-                        <div className="flex flex-wrap gap-2">
-                          <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border ${getMatchColor(result.match_type)}`}>
-                            {result.match_type} Match
-                          </span>
-                          {result.page && (
-                            <span className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-white/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border border-white/20">
-                              <Info size={14} /> Page {result.page}
-                            </span>
-                          )}
-                          {result.variants > 0 && (
-                            <span className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-white/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border border-white/20">
-                              <Layers size={14} /> {result.variants} Variants
-                            </span>
-                          )}
-                          <span className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                            <CheckCircle size={14} /> {Math.round((result.confidence || 0) * 100)}% Match
-                          </span>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={handleReport}
-                        disabled={reported}
-                        className={`
-                          flex items-center gap-3 px-6 py-3 rounded-2xl text-sm font-black uppercase tracking-widest transition-all duration-300
-                          ${reported
-                            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 cursor-default'
-                            : 'bg-white/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 border border-white/40 dark:border-white/10 hover:bg-rose-500 hover:text-white hover:border-rose-500 shadow-sm'
-                          }
-                          transform hover:scale-105 active:scale-95
-                        `}
-                      >
-                        {reported ? (
-                          <>
-                            <CheckCircle size={18} />
-                            Reported
-                          </>
-                        ) : (
-                          <>
-                            <Flag size={18} />
-                            Report Issue
-                          </>
-                        )}
-                      </button>
-                    </div>
-
-                    {result.description && (
-                      <div className="mt-8 flex gap-4 p-6 rounded-3xl bg-blue-500/5 border border-blue-500/10 backdrop-blur-sm">
-                        <MessageSquare size={24} className="text-blue-500 shrink-0" />
-                        <p className={`${getTextSize()} font-medium text-slate-700 dark:text-slate-300 leading-relaxed`}>
-                          {result.description}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Images Grid */}
-                  <div className="p-4 sm:p-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                      {Array.isArray(result.images) && result.images.length > 0 ? (
-                        result.images.map((img: string, i: number) => (
-                          <div
-                            key={i}
-                            className="relative group cursor-pointer overflow-hidden rounded-3xl border border-amber-500/30 bg-white/50 dark:bg-slate-900/50 shadow-sm transition-all duration-500 hover:shadow-2xl hover:scale-[1.02] hover:border-amber-400/80"
-                            onClick={() => openImageModal(`${API_BASE_URL}/static/${result.gloss}/${img}`, i)}
-                          >
-                            <div className="aspect-square flex items-center justify-center p-4">
-                              <img
-                                src={`${API_BASE_URL}/static/${result.gloss}/${img}`}
-                                alt={`${result.gloss} sign ${i + 1}`}
-                                className="max-w-full max-h-full object-contain transition-transform duration-700 group-hover:scale-110"
-                                loading="lazy"
-                                onError={(e) => {
-                                  const el = e.target as HTMLImageElement
-                                  el.style.display = 'none'
-                                }}
-                              />
-                            </div>
-
-                            <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/5 transition-all duration-500 flex items-center justify-center opacity-0 group-hover:opacity-100 backdrop-blur-[2px]">
-                              <div className="bg-white/90 dark:bg-slate-900/90 p-4 rounded-2xl shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-500">
-                                <ZoomIn className="text-blue-600" size={32} />
-                              </div>
-                            </div>
-
-                            <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                              <div className="bg-black/60 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border border-white/20">
-                                Frame {i + 1}
-                              </div>
-                              <div className="bg-white/90 dark:bg-slate-900/90 text-slate-900 dark:text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl shadow-lg">
-                                Zoom View
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="col-span-full py-20 flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-slate-400">
-                          <AlertTriangle size={48} className="mb-4 opacity-20" />
-                          <span className="text-lg font-bold tracking-tight">Visual sequence unavailable</span>
-                          <p className="text-sm font-medium mt-1">We're working on adding more signs.</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Alternatives Section */}
-                  {Array.isArray(result.alternatives) && result.alternatives.length > 0 && (
-                    <div className="bg-blue-500/5 border-t border-white/20 p-6 sm:p-8">
-                      <h3 className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.2em] mb-4 sm:mb-6">Suggested / Related Signs</h3>
-                      <div className="flex flex-wrap gap-3">
-                        {result.alternatives.map((alt) => (
-                          <button
-                            key={alt}
-                            onClick={() => {
-                              setQ(alt)
-                              search(alt, false)
-                            }}
-                            className="px-6 py-3 bg-white/70 dark:bg-slate-800/70 text-slate-700 dark:text-slate-200 border border-white/40 dark:border-white/10 rounded-2xl hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all duration-300 shadow-sm text-sm font-bold transform hover:scale-105 active:scale-95"
-                          >
-                            {alt}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="glass-card p-8 sm:p-16 text-center animate-fade-in mx-4 sm:mx-0 mb-12">
-                  <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-100 dark:bg-slate-800 rounded-[2rem] flex items-center justify-center mx-auto mb-6 sm:mb-8">
-                    <AlertTriangle className="w-10 h-10 text-amber-500 opacity-80" />
-                  </div>
-                  <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tighter">No exact match found</h3>
-                  <p className={`${getTextSize()} text-slate-500 dark:text-slate-400 mb-10 max-w-md mx-auto leading-relaxed`}>
-                    We couldn't find a direct sign for <span className="text-blue-500 font-bold">"{q}"</span>. Try one of our suggested alternatives below.
-                  </p>
-
-                  {/* Fallback alternatives for no match */}
-                  {Array.isArray(result.alternatives) && result.alternatives.length > 0 && (
-                    <div className="flex flex-wrap gap-3 justify-center">
-                      {result.alternatives.map((alt) => (
-                        <button
-                          key={alt}
-                          onClick={() => {
-                            setQ(alt)
-                            search(alt, false)
-                          }}
-                          className="px-8 py-4 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition-all duration-300 shadow-lg shadow-blue-500/30 text-base font-bold transform hover:scale-105 active:scale-95"
-                        >
-                          {alt}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* 2. Search Section (Sticky at Bottom on mobile) */}
-        <div className="sticky bottom-0 left-0 right-0 z-40 order-2 -mx-6 px-6 py-6 mt-auto sm:static sm:z-auto sm:mx-0 sm:px-0 sm:py-0 sm:mt-12 animate-slide-up bg-white/60 dark:bg-slate-950/60 backdrop-blur-xl border-t border-white/20 sm:bg-transparent sm:dark:bg-transparent sm:backdrop-blur-none sm:border-none">
-          <div className="relative group max-w-5xl mx-auto">
+      {/* Main Container */}
+      <div className="max-w-5xl mx-auto px-6 py-12 relative z-10 flex flex-col">
+        
+        {/* Search Section (Primary Entry Point) */}
+        <div className="mb-12 animate-slide-up">
+          <div className="relative group">
             <div className={`absolute inset-y-0 left-5 flex items-center pointer-events-none transition-colors duration-300 ${isListening ? 'text-rose-500' : 'text-slate-400 group-focus-within:text-blue-500'}`}>
               <Search size={24} />
             </div>
@@ -587,13 +468,13 @@ const Dictionary: React.FC = () => {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               disabled={isListening}
-              placeholder={isListening ? "Listening..." : "Search for a word (e.g., dog, hello)..."}
+              placeholder={isListening ? "Listening..." : "Search for a word (e.g., hello, teacher)..."}
               className={`
-                w-full pl-12 sm:pl-14 pr-16 py-4 sm:py-6 rounded-[2rem] border-2 transition-all duration-500 outline-none
+                w-full pl-12 sm:pl-14 pr-16 py-5 sm:py-7 rounded-[2rem] border-2 transition-all duration-500 outline-none
                 ${accessibility.largeText ? 'text-xl sm:text-2xl' : 'text-base sm:text-xl'}
                 ${isListening
                   ? 'bg-rose-50/50 dark:bg-rose-500/10 border-rose-400 shadow-[0_0_30px_rgba(244,63,94,0.15)]'
-                  : 'bg-white/50 dark:bg-slate-900/50 border-white/40 dark:border-white/10 focus:border-blue-500/50 dark:focus:border-blue-400/50 shadow-glass focus:shadow-glass-hover'
+                  : 'bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-800 focus:border-blue-500/50 dark:focus:border-blue-400/50 shadow-sm focus:shadow-xl'
                 }
                 backdrop-blur-xl
               `}
@@ -605,7 +486,7 @@ const Dictionary: React.FC = () => {
                 absolute right-4 top-1/2 -translate-y-1/2 p-4 rounded-2xl transition-all duration-500
                 ${isListening
                   ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/40 animate-pulse'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-blue-500 hover:text-white dark:hover:bg-blue-500'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-blue-500 hover:text-white dark:hover:bg-blue-500'
                 }
               `}
               title={loading ? "Please wait..." : "Search by voice"}
@@ -614,287 +495,185 @@ const Dictionary: React.FC = () => {
             </button>
           </div>
 
-          {isListening && (
-            <div className="mt-4 flex items-center justify-center gap-3 text-rose-500 animate-pulse">
-              <div className="flex gap-1">
-                <span className="w-1.5 h-4 bg-rose-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                <span className="w-1.5 h-6 bg-rose-500 rounded-full animate-bounce" style={{ animationDelay: '100ms' }}></span>
-                <span className="w-1.5 h-4 bg-rose-500 rounded-full animate-bounce" style={{ animationDelay: '200ms' }}></span>
+          {/* Search Suggestions & History */}
+          <div className="mt-6 flex flex-wrap gap-2 items-center">
+            {history.length > 0 && (
+              <div className="flex flex-wrap gap-2 mr-4 border-r border-slate-200 dark:border-slate-800 pr-4">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2 w-full mb-1">Recent</span>
+                {history.map(h => (
+                  <button key={h} onClick={() => { setQ(h); search(h) }} className="px-3 py-1 text-xs font-bold rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-blue-500 hover:text-white transition-all">
+                    {h}
+                  </button>
+                ))}
               </div>
-              <span className="text-sm font-black uppercase tracking-widest">Listening... Speak clearly</span>
-            </div>
-          )}
-        </div>
-
-        {/* 3. Alphabet Navigation (Bottom on mobile) */}
-        {!q && (
-          <div className="animate-fade-in space-y-4 order-3">
-            <div className="flex items-center gap-3 px-2 mb-2">
-              <Layers className="w-5 h-5 text-blue-500" />
-              <span className="text-xs font-black uppercase tracking-widest text-slate-400">Browse by letter</span>
-            </div>
-            <div className="glass p-4 rounded-[2.5rem] flex flex-wrap gap-2 justify-center mb-12 shadow-inner">
-              {alphabet.map((a) => (
-                <button
-                  key={a}
-                  onClick={() => setLetter(a)}
-                  className={`
-                    w-11 h-11 sm:w-14 sm:h-14 rounded-2xl font-bold transition-all duration-500 flex items-center justify-center
-                    ${letter === a
-                      ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/40 scale-110 -translate-y-1'
-                      : 'bg-white/40 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:scale-105'
-                    }
-                    ${accessibility.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}
-                    border border-white/20 dark:border-white/5
-                  `}
-                >
-                  {a}
+            )}
+            <div className="flex flex-wrap gap-2">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2 w-full mb-1">Try these</span>
+              {suggestions.map(s => (
+                <button key={s} onClick={() => { setQ(s); search(s) }} className="px-3 py-1 text-xs font-bold rounded-full bg-blue-500/5 text-blue-600 dark:text-blue-400 border border-blue-500/10 hover:bg-blue-500 hover:text-white transition-all">
+                  {s}
                 </button>
               ))}
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Loading State */}
-        {loading && (
-          <div className="flex flex-col items-center justify-center py-20 animate-fade-in">
-            <div className="relative w-20 h-20 mb-6">
-              <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full"></div>
-              <div className="absolute inset-0 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+        {/* Results / Alphabet Section */}
+        <div className="space-y-12">
+          {/* Loading Skeleton */}
+          {loading && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-10 animate-pulse">
+              {[1, 2].map(i => (
+                <div key={i} className="h-96 rounded-[2.5rem] bg-slate-200 dark:bg-slate-800" />
+              ))}
             </div>
-            <p className="text-xl font-bold text-slate-900 dark:text-white animate-pulse tracking-tight">Accessing Dictionary...</p>
-          </div>
-        )}
+          )}
 
-        {/* Error State */}
-        {error && (
-          <div className="glass-card p-6 border-rose-500/20 bg-rose-50/50 dark:bg-rose-500/5 flex items-center gap-4 mb-12 animate-slide-up">
-            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500">
-              <AlertTriangle size={24} />
+          {/* Error State */}
+          {error && (
+            <div className="glass-card p-6 border-rose-500/20 bg-rose-50/50 dark:bg-rose-500/5 flex items-center gap-4 animate-slide-up">
+              <div className="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500">
+                <AlertTriangle size={24} />
+              </div>
+              <p className={`${getTextSize()} font-bold text-rose-700 dark:text-rose-400`}>{error}</p>
             </div>
-            <p className={`${getTextSize()} font-bold text-rose-700 dark:text-rose-400`}>{error}</p>
-          </div>
-        )}
+          )}
 
-        {/* Search Results */}
-        {result && !loading && (
-          <div className="animate-slide-up">
-            {result.gloss ? (
-              <div className="glass-card overflow-hidden border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.1)] transition-all duration-500">
-                {/* Result Header */}
-                <div className="p-6 sm:p-8 border-b border-white/20 bg-white/30 dark:bg-white/5 backdrop-blur-md">
-                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500">
-                          <BookOpen size={24} />
+          {/* Search Result */}
+          {result && !loading && (
+            <div className="animate-slide-up">
+              {result.gloss ? (
+                <div className="glass-card overflow-hidden border-amber-500/30 shadow-2xl transition-all duration-500">
+                  {/* Result Header */}
+                  <div className="p-6 sm:p-10 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-14 h-14 rounded-2xl bg-blue-600 flex items-center justify-center text-white shadow-xl shadow-blue-500/20">
+                            <BookOpen size={28} />
+                          </div>
+                          <h2 className={`${getHeaderSize()} font-black text-slate-900 dark:text-white tracking-tighter uppercase`}>
+                            {result.gloss}
+                          </h2>
                         </div>
-                        <h2 className={`${getHeaderSize()} font-black text-slate-900 dark:text-white tracking-tighter`}>
-                          {result.gloss}
-                        </h2>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest border ${getMatchColor(result.match_type)}`}>
-                          {result.match_type} Match
-                        </span>
-                        {result.page && (
-                          <span className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-white/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border border-white/20">
-                            <Info size={14} /> Page {result.page}
+                        <div className="flex flex-wrap gap-2">
+                          <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${getMatchColor(result.match_type)}`}>
+                            {result.match_type} Match
                           </span>
-                        )}
-                        {result.variants > 0 && (
-                          <span className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-white/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 border border-white/20">
-                            <Layers size={14} /> {result.variants} Variants
-                          </span>
-                        )}
-                        <span className="flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                          <CheckCircle size={14} /> {Math.round((result.confidence || 0) * 100)}% Match
-                        </span>
+                          {result.page && (
+                            <span className="flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-500 border border-slate-200 dark:border-slate-700">
+                              Page {result.page}
+                            </span>
+                          )}
+                        </div>
                       </div>
+                      
+                      <button onClick={handleReport} disabled={reported} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${reported ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-rose-500 hover:text-white'}`}>
+                        {reported ? <CheckCircle size={16} /> : <Flag size={16} />}
+                        {reported ? 'Reported' : 'Report Error'}
+                      </button>
                     </div>
 
-                    <button
-                      onClick={handleReport}
-                      disabled={reported}
-                      className={`
-                        flex items-center gap-3 px-6 py-3 rounded-2xl text-sm font-black uppercase tracking-widest transition-all duration-300
-                        ${reported
-                          ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 cursor-default'
-                          : 'bg-white/50 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300 border border-white/40 dark:border-white/10 hover:bg-rose-500 hover:text-white hover:border-rose-500 shadow-sm'
-                        }
-                        transform hover:scale-105 active:scale-95
-                      `}
-                    >
-                      {reported ? (
-                        <>
-                          <CheckCircle size={18} />
-                          Reported
-                        </>
-                      ) : (
-                        <>
-                          <Flag size={18} />
-                          Report Issue
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Images Grid */}
-                <div className="p-4 sm:p-8">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                    {Array.isArray(result.images) && result.images.length > 0 ? (
-                      result.images.map((img: string, i: number) => (
-                        <div key={i} className="flex flex-col gap-6">
-                          <div
-                            className="relative group cursor-pointer overflow-hidden rounded-3xl border border-amber-500/30 bg-white/50 dark:bg-slate-900/50 shadow-sm transition-all duration-500 hover:shadow-2xl hover:scale-[1.02] hover:border-amber-400/80"
-                            onClick={() => openImageModal(`${API_BASE_URL}/static/${img}`, i)}
-                          >
-                            <div className="aspect-square flex items-center justify-center p-4">
-                              <img
-                                src={`${API_BASE_URL}/static/${img}`}
-                                alt={`${result.gloss} sign ${i + 1}`}
-                                className="max-w-full max-h-full object-contain transition-transform duration-700 group-hover:scale-110"
-                                loading="lazy"
-                                onError={(e) => {
-                                  const el = e.target as HTMLImageElement
-                                  el.style.display = 'none'
-                                }}
-                              />
-                            </div>
-
-                            <div className="absolute inset-0 bg-blue-600/0 group-hover:bg-blue-600/5 transition-all duration-500 flex items-center justify-center opacity-0 group-hover:opacity-100 backdrop-blur-[2px]">
-                              <div className="bg-white/90 dark:bg-slate-900/90 p-4 rounded-2xl shadow-2xl transform scale-75 group-hover:scale-100 transition-transform duration-500">
-                                <ZoomIn className="text-blue-600" size={32} />
-                              </div>
-                            </div>
-
-                            <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                              <div className="bg-black/60 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl border border-white/20">
-                                Frame {i + 1}
-                              </div>
-                              <div className="bg-white/90 dark:bg-slate-900/90 text-slate-900 dark:text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl shadow-lg">
-                                Zoom View
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Sign Definition - Matches User Request */}
-                          <div className="text-center px-4 pb-4 animate-fade-in">
-                            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-wider mb-2">
-                              {result.gloss}
-                            </h3>
-                            {result.description && (
-                              <p className={`${getTextSize()} font-medium text-slate-600 dark:text-slate-300 leading-relaxed max-w-md mx-auto`}>
-                                {result.description}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="col-span-full py-20 flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-slate-400">
-                        <AlertTriangle size={48} className="mb-4 opacity-20" />
-                        <span className="text-lg font-bold tracking-tight">Visual sequence unavailable</span>
-                        <p className="text-sm font-medium mt-1">We're working on adding more signs.</p>
+                    {result.description && (
+                      <div className="p-6 rounded-3xl bg-slate-50 dark:bg-black/20 border border-slate-100 dark:border-white/5">
+                        <p className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-medium text-slate-700 dark:text-slate-300 leading-relaxed italic`}>
+                          "{result.description}"
+                        </p>
                       </div>
                     )}
                   </div>
-                </div>
 
-                {/* Alternatives Section */}
-                {Array.isArray(result.alternatives) && result.alternatives.length > 0 && (
-                  <div className="bg-blue-500/5 border-t border-white/20 p-6 sm:p-8">
-                    <h3 className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.2em] mb-4 sm:mb-6">Suggested / Related Signs</h3>
-                    <div className="flex flex-wrap gap-3">
-                      {result.alternatives.map((alt) => (
-                        <button
-                          key={alt}
-                          onClick={() => {
-                            setQ(alt)
-                            search(alt, false)
-                          }}
-                          className="px-6 py-3 bg-white/70 dark:bg-slate-800/70 text-slate-700 dark:text-slate-200 border border-white/40 dark:border-white/10 rounded-2xl hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all duration-300 shadow-sm text-sm font-bold transform hover:scale-105 active:scale-95"
-                        >
-                          {alt}
-                        </button>
-                      ))}
+                  {/* Images */}
+                  <div className="p-6 sm:p-10 bg-slate-50/50 dark:bg-black/10">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {result.images.length > 0 ? (
+                        result.images.map((img, i) => (
+                          <div key={i} className="relative group cursor-pointer overflow-hidden rounded-[2rem] border-2 border-white dark:border-slate-800 shadow-lg bg-white dark:bg-slate-900" onClick={() => openImageModal(getImageUrl(result.gloss, img), i)}>
+                            <div className="aspect-video flex items-center justify-center p-6">
+                              <img src={getImageUrl(result.gloss, img)} alt={result.gloss} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-700" loading="lazy" />
+                            </div>
+                            <div className="absolute top-4 left-4 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest">
+                              Step {i + 1}
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="col-span-full py-20 flex flex-col items-center justify-center opacity-40">
+                          <AlertTriangle size={48} className="mb-4" />
+                          <span className="font-bold uppercase tracking-widest">No diagrams available</span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                )}
-              </div>
-            ) : (
-              <div className="glass-card p-8 sm:p-16 text-center animate-fade-in mx-4 sm:mx-0">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-slate-100 dark:bg-slate-800 rounded-[2rem] flex items-center justify-center mx-auto mb-6 sm:mb-8">
-                  <AlertTriangle className="w-10 h-10 text-amber-500 opacity-80" />
+
+                  {/* Related Signs */}
+                  {relatedSigns.length > 0 && (
+                    <div className="p-6 sm:p-10 border-t border-slate-100 dark:border-slate-800 bg-white/50 dark:bg-black/5">
+                      <div className="flex items-center gap-3 mb-6">
+                        <Layers className="w-5 h-5 text-blue-500" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Related Signs</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {relatedSigns.map(item => (
+                          <button key={item.gloss} onClick={() => { setQ(item.gloss); search(item.gloss) }} className="p-4 text-left glass-card border-slate-200 dark:border-slate-800 hover:border-blue-500/50 group transition-all bg-white dark:bg-slate-900">
+                            <span className="text-sm font-black uppercase tracking-tight text-slate-900 dark:text-white group-hover:text-blue-500 transition-colors">{item.gloss}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-4 tracking-tighter">No exact match found</h3>
-                <p className={`${getTextSize()} text-slate-500 dark:text-slate-400 mb-10 max-w-md mx-auto leading-relaxed`}>
-                  We couldn't find a direct sign for <span className="text-blue-500 font-bold">"{q}"</span>. Try one of our suggested alternatives below.
-                </p>
-
-                {/* Fallback alternatives for no match */}
-                {Array.isArray(result.alternatives) && result.alternatives.length > 0 && (
-                  <div className="flex flex-wrap gap-3 justify-center">
-                    {result.alternatives.map((alt) => (
-                      <button
-                        key={alt}
-                        onClick={() => {
-                          setQ(alt)
-                          search(alt, false)
-                        }}
-                        className="px-8 py-4 bg-blue-600 text-white rounded-2xl hover:bg-blue-700 transition-all duration-300 shadow-lg shadow-blue-500/30 text-base font-bold transform hover:scale-105 active:scale-95"
-                      >
-                        {alt}
-                      </button>
-                    ))}
+              ) : (
+                <div className="py-20 text-center glass-card border-slate-200 dark:border-slate-800">
+                  <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                    <Search className="w-10 h-10 text-slate-400" />
                   </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* 4. Letter Glosses List (Last on mobile) */}
-        {!q && list && list.length > 0 && (
-          <div className="animate-fade-in order-4">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-500">
-                <Layers size={24} />
-              </div>
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter">
-                Glosses starting with <span className="text-indigo-500">"{letter}"</span>
-              </h2>
+                  <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2">No results for "{q}"</h3>
+                  <p className="text-slate-500 mb-8">Try searching for common words or browsing the alphabet below.</p>
+                </div>
+              )}
             </div>
+          )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {list.map((item) => (
-                <button
-                  key={item.gloss}
-                  onClick={() => {
-                    setQ(item.gloss)
-                    search(item.gloss, false)
-                  }}
-                  className="glass-card p-6 text-left group border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)] transition-all duration-500 hover:-translate-y-1"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-lg font-black text-slate-900 dark:text-white group-hover:text-indigo-500 transition-colors tracking-tight" >
-                      {item.gloss}
-                    </span>
-                    <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                      {item.variants} Var
-                    </span>
+          {/* Alphabet / Browsing */}
+          {!q && !loading && (
+            <div className="space-y-12">
+              <div className="animate-fade-in">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <Layers className="w-5 h-5 text-blue-500" />
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Dictionary Index</span>
                   </div>
-                  <div className="flex items-center gap-2 text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-                    <BookOpen size={14} />
-                    Page {item.page || 'N/A'}
-                  </div>
-                </button>
-              ))}
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{list.length} entries</span>
+                </div>
+                
+                <div className="grid grid-cols-4 sm:grid-cols-7 md:grid-cols-9 gap-2">
+                  {alphabet.map(a => (
+                    <button key={a} onClick={() => setLetter(a)} className={`h-12 rounded-xl font-bold transition-all ${letter === a ? 'bg-blue-600 text-white shadow-lg' : 'bg-white dark:bg-slate-900 text-slate-500 border border-slate-200 dark:border-slate-800 hover:border-blue-500'}`}>
+                      {a}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {list.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in">
+                  {list.map(item => (
+                    <button key={item.gloss} onClick={() => { setQ(item.gloss); search(item.gloss) }} className="p-6 text-left glass-card border-slate-200 dark:border-slate-800 hover:border-blue-500/50 group transition-all">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-lg font-black uppercase tracking-tight text-slate-900 dark:text-white group-hover:text-blue-500 transition-colors">{item.gloss}</span>
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.variants} Var</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <BookOpen size={12} /> Page {item.page}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   )

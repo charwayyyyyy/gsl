@@ -71,7 +71,7 @@ const Settings: React.FC = () => {
             <div className={`font-bold text-slate-900 dark:text-white mb-1 ${accessibilitySettings.largeText ? 'text-lg sm:text-2xl' : 'text-base sm:text-xl'}`}>
               {label}
             </div>
-            <div className={`text-slate-400 leading-relaxed ${accessibilitySettings.largeText ? 'text-sm sm:text-xl' : 'text-xs sm:text-lg'}`}>
+            <div className={`text-slate-600 dark:text-slate-400 leading-relaxed ${accessibilitySettings.largeText ? 'text-sm sm:text-xl' : 'text-xs sm:text-lg'}`}>
               {desc}
             </div>
           </div>
@@ -110,7 +110,7 @@ const Settings: React.FC = () => {
           onChange={(e) => onChange(parseFloat(e.target.value))}
           className="w-full h-2.5 bg-slate-700/50 rounded-full appearance-none cursor-pointer accent-blue-500 transition-all hover:accent-blue-400"
         />
-        <div className="flex justify-between mt-6 text-slate-500 font-bold tracking-wider text-sm uppercase">
+        <div className="flex justify-between mt-6 text-slate-500 dark:text-slate-400 font-bold tracking-wider text-sm uppercase">
           <span>Min</span>
           <span>Max</span>
         </div>
@@ -512,6 +512,17 @@ const Settings: React.FC = () => {
               setHasChanges(true)
             }
           )}
+
+          {renderToggle(
+            'Demo Presentation Mode',
+            'Enable simulated inputs for smooth presentations',
+            <span className="text-2xl">📽️</span>,
+            visual.demoMode,
+            (val) => {
+              visual.updateVisual({ demoMode: val })
+              setHasChanges(true)
+            }
+          )}
         </div>
       </div>
 
@@ -633,7 +644,7 @@ const Settings: React.FC = () => {
   )
 
   return (
-    <div className={`min-h-screen relative overflow-hidden p-4 md:p-8 transition-colors duration-500 ${accessibilitySettings.highContrast
+    <div className={`min-h-screen relative overflow-hidden p-4 md:p-8 pt-20 sm:pt-24 transition-colors duration-500 ${accessibilitySettings.highContrast
       ? 'bg-black'
       : 'bg-slate-50 dark:bg-[#050505]'
       }`}>

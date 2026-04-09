@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAppStore } from '../stores/appStore'
 
+// Optimized WebRTC hook for Render Free Tier
+// Note: MediaPipe processing is now expected to happen on the frontend.
+// We should ideally integrate MediaPipe JS SDK here or in a separate component.
+
 export interface WebRTCState {
   isSupported: boolean
   isConnected: boolean
@@ -156,13 +160,41 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
     try {
       setState(prev => ({ ...prev, error: null }))
       
-      const constraints: MediaStreamConstraints = {
-        video: {
-          width: { ideal: 1280, min: 640 },
-          height: { ideal: 720, min: 480 },
-          frameRate: { ideal: 30, min: 15 },
-          facingMode: 'user'
+      // Prefer system camera (laptop) by searching for internal device labels
+      let videoConstraints: MediaTrackConstraints = {
+        width: { ideal: 1280, min: 640 },
+        height: { ideal: 720, min: 480 },
+        frameRate: { ideal: 30, min: 15 },
+        facingMode: 'user'
+      }
+
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices()
+        const videoDevices = devices.filter(device => device.kind === 'videoinput')
+        
+        // Look for internal/integrated camera which is usually the laptop camera
+        const internalCamera = videoDevices.find(device => 
+          device.label.toLowerCase().includes('internal') || 
+          device.label.toLowerCase().includes('integrated') ||
+          device.label.toLowerCase().includes('built-in') ||
+          device.label.toLowerCase().includes('facetime')
+        )
+
+        if (internalCamera) {
+          videoConstraints.deviceId = { exact: internalCamera.deviceId }
+        } else if (videoDevices.length > 0) {
+          // If no explicitly internal camera, just use the first one but avoid virtual cameras if possible
+          const realCamera = videoDevices.find(device => !device.label.toLowerCase().includes('virtual'))
+          if (realCamera) {
+            videoConstraints.deviceId = { exact: realCamera.deviceId }
+          }
         }
+      } catch (deviceErr) {
+        console.warn('Failed to enumerate devices, falling back to default constraints', deviceErr)
+      }
+
+      const constraints: MediaStreamConstraints = {
+        video: videoConstraints
       }
 
       // Apply accessibility settings

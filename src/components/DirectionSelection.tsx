@@ -36,7 +36,7 @@ const DirectionSelection: React.FC<DirectionSelectionProps> = ({ onDirectionSele
             <h2 className={`${textSizeClass} font-bold mb-3 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
               Sign → Speech
             </h2>
-            <p className={`${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-slate-500 dark:text-slate-400'}`}>
+            <p className={`${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-slate-600 dark:text-slate-400'}`}>
               I am Deaf/Hard of Hearing
             </p>
           </div>
@@ -60,7 +60,7 @@ const DirectionSelection: React.FC<DirectionSelectionProps> = ({ onDirectionSele
             <h2 className={`${textSizeClass} font-bold mb-3 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
               Speech → Sign
             </h2>
-            <p className={`${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-slate-500 dark:text-slate-400'}`}>
+            <p className={`${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-slate-600 dark:text-slate-400'}`}>
               I am Hearing
             </p>
           </div>
@@ -83,7 +83,7 @@ const DirectionSelection: React.FC<DirectionSelectionProps> = ({ onDirectionSele
             <h2 className={`${textSizeClass} font-bold mb-3 ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
               Text → Sign
             </h2>
-            <p className={`${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-slate-500 dark:text-slate-400'}`}>
+            <p className={`${accessibility.largeText ? 'text-sm sm:text-lg' : 'text-xs sm:text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-200' : 'text-slate-600 dark:text-slate-400'}`}>
               Type to Translate
             </p>
           </div>
@@ -168,10 +168,10 @@ const DirectionSelection: React.FC<DirectionSelectionProps> = ({ onDirectionSele
 
       {/* Footer */}
       <div className="text-center relative z-10 animate-fade-in opacity-70 hover:opacity-100 transition-opacity">
-        <p className="text-slate-600 dark:text-slate-400 font-medium mb-1">
+        <p className="text-slate-700 dark:text-slate-300 font-medium mb-1">
           🇬🇭 Ghanaian Sign Language Interpreter
         </p>
-        <p className="text-xs tracking-widest uppercase text-slate-400">
+        <p className="text-xs tracking-widest uppercase text-slate-500 dark:text-slate-400">
           Powered by AI • Designed for Inclusion
         </p>
       </div>
