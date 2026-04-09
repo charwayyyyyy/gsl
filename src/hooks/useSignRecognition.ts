@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
-import { extractFeatures, matchSign, RecognitionStabilizer, FrameData, MatchResult } from '../lib/signRecognition';
+import { extractFeatures, matchSign, RecognitionStabilizer } from '../lib/signRecognition';
+import { FrameData, MatchResult, ExtractedFeatures } from '../lib/signRecognition/types';
 
 interface UseSignRecognitionReturn {
   isReady: boolean;
@@ -8,6 +9,10 @@ interface UseSignRecognitionReturn {
   predictedGloss: string | null;
   confidence: number;
   lastSpoken: string | null;
+  debugInfo: {
+    features: ExtractedFeatures | null;
+    rawMatch: MatchResult | null;
+  } | null;
   processVideoFrame: (videoElement: HTMLVideoElement, timestamp: number) => void;
 }
 
@@ -17,11 +22,15 @@ export function useSignRecognition(): UseSignRecognitionReturn {
   const [predictedGloss, setPredictedGloss] = useState<string | null>(null);
   const [confidence, setConfidence] = useState(0);
   const [lastSpoken, setLastSpoken] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<{ features: ExtractedFeatures | null; rawMatch: MatchResult | null } | null>(null);
 
   const landmarkerRef = useRef<HandLandmarker | null>(null);
   const frameBufferRef = useRef<FrameData[]>([]);
   const stabilizerRef = useRef(new RecognitionStabilizer());
   const lastVideoTimeRef = useRef<number>(-1);
+
+  // throttle state updates to reduce React renders
+  const lastDebugUpdateRef = useRef<number>(0);
 
   useEffect(() => {
     let active = true;
@@ -95,7 +104,8 @@ export function useSignRecognition(): UseSignRecognitionReturn {
       // Append to rolling buffer
       frameBufferRef.current.push({
         timestamp,
-        landmarks: result.landmarks
+        landmarks: result.landmarks,
+        handednesses: result.handednesses
       });
       if (frameBufferRef.current.length > 30) {
         frameBufferRef.current.shift();
@@ -123,6 +133,13 @@ export function useSignRecognition(): UseSignRecognitionReturn {
           speakText(confirmedMatch.gloss.toLowerCase());
         }
       }
+
+      // Throttled debug publish (approx 10fps limit for React renders so we don't block the main thread drastically)
+      if (timestamp - lastDebugUpdateRef.current > 100) {
+        setDebugInfo({ features, rawMatch: match });
+        lastDebugUpdateRef.current = timestamp;
+      }
+
     } else {
       setIsDetecting(false);
       stabilizerRef.current.processMatch(null);
@@ -135,6 +152,7 @@ export function useSignRecognition(): UseSignRecognitionReturn {
     predictedGloss,
     confidence,
     lastSpoken,
+    debugInfo,
     processVideoFrame
   };
 }

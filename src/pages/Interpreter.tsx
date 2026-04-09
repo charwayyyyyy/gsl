@@ -9,6 +9,7 @@ import AudioCapture from '../components/AudioCapture'
 const Avatar3D = React.lazy(() => import('../components/Avatar3D'))
 import SmartTipsOverlay from '../components/SmartTipsOverlay'
 import { useSignRecognition } from '../hooks/useSignRecognition'
+import SignDebugOverlay from '../components/SignDebugOverlay'
 
 import { SIGN_TO_SPEECH_DEMO, SPEECH_TO_SIGN_DEMO, TEXT_TO_SIGN_DEMO, DemoScenario } from '../config/demoData'
 import logo from '@/assets/signbridge.png'
@@ -98,7 +99,7 @@ const Interpreter: React.FC = () => {
   const { startTranslationSession, endTranslationSession, setLastTranslation } = useAppStore.getState()
 
   // Local MediaPipe Pipeline
-  const { isReady, isDetecting, predictedGloss, confidence: localConfidence, processVideoFrame } = useSignRecognition()
+  const { isReady, isDetecting, predictedGloss, confidence: localConfidence, debugInfo, processVideoFrame } = useSignRecognition()
 
   // WebSocket connections
   const videoSocket = useWebSocket(`${WS_BASE_URL}/api/video/stream`)
@@ -1377,8 +1378,15 @@ const Interpreter: React.FC = () => {
                     <h2 className={`${getHeaderSize()} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'} mb-0`}>
                       Live Translation
                     </h2>
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-widest">
-                      Real-time output stream
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-widest transition-all duration-300">
+                      {isSignRecognized 
+                        ? '✨ Stable match confirmed' 
+                        : debugInfo?.rawMatch 
+                          ? `Comparing: ${debugInfo.rawMatch.gloss} (${(debugInfo.rawMatch.confidence * 100).toFixed(0)}%)` 
+                          : isDetecting 
+                            ? 'Tracking handshape & movement...' 
+                            : 'Waiting for sign...'
+                      }
                     </p>
                   </div>
                 </div>
@@ -1849,6 +1857,7 @@ const Interpreter: React.FC = () => {
           </div>
         </div>
       </div>
+      {import.meta.env.DEV && <SignDebugOverlay debugInfo={debugInfo} />}
     </div>
   )
 }

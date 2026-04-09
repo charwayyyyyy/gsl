@@ -65,17 +65,17 @@ export default function Assistant() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 z-[100] w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30 flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 ${isOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'}`}
+        className={`fixed bottom-[85px] right-4 sm:bottom-6 sm:right-6 z-[100] w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30 flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 ${isOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'}`}
         aria-label="Open AI Assistant"
       >
         <MessageCircle size={28} />
       </button>
 
       <div 
-        className={`fixed bottom-6 right-6 z-[100] w-[90vw] sm:w-[380px] h-[550px] max-h-[85vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden transition-all duration-300 origin-bottom-right ${isOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 sm:inset-auto sm:bottom-6 sm:right-6 z-[100] w-full sm:w-[380px] h-full sm:h-[550px] sm:max-h-[85vh] bg-white dark:bg-slate-900 sm:rounded-3xl shadow-2xl sm:border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden transition-all duration-300 sm:origin-bottom-right ${isOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'}`}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 flex items-center justify-between text-white shrink-0">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 pt-[max(1rem,env(safe-area-inset-top))] flex items-center justify-between text-white shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm shadow-inner">
               <Bot size={22} />
@@ -188,7 +188,7 @@ export default function Assistant() {
         )}
 
         {/* Input Area */}
-        <form onSubmit={onSubmit} className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
+        <form onSubmit={onSubmit} className="p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
           <div className="relative flex items-center group">
             <input
               type="text"
@@ -196,7 +196,7 @@ export default function Assistant() {
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask about a sign..."
               disabled={isLoading}
-              className="w-full pl-4 pr-12 py-3 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 dark:focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 rounded-2xl text-sm outline-none transition-all dark:text-white shadow-inner"
+              className="w-full pl-4 pr-12 py-3 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 dark:focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 rounded-2xl text-base sm:text-sm outline-none transition-all dark:text-white shadow-inner"
             />
             <button
               type="submit"
