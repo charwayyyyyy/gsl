@@ -1,16 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageCircle, X, Send, Bot, User as UserIcon, Loader2 } from 'lucide-react';
-import { API_BASE_URL } from '@/config';
+import { fetchAiResponse } from '@/lib/aiClient';
 
 interface ChatMessage {
   role: 'user' | 'model';
   content: string;
 }
 
-export default function Chatbot() {
+export default function Assistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'model', content: "Hi! I'm the SignBridge assistant. How can I help you today?" }
+    { role: 'model', content: "Hello! I'm the SignBridge assistant. How can I help you with Ghana Sign Language today?" }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -35,26 +35,11 @@ export default function Chatbot() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages }),
-      });
-
-      if (!response.ok) {
-        let errDesc = 'Failed to get response';
-        try {
-          const errorData = await response.json();
-          if (errorData.detail) errDesc = errorData.detail;
-        } catch (e) {}
-        throw new Error(errDesc);
-      }
-
-      const data = await response.json();
-      setMessages([...newMessages, { role: 'model', content: data.response }]);
-    } catch (error: any) {
+      const responseText = await fetchAiResponse(userMessage);
+      setMessages([...newMessages, { role: 'model', content: responseText }]);
+    } catch (error) {
       console.error('Chat error:', error);
-      setMessages([...newMessages, { role: 'model', content: error.message || "Sorry, I'm having trouble connecting to my brain right now. Please try again later." }]);
+      setMessages([...newMessages, { role: 'model', content: "Connection issue. Please try again." }]);
     } finally {
       setIsLoading(false);
     }
@@ -62,7 +47,6 @@ export default function Chatbot() {
 
   return (
     <>
-      {/* Floating Action Button */}
       <button
         onClick={() => setIsOpen(true)}
         className={`fixed bottom-6 right-6 z-[100] w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30 flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 ${isOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'}`}
@@ -71,11 +55,9 @@ export default function Chatbot() {
         <MessageCircle size={28} />
       </button>
 
-      {/* Chat Window */}
       <div 
         className={`fixed bottom-6 right-6 z-[100] w-[90vw] sm:w-[350px] h-[500px] max-h-[80vh] bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col overflow-hidden transition-all duration-300 origin-bottom-right ${isOpen ? 'scale-100 opacity-100' : 'scale-0 opacity-0 pointer-events-none'}`}
       >
-        {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-4 flex items-center justify-between text-white shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
@@ -83,7 +65,7 @@ export default function Chatbot() {
             </div>
             <div>
               <h3 className="font-bold text-sm">SignBridge Assistant</h3>
-              <p className="text-[10px] text-blue-100 opacity-80 uppercase tracking-widest font-black">Powered by AI</p>
+              <p className="text-[10px] text-blue-100 opacity-80 uppercase tracking-widest font-black">Secure AI Support</p>
             </div>
           </div>
           <button 
@@ -94,7 +76,6 @@ export default function Chatbot() {
           </button>
         </div>
 
-        {/* Message History */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 dark:bg-slate-950/50">
           {messages.map((msg, index) => (
             <div 
@@ -130,13 +111,18 @@ export default function Chatbot() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
         <form onSubmit={handleSend} className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 shrink-0">
           <div className="relative flex items-center">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
               placeholder="Type your message..."
               disabled={isLoading}
               className="w-full pl-4 pr-12 py-3 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 dark:focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 rounded-xl text-sm outline-none transition-all dark:text-white"

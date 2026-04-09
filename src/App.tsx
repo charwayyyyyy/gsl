@@ -2,7 +2,7 @@ import React, { Suspense, lazy, useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import HealthBanner from "@/components/HealthBanner";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import Chatbot from "@/components/Chatbot";
+import Assistant from "@/components/Assistant";
 import Navbar from "@/components/Navbar";
 import { useVisualSettings } from "@/stores/appStore";
 import { useSystemHealth } from "@/hooks/useSystemHealth";
@@ -74,7 +74,7 @@ export default function App() {
           </div>
         </Suspense>
       </ErrorBoundary>
-      <Chatbot />
+      <Assistant />
     </Router>
   );
 }

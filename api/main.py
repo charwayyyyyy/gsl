@@ -815,39 +815,8 @@ async def end_translation_session(session_id: str):
         logger.error(f"Error ending translation session: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# Gemini Help Chatbot endpoint
-@app.post("/api/chat")
-async def chat_with_gemini(request: ChatRequest):
-    if not gemini_client:
-        raise HTTPException(status_code=500, detail="Gemini API is not configured on the server.")
-    
-    try:
-        # Convert simple message format to Gemini format
-        history = []
-        for msg in request.messages[:-1]:
-            role = "user" if msg.role == "user" else "model"
-            history.append({"role": role, "parts": [{"text": msg.content}]})
-        
-        system_prompt = (
-            "You are a helpful assistant for SignBridge Ghana, a real-time Ghanaian Sign Language interpreter. "
-            "You help users understand how to use the web app (which has Sign-to-Speech, Speech-to-Sign, and Text-to-Sign features). "
-            "Keep your answers concise, clear, and very friendly. If they ask about sign language, provide brief tips."
-        )
-        
-        last_message = request.messages[-1].content
-        
-        response = gemini_client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=history + [{"role": "user", "parts": [{"text": last_message}]}],
-            config=types.GenerateContentConfig(
-                system_instruction=system_prompt,
-            )
-        )
-        
-        return {"response": response.text}
-    except Exception as e:
-        logger.error(f"Error calling Gemini API: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+from .routes.ai import router as ai_router
+app.include_router(ai_router, prefix="/api/ai")
 
 # Serve compiled React frontend from 'dist' folder
 # Handle SPA routing: redirect unknown paths to index.html
