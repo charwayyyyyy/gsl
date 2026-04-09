@@ -316,6 +316,7 @@ const Dictionary: React.FC = () => {
   }
 
   return (
+    <div className={`min-h-screen relative overflow-hidden ${accessibility.highContrast ? 'bg-black text-yellow-400' : 'bg-slate-50 dark:bg-[#050505]'}`}>
     <div className={`min-h-screen relative overflow-hidden ${accessibility.highContrast ? 'bg-black text-yellow-400' : 'bg-slate-50 dark:bg-slate-950'}`}>
       {/* Background Orbs */}
       {!accessibility.highContrast && (

@@ -34,6 +34,25 @@ export default function App() {
 
   useEffect(() => {
     const root = window.document.documentElement;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    const applyTheme = () => {
+      const isDark = colorScheme === 'dark' || 
+                    (colorScheme === 'default' && mediaQuery.matches);
+      
+      if (isDark) {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
+    };
+
+    applyTheme();
+
+    // Listen for system changes if set to default
+    if (colorScheme === 'default') {
+      mediaQuery.addEventListener('change', applyTheme);
+      return () => mediaQuery.removeEventListener('change', applyTheme);
     if (colorScheme === 'dark' || (colorScheme === 'default' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       root.classList.add('dark');
     } else if (colorScheme === 'light') {

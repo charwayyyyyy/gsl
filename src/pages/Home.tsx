@@ -1,6 +1,9 @@
 import { useNavigate } from 'react-router-dom'
 import DirectionSelection from '@/components/DirectionSelection'
 import CommunitySlider from '@/components/CommunitySlider'
+import { useAppStore, useAccessibilitySettings, useVisualSettings } from '@/stores/appStore'
+import { Sparkles, Shield, Accessibility, Zap, Sun, Moon, Laptop } from 'lucide-react'
+
 import { useAppStore, useAccessibilitySettings } from '@/stores/appStore'
 import { BookOpen, Shield, Accessibility, Zap, Sun, Moon, Info, AlertTriangle, Cpu, Globe, Lock, CheckCircle2 } from 'lucide-react'
 import { useTheme } from '@/hooks/useTheme'
@@ -11,7 +14,16 @@ export default function Home() {
   const navigate = useNavigate()
   const accessibility = useAccessibilitySettings()
   const { startTranslationSession } = useAppStore.getState()
-  const { isDark, toggleTheme } = useTheme()
+  const { colorScheme, updateVisual } = useVisualSettings()
+  
+  const isDark = colorScheme === 'dark' || 
+                 (colorScheme === 'default' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+
+  const toggleTheme = () => {
+    if (colorScheme === 'light') updateVisual({ colorScheme: 'dark' })
+    else if (colorScheme === 'dark') updateVisual({ colorScheme: 'default' })
+    else updateVisual({ colorScheme: 'light' })
+  }
 
   const handleDirectionSelect = (direction: 'sign_to_speech' | 'speech_to_sign') => {
     startTranslationSession(direction)
@@ -55,6 +67,21 @@ export default function Home() {
         </>
       )}
 
+      {/* Theme Toggle */}
+      <button
+        onClick={toggleTheme}
+        aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+        className="fixed top-4 right-4 z-50 w-10 h-10 rounded-full flex items-center justify-center
+          bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700
+          hover:scale-110 transition-all duration-300 shadow-lg"
+      >
+        {colorScheme === 'default' 
+          ? <Laptop className="w-4 h-4 text-slate-500" />
+          : isDark
+            ? <Sun className="w-4 h-4 text-amber-400" />
+            : <Moon className="w-4 h-4 text-slate-700" />
+        }
+      </button>
       {/* Theme Toggle moved to Navbar or made less intrusive on Home */}
       <div className="fixed top-20 right-4 z-40 hidden md:block">
         <button

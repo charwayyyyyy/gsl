@@ -6,10 +6,19 @@
   <!-- Theme: apply before paint to avoid flash (runs sync, before React) -->
   <script>
     (function () {
-      var stored = localStorage.getItem('theme');
-      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      var isDark = stored ? stored === 'dark' : prefersDark;
-      document.documentElement.classList.toggle('dark', isDark);
+      try {
+        var stored = localStorage.getItem('gsl-interpreter-settings');
+        var colorScheme = 'default';
+        if (stored) {
+          var parsed = JSON.parse(stored);
+          colorScheme = parsed?.state?.settings?.visual?.colorScheme || 'default';
+        }
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var isDark = colorScheme === 'dark' || (colorScheme === 'default' && prefersDark);
+        document.documentElement.classList.toggle('dark', isDark);
+      } catch (e) {
+        console.error('Theme sync error', e);
+      }
     })();
   </script>
   <link rel="icon" type="image/png" href="/favicon.png" />
