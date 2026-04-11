@@ -13,7 +13,7 @@ interface ChatMessage {
 export default function Assistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'model', content: "Hello! I'm the SignBridge Assistant. I can help you search the Ghana Sign Language (GSL) dictionary or answer questions about signs." }
+    { role: 'model', content: "Hello! I'm the SignBridge Assistant. You can ask me anything, and I’ll answer like a smart chat assistant. If your question is about Ghana Sign Language, I’ll also show you the relevant dictionary entry." }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -21,6 +21,7 @@ export default function Assistant() {
 
   const suggestedQuestions = [
     "How do I sign hello?",
+    "What can you help me with?",
     "Show me signs about family",
     "Where is thank you?"
   ];
@@ -82,7 +83,7 @@ export default function Assistant() {
             </div>
             <div>
               <h3 className="font-bold text-sm tracking-wide">SignBridge Assistant</h3>
-              <p className="text-[10px] text-blue-100 opacity-90 uppercase tracking-widest font-black">GSL Dictionary AI</p>
+              <p className="text-[10px] text-blue-100 opacity-90 uppercase tracking-widest font-black">General AI + GSL</p>
             </div>
           </div>
           <button 
@@ -194,7 +195,7 @@ export default function Assistant() {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about a sign..."
+              placeholder="Ask anything, or ask about a sign..."
               disabled={isLoading}
               className="w-full pl-4 pr-12 py-3 bg-slate-100 dark:bg-slate-800 border border-transparent focus:border-blue-500 dark:focus:border-blue-500 focus:bg-white dark:focus:bg-slate-900 rounded-2xl text-base sm:text-sm outline-none transition-all dark:text-white shadow-inner"
             />

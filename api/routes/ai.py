@@ -1,15 +1,22 @@
 import os
 import json
 import logging
-import requests
+import re
 from fastapi import APIRouter
 from pathlib import Path
+from dotenv import load_dotenv
+from google import genai
+from google.genai import types
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+load_dotenv()
+
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 DICTIONARY_PATH = Path("data") / "processed" / "gsl_dictionary.json"
+GEMINI_MODEL = "gemini-2.0-flash"
+GEMINI_MODEL_FALLBACK = "gemini-pro"
 
 _dictionary_cache = None
 
@@ -23,6 +30,12 @@ def load_dictionary():
             logger.error(f"Failed to load dictionary for AI: {e}")
             _dictionary_cache = {}
     return _dictionary_cache
+
+def get_gemini_client():
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key:
+        return None
+    return genai.Client(api_key=api_key)
 
 def search_dictionary(query: str, max_results=3):
     dictionary = load_dictionary()
@@ -67,6 +80,93 @@ def search_dictionary(query: str, max_results=3):
     # Return top items
     return [item[1] for item in scored_items[:max_results]]
 
+def is_sign_instruction_intent(message: str) -> bool:
+    msg = (message or "").lower().strip()
+    patterns = [
+        r"\bhow\s+do\s+i\s+sign\b",
+        r"\bhow\s+to\s+sign\b",
+        r"\bshow\s+me\s+how\s+to\s+sign\b",
+        r"\bwhat\s+is\s+the\s+sign\s+for\b",
+    ]
+    return any(re.search(p, msg) for p in patterns)
+
+def is_sign_language_question(message: str) -> bool:
+    msg = (message or "").lower().strip()
+    patterns = [
+        r"\bhow\s+do\s+i\s+sign\b",
+        r"\bhow\s+to\s+sign\b",
+        r"\bshow\s+me\s+signs?\b",
+        r"\bwhat\s+is\s+the\s+sign\s+for\b",
+        r"\bgsl\b",
+        r"\bghana\s+sign\s+language\b",
+        r"\bsign\s+language\b",
+        r"\bdictionary\b",
+        r"\btranslate\s+to\s+sign\b",
+    ]
+    return any(re.search(p, msg) for p in patterns)
+
+def extract_instruction_target(message: str) -> str:
+    msg = (message or "").strip()
+    patterns = [
+        r"(?i)how\s+do\s+i\s+sign\s+(.+?)\??$",
+        r"(?i)how\s+to\s+sign\s+(.+?)\??$",
+        r"(?i)show\s+me\s+how\s+to\s+sign\s+(.+?)\??$",
+        r"(?i)what\s+is\s+the\s+sign\s+for\s+(.+?)\??$",
+    ]
+
+    stop_words = {
+        "in", "on", "for", "please", "ghana", "gsl", "language", "sign"
+    }
+
+    for p in patterns:
+        m = re.search(p, msg)
+        if not m:
+            continue
+
+        phrase = re.sub(r"[^a-zA-Z0-9\s'-]", " ", m.group(1).strip())
+        words = [w for w in phrase.split() if w.lower() not in stop_words]
+        if words:
+            return " ".join(words[:3]).strip()
+
+    return ""
+
+def build_instructional_answer(message: str, sources: list) -> str:
+    top = sources[0]
+    gloss = top.get("gloss", "this sign")
+    english = top.get("english", "").strip()
+    description = (top.get("description") or "").strip()
+
+    def concise_description(gloss_text: str, raw: str) -> str:
+        if not raw:
+            return ""
+        cleaned = " ".join(raw.split())
+        upper_cleaned = cleaned.upper()
+        upper_gloss = gloss_text.upper()
+        idx = upper_cleaned.find(upper_gloss)
+        if idx >= 0:
+            segment = cleaned[idx + len(gloss_text):].strip(" :.-")
+            if segment:
+                return segment[:220].rstrip(" ,.;") + "."
+        return cleaned[:220].rstrip(" ,.;") + "."
+
+    heading = f"Here's a quick way to sign **{gloss}**"
+    if english and english.lower() != gloss.lower():
+        heading += f" ({english})"
+    heading += ":"
+
+    if description:
+        quick_guide = concise_description(gloss, description)
+    else:
+        quick_guide = (
+            "I found the sign in the dictionary, but the step-by-step description isn't available in this entry."
+        )
+
+    return (
+        f"{heading}\n\n"
+        f"{quick_guide}\n\n"
+        "If you'd like, open the dictionary entry below to see the full page and diagrams."
+    )
+
 def handle_fallback(message, sources=None, reason=""):
     logger.warning(f"Using fallback response. Reason: {reason}")
     msg = str(message).lower()
@@ -75,13 +175,15 @@ def handle_fallback(message, sources=None, reason=""):
     if len(sources) > 0:
         ans = f"I found some information in the dictionary."
     else:
-        ans = "I couldn't find that in the current Ghana Sign Language dictionary dataset."
+        ans = "I’m having trouble reaching the Gemini service right now."
         if "hello" in msg or "hi" in msg:
             ans = "Hello! How can I help you with Ghana Sign Language today?"
         elif "help" in msg:
-            ans = "You can use Sign → Speech, Speech → Sign, or Text → Sign. I can help answer questions about the app!"
+            ans = "You can use Sign → Speech, Speech → Sign, or Text → Sign. I can help answer questions about the app or about GSL signs."
         elif "sign" in msg or "gsl" in msg:
             ans = "Ghana Sign Language is beautifully nuanced! If you need to translate, you can try our translation modes on the Home screen or look up a specific word here."
+        else:
+            ans = "I can answer Ghana Sign Language questions from the dictionary right now, but my general Gemini chat is offline until the API key is configured. Ask me about a sign, a word, or the app and I’ll help."
             
     return {
         "answer": ans,
@@ -93,8 +195,25 @@ def handle_fallback(message, sources=None, reason=""):
 async def chat(data: dict):
     user_message = data.get("message", "")
     
-    # 1. Retrieve context
-    sources = search_dictionary(user_message)
+    # 1. Retrieve context only when the question is related to GSL or signs.
+    # This keeps general questions free to be answered like a normal Gemini assistant.
+    sources = []
+    if is_sign_language_question(user_message):
+        sources = search_dictionary(user_message)
+        instruction_target = extract_instruction_target(user_message)
+        if instruction_target:
+            target_sources = search_dictionary(instruction_target)
+            if target_sources:
+                sources = target_sources
+
+    # Deterministic explanation path for sign-instruction questions.
+    # This guarantees we provide a useful explanation first, then guide to dictionary visuals.
+    if sources and is_sign_instruction_intent(user_message):
+        return {
+            "answer": build_instructional_answer(user_message, sources),
+            "sources": sources,
+            "used_fallback": False
+        }
     
     if not GEMINI_API_KEY:
         return handle_fallback(user_message, sources, "No API key configured.")
@@ -109,60 +228,63 @@ async def chat(data: dict):
         context_text += f"Page: {src['page']}\n"
     
     system_instruction = (
-        "You are the SignBridge Assistant for Ghana Sign Language (GSL). "
-        "You ONLY use the provided dictionary context to answer queries about signs. "
-        "If the user asks how to describe a sign, rely solely on the Description provided below. "
-        "If no dictionary entries match and the user asks for a sign, politely say 'I couldn't find that sign in the current GSL dictionary dataset.' "
-        "Do NOT invent ASL or generic signs. "
-        "Keep language friendly, clear, and educational. Format instructions beautifully."
+        "You are SignBridge Assistant, a smart Gemini-style chat assistant for Ghana Sign Language and general conversation. "
+        "Answer any normal question helpfully and naturally using your general knowledge. "
+        "When the user asks about Ghana Sign Language, signs, translation, or the dictionary, use the retrieved dictionary context if it is available. "
+        "If a matching sign exists, first give a brief practical explanation in plain language, then invite the user to open the dictionary entry for diagrams. "
+        "If no dictionary entries match and the user clearly wants a sign, say so politely and suggest the dictionary. "
+        "Do not claim certainty when the context is missing. "
+        "Keep the tone friendly, clear, intelligent, and concise."
     )
     
     prompt = f"User Question: {user_message}\n\nRetrieved GSL Dictionary Context:\n{context_text if sources else 'No matching entries found.'}"
 
-    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key={GEMINI_API_KEY}"
-    payload = {
-        "systemInstruction": {
-            "parts": [{"text": system_instruction}]
-        },
-        "contents": [
-            {
-                "parts": [{"text": prompt}]
-            }
-        ]
-    }
-
     try:
-        response = requests.post(url, json=payload, timeout=15)
-        
-        if response.status_code != 200:
-            logger.error(f"Gemini API error ({response.status_code}): {response.text}")
-            # Try falling back to gemini-pro if 2.0-flash isn't available
-            if "not found" in response.text.lower() or response.status_code == 404:
-                url_pro = f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={GEMINI_API_KEY}"
-                # gemini-pro has slightly different payload requirement (no systemInstruction prop directly often)
-                payload_pro = {
-                    "contents": [{"parts": [{"text": f"System: {system_instruction}\n\n{prompt}"}]}]
-                }
-                response = requests.post(url_pro, json=payload_pro, timeout=15)
-                
-            if response.status_code != 200:
-                logger.error(f"Gemini API fallback error: {response.text}")
-                return handle_fallback(user_message, sources, "API connection issue.")
-            
-        json_data = response.json()
-        
-        # Extract text from standard Gemini format
+        if _gemini_client is None:
+            return handle_fallback(user_message, sources, "No Gemini client configured.")
+
+        config = types.GenerateContentConfig(
+            system_instruction=system_instruction,
+            temperature=0.7,
+            top_p=0.95,
+            max_output_tokens=1024,
+        )
+
         try:
-            text = json_data["candidates"][0]["content"]["parts"][0]["text"]
+            response = _gemini_client.models.generate_content(
+                model=GEMINI_MODEL,
+                contents=prompt,
+                config=config,
+            )
+        except Exception as primary_error:
+            logger.error(f"Gemini API error on {GEMINI_MODEL}: {primary_error}")
+            response = _gemini_client.models.generate_content(
+                model=GEMINI_MODEL_FALLBACK,
+                contents=f"System: {system_instruction}\n\n{prompt}",
+                config=types.GenerateContentConfig(
+                    temperature=0.7,
+                    top_p=0.95,
+                    max_output_tokens=1024,
+                ),
+            )
+
+        text = getattr(response, "text", None)
+        if not text and getattr(response, "candidates", None):
+            try:
+                text = response.candidates[0].content.parts[0].text
+            except Exception:
+                text = None
+
+        if text:
             return {
                 "answer": text,
                 "sources": sources,
                 "used_fallback": False
             }
-        except (KeyError, IndexError) as e:
-            logger.error(f"Failed to parse Gemini response: {json_data}")
-            return handle_fallback(user_message, sources, "Parsing error.")
 
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Request to Gemini failed: {str(e)}")
+        logger.error(f"Failed to parse Gemini response: {response}")
+        return handle_fallback(user_message, sources, "Parsing error.")
+
+    except Exception as e:
+        logger.error(f"Gemini assistant failed: {str(e)}")
         return handle_fallback(user_message, sources, "Service unavailable.")
