@@ -1,0 +1,645 @@
+{
+  "counts": {
+    "dictionary_entries": 1760,
+    "templates": 1760,
+    "sign_index": 1760,
+    "core_terms_total": 62,
+    "core_terms_fully_covered": 56,
+    "core_terms_needing_attention": 6
+  },
+  "core_terms": [
+    {
+      "term": "hello",
+      "covered": true,
+      "matched_gloss": "GREET",
+      "page": 165,
+      "template": true,
+      "index": true,
+      "english": "greet",
+      "description": "EDUCATION AND COMMUNICATION COMPLAIN ARGUE Tap both clawed hands over the heart. Move both “X” hands back and forth at each other a few times. ADVISE EXAMPLE Place the right “S” hand on the left wrist Place the fingers of the “E” hand in the and open hand. left palm and push both hands forward. GREET HELLO Place the fingers of the “B” hand Place the fingers of the “H” hand against your temple and draw the hand against your temple and draw the hand forward. forward. 154"
+    },
+    {
+      "term": "hi",
+      "covered": true,
+      "matched_gloss": "GREET",
+      "page": 165,
+      "template": true,
+      "index": true,
+      "english": "greet",
+      "description": "EDUCATION AND COMMUNICATION COMPLAIN ARGUE Tap both clawed hands over the heart. Move both “X” hands back and forth at each other a few times. ADVISE EXAMPLE Place the right “S” hand on the left wrist Place the fingers of the “E” hand in the and open hand. left palm and push both hands forward. GREET HELLO Place the fingers of the “B” hand Place the fingers of the “H” hand against your temple and draw the hand against your temple and draw the hand forward. forward. 154"
+    },
+    {
+      "term": "bye",
+      "covered": false,
+      "matched_gloss": null,
+      "page": null,
+      "template": false,
+      "index": false,
+      "english": null,
+      "description": null
+    },
+    {
+      "term": "goodbye",
+      "covered": false,
+      "matched_gloss": null,
+      "page": null,
+      "template": false,
+      "index": false,
+      "english": null,
+      "description": null
+    },
+    {
+      "term": "please",
+      "covered": true,
+      "matched_gloss": "PLEASE",
+      "page": 166,
+      "template": true,
+      "index": true,
+      "english": "please",
+      "description": "EDUCATION AND COMMUNICATION FINE THANK YOU Place the thumb of the right open hand Move both flat hands from your mouth to against your chest. in front of your body. PLEASE FINGERSPELL Place your flat right hand on your chest With your palm facing down, move the and rotate in a circle. right hand to the right while you wiggle the fingers. INTERPRET SIGN LANGUAGE Place the fingertips of both “F” hands 1. Rotate both index fingers around each together and rotate the right hand. other. 2. Slide both “L” hands away from each other. 155"
+    },
+    {
+      "term": "thank you",
+      "covered": true,
+      "matched_gloss": "FINE",
+      "page": 86,
+      "template": true,
+      "index": true,
+      "english": "fine",
+      "description": "MONEY SELL PROFIT Curve both “B” hands toward the body Move the right “F” hand down slightly and then swing both hands forward a over your heart with thumb and index few times. finger facing downward. COST / PRICE / EXPENSE CHEAP Strike the right “X” hand downward With the left palm facing right, brush against the left palm. the right flat hand against the palm a few times. TAX / FINE / CHARGE FINANCIAL Curve the right fingertips and pull the Slide the back of the right “F” hand right hand down against the flat left into the upturned palm a few times. hand. 75"
+    },
+    {
+      "term": "sorry",
+      "covered": true,
+      "matched_gloss": "APOLOGIZE",
+      "page": 210,
+      "template": true,
+      "index": true,
+      "english": "apologize",
+      "description": "EMOTIONS AND CHARACTER CORRUPT STRICT Place the clawed “3” hand against Pull the clawed “V” hand toward your your nose and twist forward. mouth twice. CREATIVE EMBARRASSED Place the index finger of the right “4” Circle both flat hands against your hand on the temple and move it in cheeks alternately. forward arcs. CRAZY APOLOGIZE / SORRY Circle the right index finger next to Circle the thumb of the “S” hand the side of the head. agaist your chest. 199"
+    },
+    {
+      "term": "yes",
+      "covered": true,
+      "matched_gloss": "YES",
+      "page": 106,
+      "template": true,
+      "index": true,
+      "english": "yes",
+      "description": "OPPOSITES AND QUESTIONS YES NO Nod the right “S” hand up and down Bring the thumb, index, and middle with knuckles facing forward. fingers together of both hands while moving them out to the sides. ASK ANSWER Place both flat hands together with With one index finger at your mouth palms touching and move them in a and the other in front of you, rotate forward arc. both hands downward. EXCITE / EXCITING / THRILL BORING / BORE / DULL Touch the middle fingers of both Place the right index fingertip on the hands to the chest and drag up the side of the nose and rotate forward. body alternately. 95"
+    },
+    {
+      "term": "no",
+      "covered": true,
+      "matched_gloss": "NO",
+      "page": 106,
+      "template": true,
+      "index": true,
+      "english": "no",
+      "description": "OPPOSITES AND QUESTIONS YES NO Nod the right “S” hand up and down Bring the thumb, index, and middle with knuckles facing forward. fingers together of both hands while moving them out to the sides. ASK ANSWER Place both flat hands together with With one index finger at your mouth palms touching and move them in a and the other in front of you, rotate forward arc. both hands downward. EXCITE / EXCITING / THRILL BORING / BORE / DULL Touch the middle fingers of both Place the right index fingertip on the hands to the chest and drag up the side of the nose and rotate forward. body alternately. 95"
+    },
+    {
+      "term": "help",
+      "covered": true,
+      "matched_gloss": "HELP",
+      "page": 118,
+      "template": true,
+      "index": true,
+      "english": "help",
+      "description": "ACTIVITIES HELP CARE Place the right “A” hand with the Place the right “C” hand on top of the thumb up into the left palm and raise left “C” hand and move them up and both hands upward. down. BREAK FIX / MEND / REPAIR Place both “S” hands together with Place the fingers of the “R” hand into the palms down then rotate each hand the left palm and twist the right hand outward in opposite directions. at the wrist. PROTECT DEPEND Firmly place the right “S” hand against Place the right index finger on top of the left “S” hand. the left and slightly move both hands downward. 107"
+    },
+    {
+      "term": "stop",
+      "covered": true,
+      "matched_gloss": "STOP",
+      "page": 100,
+      "template": true,
+      "index": true,
+      "english": "stop",
+      "description": "OPPOSITES AND QUESTIONS GO COME Point both index fingers outward with Point both index fingers outward with palms down then rotate the hands up palms facing up then bring both hands and out. back toward the body. FAST / QUICK / RAPID SLOW Rapidly brush the right fingertips in Move the right flat hand slowly back an upward motion against the left over the left flat hand. fingertips a few times. START / BEGIN STOP / HALT Place the index finger against the back Bring the little finger of the right flat of the left thumb then rotate the right hand down sharply onto the left palm. hand slightly. 89"
+    },
+    {
+      "term": "go",
+      "covered": true,
+      "matched_gloss": "GO",
+      "page": 100,
+      "template": true,
+      "index": true,
+      "english": "go",
+      "description": "OPPOSITES AND QUESTIONS GO COME Point both index fingers outward with Point both index fingers outward with palms down then rotate the hands up palms facing up then bring both hands and out. back toward the body. FAST / QUICK / RAPID SLOW Rapidly brush the right fingertips in Move the right flat hand slowly back an upward motion against the left over the left flat hand. fingertips a few times. START / BEGIN STOP / HALT Place the index finger against the back Bring the little finger of the right flat of the left thumb then rotate the right hand down sharply onto the left palm. hand slightly. 89"
+    },
+    {
+      "term": "come",
+      "covered": true,
+      "matched_gloss": "COME",
+      "page": 100,
+      "template": true,
+      "index": true,
+      "english": "come",
+      "description": "OPPOSITES AND QUESTIONS GO COME Point both index fingers outward with Point both index fingers outward with palms down then rotate the hands up palms facing up then bring both hands and out. back toward the body. FAST / QUICK / RAPID SLOW Rapidly brush the right fingertips in Move the right flat hand slowly back an upward motion against the left over the left flat hand. fingertips a few times. START / BEGIN STOP / HALT Place the index finger against the back Bring the little finger of the right flat of the left thumb then rotate the right hand down sharply onto the left palm. hand slightly. 89"
+    },
+    {
+      "term": "wait",
+      "covered": true,
+      "matched_gloss": "WAIT",
+      "page": 112,
+      "template": true,
+      "index": true,
+      "english": "wait",
+      "description": "ACTIVITIES SIT STAND Place the fingers of the right “U” hand Place the fingertips of the downturned on top of the fingers of the left “U” “V” hand into the left palm. hand and push down. WALK / STEP RUN / JOG Alternate pushing both flat hands in Interlock the right index finger around front of each other. the thumb of the left “G” hand and wave both hands forward. HURRY / HUSTLE WAIT Place both “H” hands facing forward in Place both open hands with palms up front of the body and wave both hands and one slightly in front of the other forward. then wiggle the fingers. 101"
+    },
+    {
+      "term": "eat",
+      "covered": true,
+      "matched_gloss": "EAT",
+      "page": 50,
+      "template": true,
+      "index": true,
+      "english": "eat",
+      "description": "FOOD BREAKFAST LUNCH Move the “B” hand up towards the Move the “L” hand up towards the mouth a few times. mouth a few times. SUPPER FOOD Move the “S” hand toward the Move the “F” hand toward the mouth a few times. mouth a few times. EAT DRINK Move the “AND” hand toward the Tilt the “C” hand in a short arc mouth a few times. toward the mouth. 39"
+    },
+    {
+      "term": "drink",
+      "covered": true,
+      "matched_gloss": "DRINK",
+      "page": 50,
+      "template": true,
+      "index": true,
+      "english": "drink",
+      "description": "FOOD BREAKFAST LUNCH Move the “B” hand up towards the Move the “L” hand up towards the mouth a few times. mouth a few times. SUPPER FOOD Move the “S” hand toward the Move the “F” hand toward the mouth a few times. mouth a few times. EAT DRINK Move the “AND” hand toward the Tilt the “C” hand in a short arc mouth a few times. toward the mouth. 39"
+    },
+    {
+      "term": "water",
+      "covered": true,
+      "matched_gloss": "WATER",
+      "page": 53,
+      "template": true,
+      "index": true,
+      "english": "water",
+      "description": "FOOD COOK KITCHEN Slide both sides of the flat right hand Slide the right ”K” hand back and forth back and forth over the left palm. over the left palm. MARKET COAL POT Place the “M” hands at the waist and Use the index fingers to draw a box in the swing both hands forward slightly a few air then fan the air with your right hand. times. MORTAR AND PESTLE / GRIND WATER Grind the “S” hand against the left palm. Touch the mouth several times with the index finger of the “W” hand. 42"
+    },
+    {
+      "term": "food",
+      "covered": true,
+      "matched_gloss": "FOOD",
+      "page": 11,
+      "template": true,
+      "index": true,
+      "english": "food",
+      "description": "TABLE OF CONTENT THE ALPHABET 1 NUMERALS 2 1 COLORS 4 2 FAMILY, PEOPLE AND PRONOUNS 7 3 GRAMMAR AND PARTS OF SPEECH 21 4 HOME AND CLOTHING 27 5 FOOD 38 6 ANIMALS 57 7 WORK 66 8 MONEY 73 9 OPPOSITES AND QUESTIONS 83 10 ACTIVITIES 99 11 SPORTS AND GAMES 118 12 SCIENCE AND NATURE 127 13 EDUCATION AND COMMUNICATION 137 14 HEALTH 158 15 IDEAS AND MENTAL ACTION 178 16 EMOTION AND CHARACTER 189 17 TIME 200 18 TRAVEL AND DIRECTIONS 212 19 TOWNS, REGIONS AND COUNTRIES 224 20 POLITICS 239 21 RELIGION 249 22 OCCASIONS 265 23 IDIOMATIC EXPRESSIONS 273 24 TECHNOLOGY 288 INDEX 294 XI"
+    },
+    {
+      "term": "family",
+      "covered": true,
+      "matched_gloss": "FAMILY",
+      "page": 19,
+      "template": true,
+      "index": true,
+      "english": "family",
+      "description": "FAMILY, PEOPLE AND PRONOUNS FAMILY PARENTS Place both “F” hands together with Place the middle finger of the “P” palms facing front and twist forward, hand on the middle of the forehead bringing the little fingers together. and then on the chin. FATHER / DAD MOTHER / MOM Touch the forehead with the thumb Touch the chin with the thumb of of your open hand. your open hand. GRANDFATHER GRANDMOTHER Touch the forehead with the thumb Touch the chin with the thumb of of your open hand then move the your open hand then move the hand hand in forward arcs. in forward arcs. 8"
+    },
+    {
+      "term": "mother",
+      "covered": true,
+      "matched_gloss": "MOTHER",
+      "page": 19,
+      "template": true,
+      "index": true,
+      "english": "mother",
+      "description": "FAMILY, PEOPLE AND PRONOUNS FAMILY PARENTS Place both “F” hands together with Place the middle finger of the “P” palms facing front and twist forward, hand on the middle of the forehead bringing the little fingers together. and then on the chin. FATHER / DAD MOTHER / MOM Touch the forehead with the thumb Touch the chin with the thumb of of your open hand. your open hand. GRANDFATHER GRANDMOTHER Touch the forehead with the thumb Touch the chin with the thumb of of your open hand then move the your open hand then move the hand hand in forward arcs. in forward arcs. 8"
+    },
+    {
+      "term": "father",
+      "covered": true,
+      "matched_gloss": "FATHER",
+      "page": 19,
+      "template": true,
+      "index": true,
+      "english": "father",
+      "description": "FAMILY, PEOPLE AND PRONOUNS FAMILY PARENTS Place both “F” hands together with Place the middle finger of the “P” palms facing front and twist forward, hand on the middle of the forehead bringing the little fingers together. and then on the chin. FATHER / DAD MOTHER / MOM Touch the forehead with the thumb Touch the chin with the thumb of of your open hand. your open hand. GRANDFATHER GRANDMOTHER Touch the forehead with the thumb Touch the chin with the thumb of of your open hand then move the your open hand then move the hand hand in forward arcs. in forward arcs. 8"
+    },
+    {
+      "term": "brother",
+      "covered": true,
+      "matched_gloss": "BROTHER",
+      "page": 20,
+      "template": true,
+      "index": true,
+      "english": "brother",
+      "description": "FAMILY, PEOPLE AND PRONOUNS BOY GIRL Pull the “AND” hand forward from Slide the “A” hand forward over the the forehead then place your flat cheek then place your flat hand at hand at your side. your side. SON DAUGHTER Make the sign for “BOY” then move Make the sign for “GIRL” then move the hand to the inner elbow. the hand to the inner elbow. BROTHER SISTER Make the sign for “BOY” then point Make the sign for “GIRL” then point both index fingers forward and bring both index fingers forward and bring them together. them together. 9"
+    },
+    {
+      "term": "sister",
+      "covered": true,
+      "matched_gloss": "SISTER",
+      "page": 20,
+      "template": true,
+      "index": true,
+      "english": "sister",
+      "description": "FAMILY, PEOPLE AND PRONOUNS BOY GIRL Pull the “AND” hand forward from Slide the “A” hand forward over the the forehead then place your flat cheek then place your flat hand at hand at your side. your side. SON DAUGHTER Make the sign for “BOY” then move Make the sign for “GIRL” then move the hand to the inner elbow. the hand to the inner elbow. BROTHER SISTER Make the sign for “BOY” then point Make the sign for “GIRL” then point both index fingers forward and bring both index fingers forward and bring them together. them together. 9"
+    },
+    {
+      "term": "friend",
+      "covered": true,
+      "matched_gloss": "FRIEND",
+      "page": 25,
+      "template": true,
+      "index": true,
+      "english": "friend",
+      "description": "FAMILY, PEOPLE AND PRONOUNS LADY PERSON 1. Make the sign for “GIRL. ” Place both “P” hands forward and 2. Place the thumb of the open hand move them downward at the same on your chest. time. PEOPLE INDIVIDUAL Make alternating forward circles with Drop both “I” hands together in front both “P” hands. of the body. NAME FRIEND Tap the fingers of both “H” hands Interlock the right and left index fingers together twice. and rotate each hand. 14"
+    },
+    {
+      "term": "teacher",
+      "covered": true,
+      "matched_gloss": "TEACHER",
+      "page": 79,
+      "template": true,
+      "index": true,
+      "english": "teacher",
+      "description": "WORK STUDENT TEACHER 1. Bring right “AND” hand from left 1. Push both “AND” hands back and palm to temple. forth. 2. Slide the flat hands down the body. 2. Slide the flat hands down the body. HEADMASTER / HEADMISTRESS ELDER Place the curved hand on the forehead Place the “S” hand on your chin then then place the clawed hand on the swing down and out to the side with right shoulder. the “A” hand. FARMER MARKET SELLER 1. Slide the “F” hand under the mouth. 1. Swing both “M” hands at the waist 2. Slide the flat hands down the body. and few times. 2. Slide the flat hands down the body. 68"
+    },
+    {
+      "term": "student",
+      "covered": true,
+      "matched_gloss": "STUDENT",
+      "page": 79,
+      "template": true,
+      "index": true,
+      "english": "student",
+      "description": "WORK STUDENT TEACHER 1. Bring right “AND” hand from left 1. Push both “AND” hands back and palm to temple. forth. 2. Slide the flat hands down the body. 2. Slide the flat hands down the body. HEADMASTER / HEADMISTRESS ELDER Place the curved hand on the forehead Place the “S” hand on your chin then then place the clawed hand on the swing down and out to the side with right shoulder. the “A” hand. FARMER MARKET SELLER 1. Slide the “F” hand under the mouth. 1. Swing both “M” hands at the waist 2. Slide the flat hands down the body. and few times. 2. Slide the flat hands down the body. 68"
+    },
+    {
+      "term": "school",
+      "covered": true,
+      "matched_gloss": "SCHOOL",
+      "page": 151,
+      "template": true,
+      "index": true,
+      "english": "school",
+      "description": "EDUCATION AND COMMUNICATION AUTHORITY ASSIST / ASSISTANT Place the “A” hand flat against your left Place the right “A” hand under the “S” shoulder then bring it to the left inner hand wrist and push upward. elbow with the thumb upward. SCHOOL UNIVERSITY Tap the right fingertips into the left palm Sweep the “U” hand forward over your left twice. palm. COLLEGE CLASS Sweep the “C” hand forward over your left Place both downturned “C” hands in front palm. of your body and curve them forward slightly. 140"
+    },
+    {
+      "term": "home",
+      "covered": true,
+      "matched_gloss": "HOME",
+      "page": 11,
+      "template": true,
+      "index": true,
+      "english": "home",
+      "description": "TABLE OF CONTENT THE ALPHABET 1 NUMERALS 2 1 COLORS 4 2 FAMILY, PEOPLE AND PRONOUNS 7 3 GRAMMAR AND PARTS OF SPEECH 21 4 HOME AND CLOTHING 27 5 FOOD 38 6 ANIMALS 57 7 WORK 66 8 MONEY 73 9 OPPOSITES AND QUESTIONS 83 10 ACTIVITIES 99 11 SPORTS AND GAMES 118 12 SCIENCE AND NATURE 127 13 EDUCATION AND COMMUNICATION 137 14 HEALTH 158 15 IDEAS AND MENTAL ACTION 178 16 EMOTION AND CHARACTER 189 17 TIME 200 18 TRAVEL AND DIRECTIONS 212 19 TOWNS, REGIONS AND COUNTRIES 224 20 POLITICS 239 21 RELIGION 249 22 OCCASIONS 265 23 IDIOMATIC EXPRESSIONS 273 24 TECHNOLOGY 288 INDEX 294 XI"
+    },
+    {
+      "term": "work",
+      "covered": true,
+      "matched_gloss": "WORK",
+      "page": 11,
+      "template": true,
+      "index": true,
+      "english": "work",
+      "description": "TABLE OF CONTENT THE ALPHABET 1 NUMERALS 2 1 COLORS 4 2 FAMILY, PEOPLE AND PRONOUNS 7 3 GRAMMAR AND PARTS OF SPEECH 21 4 HOME AND CLOTHING 27 5 FOOD 38 6 ANIMALS 57 7 WORK 66 8 MONEY 73 9 OPPOSITES AND QUESTIONS 83 10 ACTIVITIES 99 11 SPORTS AND GAMES 118 12 SCIENCE AND NATURE 127 13 EDUCATION AND COMMUNICATION 137 14 HEALTH 158 15 IDEAS AND MENTAL ACTION 178 16 EMOTION AND CHARACTER 189 17 TIME 200 18 TRAVEL AND DIRECTIONS 212 19 TOWNS, REGIONS AND COUNTRIES 224 20 POLITICS 239 21 RELIGION 249 22 OCCASIONS 265 23 IDIOMATIC EXPRESSIONS 273 24 TECHNOLOGY 288 INDEX 294 XI"
+    },
+    {
+      "term": "name",
+      "covered": true,
+      "matched_gloss": "NAME",
+      "page": 25,
+      "template": true,
+      "index": true,
+      "english": "name",
+      "description": "FAMILY, PEOPLE AND PRONOUNS LADY PERSON 1. Make the sign for “GIRL. ” Place both “P” hands forward and 2. Place the thumb of the open hand move them downward at the same on your chest. time. PEOPLE INDIVIDUAL Make alternating forward circles with Drop both “I” hands together in front both “P” hands. of the body. NAME FRIEND Tap the fingers of both “H” hands Interlock the right and left index fingers together twice. and rotate each hand. 14"
+    },
+    {
+      "term": "what",
+      "covered": true,
+      "matched_gloss": "WHAT",
+      "page": 108,
+      "template": true,
+      "index": true,
+      "english": "what",
+      "description": "OPPOSITES AND QUESTIONS WHO WHAT Make a small circle in front of the lips Pass the tip of the right index finger with your right index finger. down over the left palm. WHERE WHEN Hold the right index finger up and Hold both index fingers forward at shake it rapidly back and forth. your side with palms up then twist both hands so palms face down. HOW WHY Place both curved hands together Touch the forehead with the flat right and rotate each wrist in a downward hand then pull forward into the “Y” motion. hand. 97"
+    },
+    {
+      "term": "where",
+      "covered": true,
+      "matched_gloss": "WHERE",
+      "page": 108,
+      "template": true,
+      "index": true,
+      "english": "where",
+      "description": "OPPOSITES AND QUESTIONS WHO WHAT Make a small circle in front of the lips Pass the tip of the right index finger with your right index finger. down over the left palm. WHERE WHEN Hold the right index finger up and Hold both index fingers forward at shake it rapidly back and forth. your side with palms up then twist both hands so palms face down. HOW WHY Place both curved hands together Touch the forehead with the flat right and rotate each wrist in a downward hand then pull forward into the “Y” motion. hand. 97"
+    },
+    {
+      "term": "when",
+      "covered": true,
+      "matched_gloss": "WHEN",
+      "page": 108,
+      "template": true,
+      "index": true,
+      "english": "when",
+      "description": "OPPOSITES AND QUESTIONS WHO WHAT Make a small circle in front of the lips Pass the tip of the right index finger with your right index finger. down over the left palm. WHERE WHEN Hold the right index finger up and Hold both index fingers forward at shake it rapidly back and forth. your side with palms up then twist both hands so palms face down. HOW WHY Place both curved hands together Touch the forehead with the flat right and rotate each wrist in a downward hand then pull forward into the “Y” motion. hand. 97"
+    },
+    {
+      "term": "why",
+      "covered": true,
+      "matched_gloss": "WHY",
+      "page": 108,
+      "template": true,
+      "index": true,
+      "english": "why",
+      "description": "OPPOSITES AND QUESTIONS WHO WHAT Make a small circle in front of the lips Pass the tip of the right index finger with your right index finger. down over the left palm. WHERE WHEN Hold the right index finger up and Hold both index fingers forward at shake it rapidly back and forth. your side with palms up then twist both hands so palms face down. HOW WHY Place both curved hands together Touch the forehead with the flat right and rotate each wrist in a downward hand then pull forward into the “Y” motion. hand. 97"
+    },
+    {
+      "term": "who",
+      "covered": true,
+      "matched_gloss": "WHO",
+      "page": 108,
+      "template": true,
+      "index": true,
+      "english": "who",
+      "description": "OPPOSITES AND QUESTIONS WHO WHAT Make a small circle in front of the lips Pass the tip of the right index finger with your right index finger. down over the left palm. WHERE WHEN Hold the right index finger up and Hold both index fingers forward at shake it rapidly back and forth. your side with palms up then twist both hands so palms face down. HOW WHY Place both curved hands together Touch the forehead with the flat right and rotate each wrist in a downward hand then pull forward into the “Y” motion. hand. 97"
+    },
+    {
+      "term": "how",
+      "covered": true,
+      "matched_gloss": "HOW",
+      "page": 9,
+      "template": true,
+      "index": true,
+      "english": "how",
+      "description": "HOW TO READ THIS BOOK IX"
+    },
+    {
+      "term": "me",
+      "covered": true,
+      "matched_gloss": "ME",
+      "page": 27,
+      "template": true,
+      "index": true,
+      "english": "me",
+      "description": "FAMILY, PEOPLE AND PRONOUNS WHITE MAN / WOMAN / FAIR SKINNED I Rub the underside of your arm with Place the “I” hand against your your hand. chest. ME MY Point the index finger at the chest. Place the palm of the flat hand on the chest. MINE MYSELF Pat the palm of the flat hand on the Bring the “A” hand to the center of chest twice. the chest with the knuckles facing toward your body. 16"
+    },
+    {
+      "term": "you",
+      "covered": true,
+      "matched_gloss": "YOU",
+      "page": 28,
+      "template": true,
+      "index": true,
+      "english": "you",
+      "description": "FAMILY, PEOPLE AND PRONOUNS YOU YOUR Point the index finger at the person Place the flat hand in front of the being addressed. body with your palm facing the person being addressed. YOURSELF US Hold the right “A” hand thumb up, and Touch the “U” hand on the right move the hand forward in the direction chest, then rotate it forward until it of the person being addressed. touches the left chest. WE OUR Touch the index finger on the right Touch the curved hand on the right side of the chest, then move it to the side of the chest, then rotate it left side of the chest. around to the left side of the chest. 17"
+    },
+    {
+      "term": "we",
+      "covered": true,
+      "matched_gloss": "WE",
+      "page": 28,
+      "template": true,
+      "index": true,
+      "english": "we",
+      "description": "FAMILY, PEOPLE AND PRONOUNS YOU YOUR Point the index finger at the person Place the flat hand in front of the being addressed. body with your palm facing the person being addressed. YOURSELF US Hold the right “A” hand thumb up, and Touch the “U” hand on the right move the hand forward in the direction chest, then rotate it forward until it of the person being addressed. touches the left chest. WE OUR Touch the index finger on the right Touch the curved hand on the right side of the chest, then move it to the side of the chest, then rotate it left side of the chest. around to the left side of the chest. 17"
+    },
+    {
+      "term": "they",
+      "covered": true,
+      "matched_gloss": "THEY",
+      "page": 30,
+      "template": true,
+      "index": true,
+      "english": "they",
+      "description": "FAMILY, PEOPLE AND PRONOUNS EVERYONE OTHER 1. Pull right “A” hand down left “A” hand Flick “A” hand from the wrist. toward body. 2. Make the sign for “1.” THIS THAT Place your index finger in the palm Place the “Y” hand in the palm of of your left hand. your left hand. THERE / AVAILABLE THEY Point your flat hand in the direction of Swing the “Y” hand from the side to the object being referred to. in front of the body. 19"
+    },
+    {
+      "term": "he",
+      "covered": true,
+      "matched_gloss": "HE",
+      "page": 29,
+      "template": true,
+      "index": true,
+      "english": "he",
+      "description": "FAMILY, PEOPLE AND PRONOUNS OURSELVES HE Place the curved hand on the side of the Push the right “E” hand from the chest, then rotate it around and place the temple to in front of the face. “A” hand in the center of the chest. HIS HER Push the right “E” hand from the temple Push the right “R” hand from the to a flat hand in front of the face. temple to in front of the face. HERS SOMEONE Push the right “R” hand from the 1. Draw back the right flat hand temple to a flat hand in front of the against the left palm. 2. Make the face. sign for “1.” 18"
+    },
+    {
+      "term": "she",
+      "covered": false,
+      "matched_gloss": null,
+      "page": null,
+      "template": false,
+      "index": false,
+      "english": null,
+      "description": null
+    },
+    {
+      "term": "good",
+      "covered": true,
+      "matched_gloss": "GOOD",
+      "page": 102,
+      "template": true,
+      "index": true,
+      "english": "good",
+      "description": "OPPOSITES AND QUESTIONS GOOD BAD Place the fingers of the flat hand at the Place the flat right hand at the lips lips then move the hand down into the then move it downward and to the left palm. right. WONDERFUL / AMAZING WORSE Move the flat open hands up and Hold both “W” hands at the sides of forward a few times with palms facing the body with palms up then cross one out. on top of the other. IMPROVE DECLINE Move the right flat hand in small arcs Move the right flat hand in small arcs up the left arm. down the left arm. 91"
+    },
+    {
+      "term": "bad",
+      "covered": true,
+      "matched_gloss": "BAD",
+      "page": 102,
+      "template": true,
+      "index": true,
+      "english": "bad",
+      "description": "OPPOSITES AND QUESTIONS GOOD BAD Place the fingers of the flat hand at the Place the flat right hand at the lips lips then move the hand down into the then move it downward and to the left palm. right. WONDERFUL / AMAZING WORSE Move the flat open hands up and Hold both “W” hands at the sides of forward a few times with palms facing the body with palms up then cross one out. on top of the other. IMPROVE DECLINE Move the right flat hand in small arcs Move the right flat hand in small arcs up the left arm. down the left arm. 91"
+    },
+    {
+      "term": "like",
+      "covered": true,
+      "matched_gloss": "LIKE",
+      "page": 190,
+      "template": true,
+      "index": true,
+      "english": "like",
+      "description": "IDEAS AND MENTAL ACTION IDEA OPINION Touch the little finger of the “I” hand to Tap the “O” hand to your temple twice. your temple then draw it forward. EXPERIENCE SKILL Place your fingers on your head and Cup the left little finger in your right hand thumbs on your ears then pull hands and pull forward into “A” hand. down while closing the fingers. LIKE INTEREST Place the right open hand on your chest Rub both flat hands together. and draw forward while meeting the thumb and middle finger. 179"
+    },
+    {
+      "term": "love",
+      "covered": true,
+      "matched_gloss": "LOVE",
+      "page": 204,
+      "template": true,
+      "index": true,
+      "english": "love",
+      "description": "EMOTIONS AND CHARACTER LOVE HATE Cross both arms with “S” Flick both middle fingers and hands at your chest. thumbs together at your side. MISS DESIRE Pull your open right hand Pinch your neck with your down from the left and into the thumb and index finger. “AND” hand. STRUGGLE / SUFFERING HURT Alternate bouncing each “S” hand over the Point both index fingers towards each other other as you move the hands forward. and twist both hands forward slightly. 193"
+    },
+    {
+      "term": "want",
+      "covered": true,
+      "matched_gloss": "WANT",
+      "page": 195,
+      "template": true,
+      "index": true,
+      "english": "want",
+      "description": "IDEAS AND MENTAL ACTION TRUST BELIEVE Slide the “T” hand across your left palm. Place both flat hands together and pull them in opposite directions while closing into “A” hands. INFORM AGREE With both “O” hands at your mouth, open Touch your temple with your index finger both hands and lift up slightly. then place both index fingers together in front of your body. PURPOSE WANT Circle the “P” hand against your temple. Pull both upturned clawed hands towards your body. 184"
+    },
+    {
+      "term": "need",
+      "covered": true,
+      "matched_gloss": "NEED",
+      "page": 198,
+      "template": true,
+      "index": true,
+      "english": "need",
+      "description": "IDEAS AND MENTAL ACTION HAPPEN MEMORY Place both index fingers on your forehead Place the “M” hand at your temple and then rotate forward and drop to your pull back. abdomen. REMIND REMEMBER Place the right bent hand on your right Pull the right “A” hand from the forehead shoulder and pull back into a fist. to meet the other “A” hand at your waist by touching thumbs. MEANING MUST / NEED / REQUIREMENT Press the fingertips of the “M” hand into Firmly move the right “X” hand down at the left palm and rotate the right hand your side. slightly. 187"
+    },
+    {
+      "term": "open",
+      "covered": true,
+      "matched_gloss": "OPEN",
+      "page": 7,
+      "template": true,
+      "index": true,
+      "english": "open",
+      "description": "COMMON HAND SHAPES ILY HAND FLAT HAND AND HAND CLAWED HAND BENT HAND OPEN HAND CURVED HAND ILY HAND The “ILY hand,” or I Love You hand, is most commonly used for objects that are in flight, such as aeroplanes. FLAT HAND The “flat hand” is almost always used to sign smooth or flat objects. It is commonly used to classify flat objects that are lined up, such as books on a bookshelf or a stack of papers. AND HAND The “AND hand” is another very common shape that is used when signing objects that are closed or flat, and when signing the act of giving or moving. It can also be used to classify animals with long necks. CLAWED HAND The “clawed hand” is commonly used to represent objects that come in abundance or rough objects. It can also be used to signify the act of throwing objects. BENT HAND The “bent hand” is a good hand shape to use when describing flat surfaces or objects with right angles. It is also used to show how objects and ideas can be even. OPEN HAND The “open hand” is commonly used for signs of large, flat objects; signs pertaining to height and natural signs such as fire, water level and trees. It can also be used to classify weather patterns, traffic and upright objects. CURVED HAND The “curved hand” is a good sign to use for any object that has a curved surface. It can also be used to demonstrate actions like scooping, digging, or collecting things. VII"
+    },
+    {
+      "term": "close",
+      "covered": true,
+      "matched_gloss": "CLOSE",
+      "page": 99,
+      "template": true,
+      "index": true,
+      "english": "close",
+      "description": "OPPOSITES AND QUESTIONS HOT / HEAT / WARM COLD / COOL / CHILLY Wave the “C” hand back and forth in Hold your forearms up against your front of your mouth. body with “S” hands and shake both arms back and forth slightly. OPEN CLOSE Place both “B” hands together with Place both “B” hands at the sides then palms down then move both hands move them together with palms down. out to the sides. UP DOWN Move the “U” hand upward changing it Use the right index finger to point into the “P” hand. down to the floor. 88"
+    },
+    {
+      "term": "day",
+      "covered": true,
+      "matched_gloss": "DAY",
+      "page": 212,
+      "template": true,
+      "index": true,
+      "english": "day",
+      "description": "TIME TIME SECONDS Tap your left wrist with the “X” hand. With the index finger pointed upward, slightly rotate the right hand against the left palm. MINUTES HOUR With the index finger pointed Circle the right hand in the left palm upward, rotate the right hand against with the “H” hand pointed upward. the left palm. DAY WEEK Place the right elbow on the back of the With the index finger forward, slide left hand with the index finger upward the right hand across the left palm. and drop the right hand down. 201"
+    },
+    {
+      "term": "today",
+      "covered": false,
+      "matched_gloss": null,
+      "page": null,
+      "template": false,
+      "index": false,
+      "english": null,
+      "description": null
+    },
+    {
+      "term": "tomorrow",
+      "covered": true,
+      "matched_gloss": "TOMORROW",
+      "page": 214,
+      "template": true,
+      "index": true,
+      "english": "tomorrow",
+      "description": "TIME TOMORROW YESTERDAY With the “A” hand at the side of your Touch the thumb of the “Y” hand to mouth, rotate the thumb forward. your cheek then to the ear. MONDAY TUESDAY With your wrist pointing away from With your wrist pointing toward your your body, rotate the “M” hand. body, rotate the “T” hand. WEDNESDAY THURSDAY With your wrist pointing toward your With your wrist pointing toward your body, rotate the “W” hand. body, rotate the “H” hand. 203"
+    },
+    {
+      "term": "now",
+      "covered": true,
+      "matched_gloss": "NOW",
+      "page": 220,
+      "template": true,
+      "index": true,
+      "english": "now",
+      "description": "TIME PRESENT / NOW NEXT Drop the “Y” hands together in front With your left hand in “L” hand shape, of the body. point first to the thumb and then to the index finger. LAST EARLY Using both “I” hands, strike the little Touch the right middle finger to the fingers together. back of your left hand and flick the hand forward. LATE LONG / PAST / AGO Pull the “L” hand backward at your Pull the right index finger up your arm waist. from the wrist. 209"
+    },
+    {
+      "term": "time",
+      "covered": true,
+      "matched_gloss": "TIME",
+      "page": 11,
+      "template": true,
+      "index": true,
+      "english": "time",
+      "description": "TABLE OF CONTENT THE ALPHABET 1 NUMERALS 2 1 COLORS 4 2 FAMILY, PEOPLE AND PRONOUNS 7 3 GRAMMAR AND PARTS OF SPEECH 21 4 HOME AND CLOTHING 27 5 FOOD 38 6 ANIMALS 57 7 WORK 66 8 MONEY 73 9 OPPOSITES AND QUESTIONS 83 10 ACTIVITIES 99 11 SPORTS AND GAMES 118 12 SCIENCE AND NATURE 127 13 EDUCATION AND COMMUNICATION 137 14 HEALTH 158 15 IDEAS AND MENTAL ACTION 178 16 EMOTION AND CHARACTER 189 17 TIME 200 18 TRAVEL AND DIRECTIONS 212 19 TOWNS, REGIONS AND COUNTRIES 224 20 POLITICS 239 21 RELIGION 249 22 OCCASIONS 265 23 IDIOMATIC EXPRESSIONS 273 24 TECHNOLOGY 288 INDEX 294 XI"
+    },
+    {
+      "term": "money",
+      "covered": true,
+      "matched_gloss": "MONEY",
+      "page": 11,
+      "template": true,
+      "index": true,
+      "english": "money",
+      "description": "TABLE OF CONTENT THE ALPHABET 1 NUMERALS 2 1 COLORS 4 2 FAMILY, PEOPLE AND PRONOUNS 7 3 GRAMMAR AND PARTS OF SPEECH 21 4 HOME AND CLOTHING 27 5 FOOD 38 6 ANIMALS 57 7 WORK 66 8 MONEY 73 9 OPPOSITES AND QUESTIONS 83 10 ACTIVITIES 99 11 SPORTS AND GAMES 118 12 SCIENCE AND NATURE 127 13 EDUCATION AND COMMUNICATION 137 14 HEALTH 158 15 IDEAS AND MENTAL ACTION 178 16 EMOTION AND CHARACTER 189 17 TIME 200 18 TRAVEL AND DIRECTIONS 212 19 TOWNS, REGIONS AND COUNTRIES 224 20 POLITICS 239 21 RELIGION 249 22 OCCASIONS 265 23 IDIOMATIC EXPRESSIONS 273 24 TECHNOLOGY 288 INDEX 294 XI"
+    },
+    {
+      "term": "doctor",
+      "covered": true,
+      "matched_gloss": "DOCTOR",
+      "page": 81,
+      "template": true,
+      "index": true,
+      "english": "doctor",
+      "description": "WORK JUDGE DOCTOR Swing the little fingers of both “J” Tap the left wrist with the fingers of hands from your temples to your the “D” hand. shoulders. NURSE DENTIST Tap the left wrist with the fingers of Tap your teeth with the fingers of the the “N” hand. “D” hand. PILOT DRIVER 1. Glide your right “ILY” hand over the 1. Twist both “S” hands up and down. left hand. 2. Slide the flat hands down the body. 2. Slide the flat hands down the body. 70"
+    },
+    {
+      "term": "hospital",
+      "covered": true,
+      "matched_gloss": "HOSPITAL",
+      "page": 182,
+      "template": true,
+      "index": true,
+      "english": "hospital",
+      "description": "HEALTH STI MENTAL Sign the letters “S” “T” and “I” while Place the fingertips of the “M” hand at moving the hand slightly to the right. your temple then lift the wrist up and down. DISABLED CRIPPLED Tap the fingers of the “D” hand against Alternate lifting and dropping both your inner thumb twice. index fingers as they point downward. HEARING AID HOSPITAL Place the index finger of the “X” hand Make a cross on the left shoulder using the around your right ear. “X” hand. 171"
+    },
+    {
+      "term": "church",
+      "covered": true,
+      "matched_gloss": "CHURCH",
+      "page": 263,
+      "template": true,
+      "index": true,
+      "english": "church",
+      "description": "RELIGION PENTECOSTAL JEWISH 1. Draw the right “P” hand forward from Cover the chin with the open hand and the mouth. 2. Place the right “C” hand pull down into “AND” hand. on the left wrist. TRADITIONAL CHURCH Place the “T” hand on the left wrist and Tap the left wrist with the “C” hand drop both hands in a downward motion. twice. TEMPLE MOSQUE Tap the left wrist with the “T” hand twice. Tap the left wrist with the “T” hand twice. 252"
+    },
+    {
+      "term": "ghana",
+      "covered": true,
+      "matched_gloss": "GHANA",
+      "page": 10,
+      "template": true,
+      "index": true,
+      "english": "ghana",
+      "description": "DEAF SCHOOLS OF GHANA X"
+    },
+    {
+      "term": "sign",
+      "covered": false,
+      "matched_gloss": null,
+      "page": null,
+      "template": false,
+      "index": false,
+      "english": null,
+      "description": null
+    },
+    {
+      "term": "language",
+      "covered": false,
+      "matched_gloss": null,
+      "page": null,
+      "template": false,
+      "index": false,
+      "english": null,
+      "description": null
+    }
+  ],
+  "missing_terms": [
+    "bye",
+    "goodbye",
+    "she",
+    "today",
+    "sign",
+    "language"
+  ],
+  "generated_from": {
+    "dictionary": "/Users/wm/Documents/gsl/data/processed/gsl_dictionary.json",
+    "templates": "/Users/wm/Documents/gsl/data/processed/dictionary_motion_templates.json",
+    "sign_index": "/Users/wm/Documents/gsl/data/processed/gsl_sign_index.json"
+  }
+}

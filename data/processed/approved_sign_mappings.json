@@ -1,0 +1,36 @@
+{
+  "summary": {
+    "approved_count": 4,
+    "source_curation": "/Users/wm/Documents/gsl/data/curated/core_term_mappings.json",
+    "source_verification": "/Users/wm/Documents/gsl/data/processed/sign_curation_verification.json"
+  },
+  "mappings": [
+    {
+      "term": "bye",
+      "status": "approved",
+      "notes": "No direct BYE/GOODBYE gloss found. Suggested fallback is LATER (as in SEE YOU LATER), pending signer validation.",
+      "target_gloss": "LATER"
+    },
+    {
+      "term": "goodbye",
+      "status": "approved",
+      "notes": "No direct GOODBYE gloss found. Suggested fallback is LATER, pending signer validation.",
+      "target_gloss": "LATER"
+    },
+    {
+      "term": "she",
+      "status": "approved",
+      "notes": "No exact SHE gloss found. Suggested pronoun mapping is HER, with WOMAN/FEMALE as alternates based on context.",
+      "target_gloss": "HER"
+    },
+    {
+      "term": "today",
+      "status": "approved",
+      "notes": "No exact TODAY gloss found. Suggested composite is NOW + DAY, pending language review.",
+      "target_composite_glosses": [
+        "NOW",
+        "DAY"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,390 @@
+{
+  "summary": {
+    "total_entries": 1760,
+    "distinct_handshapes": 6
+  },
+  "handshape_counts": {
+    "CURVED": 41,
+    "FIST": 138,
+    "FLAT": 1177,
+    "OPEN": 34,
+    "POINT": 283,
+    "UNKNOWN": 87
+  },
+  "examples": {
+    "UNKNOWN": [
+      {
+        "gloss": "GHANAIAN",
+        "english": "ghanaian",
+        "page": 1
+      },
+      {
+        "gloss": "SIGN",
+        "english": "sign",
+        "page": 1
+      },
+      {
+        "gloss": "LANGUAGE",
+        "english": "language",
+        "page": 1
+      },
+      {
+        "gloss": "THIRD",
+        "english": "third",
+        "page": 1
+      },
+      {
+        "gloss": "EDITION",
+        "english": "edition",
+        "page": 1
+      },
+      {
+        "gloss": "DICTIONARY",
+        "english": "dictionary",
+        "page": 1
+      },
+      {
+        "gloss": "II",
+        "english": "ii",
+        "page": 2
+      },
+      {
+        "gloss": "III",
+        "english": "iii",
+        "page": 3
+      },
+      {
+        "gloss": "IV",
+        "english": "iv",
+        "page": 4
+      },
+      {
+        "gloss": "FOREWORD",
+        "english": "foreword",
+        "page": 5
+      },
+      {
+        "gloss": "MESSAGE",
+        "english": "message",
+        "page": 6
+      },
+      {
+        "gloss": "OF",
+        "english": "of",
+        "page": 6
+      }
+    ],
+    "FLAT": [
+      {
+        "gloss": "COMMON",
+        "english": "common",
+        "page": 7
+      },
+      {
+        "gloss": "HAND",
+        "english": "hand",
+        "page": 7
+      },
+      {
+        "gloss": "SHAPES",
+        "english": "shapes",
+        "page": 7
+      },
+      {
+        "gloss": "ILY",
+        "english": "ily",
+        "page": 7
+      },
+      {
+        "gloss": "FLAT",
+        "english": "flat",
+        "page": 7
+      },
+      {
+        "gloss": "AND",
+        "english": "and",
+        "page": 7
+      },
+      {
+        "gloss": "CLAWED",
+        "english": "clawed",
+        "page": 7
+      },
+      {
+        "gloss": "BENT",
+        "english": "bent",
+        "page": 7
+      },
+      {
+        "gloss": "OPEN",
+        "english": "open",
+        "page": 7
+      },
+      {
+        "gloss": "CURVED",
+        "english": "curved",
+        "page": 7
+      },
+      {
+        "gloss": "VII",
+        "english": "vii",
+        "page": 7
+      },
+      {
+        "gloss": "FAMILY",
+        "english": "family",
+        "page": 19
+      }
+    ],
+    "POINT": [
+      {
+        "gloss": "FINGERSPELLING",
+        "english": "fingerspelling",
+        "page": 8
+      },
+      {
+        "gloss": "STABILITY",
+        "english": "stability",
+        "page": 8
+      },
+      {
+        "gloss": "CLARITY",
+        "english": "clarity",
+        "page": 8
+      },
+      {
+        "gloss": "SPEED",
+        "english": "speed",
+        "page": 8
+      },
+      {
+        "gloss": "MOVEMENT",
+        "english": "movement",
+        "page": 8
+      },
+      {
+        "gloss": "INTER-MED-IATE",
+        "english": "inter med iate",
+        "page": 8
+      },
+      {
+        "gloss": "VIII",
+        "english": "viii",
+        "page": 8
+      },
+      {
+        "gloss": "TABLE",
+        "english": "table",
+        "page": 11
+      },
+      {
+        "gloss": "CONTENT",
+        "english": "content",
+        "page": 11
+      },
+      {
+        "gloss": "ALPHABET",
+        "english": "alphabet",
+        "page": 11
+      },
+      {
+        "gloss": "NUMERALS",
+        "english": "numerals",
+        "page": 11
+      },
+      {
+        "gloss": "COLORS",
+        "english": "colors",
+        "page": 11
+      }
+    ],
+    "FIST": [
+      {
+        "gloss": "CHAIR",
+        "english": "chair",
+        "page": 41
+      },
+      {
+        "gloss": "BED",
+        "english": "bed",
+        "page": 41
+      },
+      {
+        "gloss": "MAT",
+        "english": "mat",
+        "page": 41
+      },
+      {
+        "gloss": "MIRROR",
+        "english": "mirror",
+        "page": 41
+      },
+      {
+        "gloss": "REFRIGERATOR",
+        "english": "refrigerator",
+        "page": 41
+      },
+      {
+        "gloss": "BREAD",
+        "english": "bread",
+        "page": 56
+      },
+      {
+        "gloss": "TOM",
+        "english": "tom",
+        "page": 56
+      },
+      {
+        "gloss": "PORRIDGE",
+        "english": "porridge",
+        "page": 56
+      },
+      {
+        "gloss": "BUFFLOAF",
+        "english": "buffloaf",
+        "page": 56
+      },
+      {
+        "gloss": "KOKO",
+        "english": "koko",
+        "page": 56
+      },
+      {
+        "gloss": "BANKU",
+        "english": "banku",
+        "page": 56
+      },
+      {
+        "gloss": "KENKEY",
+        "english": "kenkey",
+        "page": 56
+      }
+    ],
+    "CURVED": [
+      {
+        "gloss": "BEER",
+        "english": "beer",
+        "page": 54
+      },
+      {
+        "gloss": "GUINNESS",
+        "english": "guinness",
+        "page": 54
+      },
+      {
+        "gloss": "PITO",
+        "english": "pito",
+        "page": 54
+      },
+      {
+        "gloss": "MALTA",
+        "english": "malta",
+        "page": 54
+      },
+      {
+        "gloss": "LIQUOR",
+        "english": "liquor",
+        "page": 54
+      },
+      {
+        "gloss": "ALCOHOL",
+        "english": "alcohol",
+        "page": 54
+      },
+      {
+        "gloss": "AKPETESHI",
+        "english": "akpeteshi",
+        "page": 54
+      },
+      {
+        "gloss": "MONKEY",
+        "english": "monkey",
+        "page": 73
+      },
+      {
+        "gloss": "TIGER",
+        "english": "tiger",
+        "page": 73
+      },
+      {
+        "gloss": "LION",
+        "english": "lion",
+        "page": 73
+      },
+      {
+        "gloss": "GIRAFFE",
+        "english": "giraffe",
+        "page": 73
+      },
+      {
+        "gloss": "ZEBRA",
+        "english": "zebra",
+        "page": 73
+      }
+    ],
+    "OPEN": [
+      {
+        "gloss": "HOLD",
+        "english": "hold",
+        "page": 122
+      },
+      {
+        "gloss": "DROP",
+        "english": "drop",
+        "page": 122
+      },
+      {
+        "gloss": "HAVE",
+        "english": "have",
+        "page": 122
+      },
+      {
+        "gloss": "TAKE",
+        "english": "take",
+        "page": 122
+      },
+      {
+        "gloss": "KEEP",
+        "english": "keep",
+        "page": 122
+      },
+      {
+        "gloss": "PUT",
+        "english": "put",
+        "page": 122
+      },
+      {
+        "gloss": "NATURAL",
+        "english": "natural",
+        "page": 139
+      },
+      {
+        "gloss": "EARTH",
+        "english": "earth",
+        "page": 139
+      },
+      {
+        "gloss": "PLANET",
+        "english": "planet",
+        "page": 139
+      },
+      {
+        "gloss": "WORLD",
+        "english": "world",
+        "page": 139
+      },
+      {
+        "gloss": "UNIVERSE",
+        "english": "universe",
+        "page": 139
+      },
+      {
+        "gloss": "SUN",
+        "english": "sun",
+        "page": 139
+      }
+    ]
+  },
+  "generated_at": "2026-04-11T11:13:00.788155",
+  "source": "backend.dictionary.text_to_sign._infer_primitives"
+}

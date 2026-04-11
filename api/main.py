@@ -11,6 +11,7 @@ import numpy as np
 from datetime import datetime
 import logging
 import os
+import re
 from dotenv import load_dotenv
 load_dotenv()
 from google import genai
@@ -77,6 +78,130 @@ _mediapipe_service = None
 _translation_service = None
 _avatar_service = None
 _speech_service = None
+
+ENABLE_APPROVED_SIGN_MAPPINGS = os.getenv("ENABLE_APPROVED_SIGN_MAPPINGS", "false").lower() == "true"
+APPROVED_MAPPINGS_PATH = Path("data") / "processed" / "approved_sign_mappings.json"
+_approved_term_to_mapping: Optional[Dict[str, Dict[str, Any]]] = None
+_approved_unique_reverse_map: Optional[Dict[str, str]] = None
+_handshape_inventory_cache: Optional[Dict[str, Any]] = None
+
+
+def _normalize_term(text: str) -> str:
+    return re.sub(r"\s+", " ", (text or "").strip().lower())
+
+
+def _load_approved_mappings_if_needed() -> None:
+    global _approved_term_to_mapping, _approved_unique_reverse_map
+
+    if _approved_term_to_mapping is not None and _approved_unique_reverse_map is not None:
+        return
+
+    _approved_term_to_mapping = {}
+    _approved_unique_reverse_map = {}
+
+    if not ENABLE_APPROVED_SIGN_MAPPINGS:
+        return
+
+    if not APPROVED_MAPPINGS_PATH.exists():
+        logger.warning(f"Approved mappings enabled but file not found: {APPROVED_MAPPINGS_PATH}")
+        return
+
+    try:
+        with open(APPROVED_MAPPINGS_PATH, "r", encoding="utf-8") as f:
+            payload = json.load(f)
+
+        mappings = payload.get("mappings", []) if isinstance(payload, dict) else []
+        if not isinstance(mappings, list):
+            mappings = []
+
+        reverse_counts: Dict[str, int] = {}
+        reverse_term: Dict[str, str] = {}
+
+        for item in mappings:
+            if not isinstance(item, dict):
+                continue
+            if str(item.get("status") or "").lower() != "approved":
+                continue
+
+            term = _normalize_term(str(item.get("term") or ""))
+            if not term:
+                continue
+
+            _approved_term_to_mapping[term] = item
+
+            target_gloss = item.get("target_gloss")
+            if isinstance(target_gloss, str) and target_gloss.strip():
+                key = target_gloss.strip().upper()
+                reverse_counts[key] = reverse_counts.get(key, 0) + 1
+                reverse_term[key] = term
+
+        for gloss, count in reverse_counts.items():
+            if count == 1:
+                _approved_unique_reverse_map[gloss] = reverse_term[gloss]
+
+        logger.info(
+            f"Approved sign mappings loaded: terms={len(_approved_term_to_mapping)} unique_reverse={len(_approved_unique_reverse_map)}"
+        )
+    except Exception as e:
+        logger.warning(f"Failed to load approved sign mappings: {e}")
+
+
+def _get_approved_mapping_for_term(term: str) -> Optional[Dict[str, Any]]:
+    _load_approved_mappings_if_needed()
+    if _approved_term_to_mapping is None:
+        return None
+    return _approved_term_to_mapping.get(_normalize_term(term))
+
+
+def _map_predicted_gloss_if_enabled(gloss: Optional[str]) -> Optional[str]:
+    if not gloss or not ENABLE_APPROVED_SIGN_MAPPINGS:
+        return gloss
+    _load_approved_mappings_if_needed()
+    if not _approved_unique_reverse_map:
+        return gloss
+
+    mapped_term = _approved_unique_reverse_map.get(gloss.strip().upper())
+    if not mapped_term:
+        return gloss
+    return mapped_term.upper()
+
+
+def _build_handshape_inventory() -> Dict[str, Any]:
+    service = get_text_to_sign_service()
+    dictionary = service.dictionary or {}
+
+    counts: Dict[str, int] = {}
+    examples: Dict[str, List[Dict[str, Any]]] = {}
+    total = 0
+
+    for gloss, entry in dictionary.items():
+        total += 1
+        primitives = service._infer_primitives(gloss, entry)
+        handshape = str(primitives.get("handshape") or "UNKNOWN").upper()
+        counts[handshape] = counts.get(handshape, 0) + 1
+        examples.setdefault(handshape, [])
+        if len(examples[handshape]) < 10:
+            examples[handshape].append(
+                {
+                    "gloss": gloss,
+                    "english": entry.get("english"),
+                    "page": entry.get("page"),
+                }
+            )
+
+    return {
+        "total_entries": total,
+        "handshape_counts": dict(sorted(counts.items(), key=lambda x: x[0])),
+        "examples": examples,
+        "generated_at": datetime.now().isoformat(),
+    }
+
+
+def _get_handshape_inventory(force_refresh: bool = False) -> Dict[str, Any]:
+    global _handshape_inventory_cache
+    if _handshape_inventory_cache is None or force_refresh:
+        _handshape_inventory_cache = _build_handshape_inventory()
+    return _handshape_inventory_cache
 
 def get_dictionary_service():
     global _dictionary_service
@@ -462,7 +587,7 @@ async def video_stream(websocket: WebSocket):
                         return g_best, s_best, t_best
 
                     g, score, tops = await asyncio.to_thread(run_matchers)
-                    predicted_gloss = g
+                    predicted_gloss = _map_predicted_gloss_if_enabled(g)
                     predicted_confidence = float(max(0.0, score))
                 except Exception as e:
                     logger.warning(f"Dictionary matcher failed: {e}")
@@ -683,6 +808,53 @@ async def render_avatar(request: AvatarRequest):
 @app.get("/api/dictionary/search")
 async def search_dictionary(q: str):
     try:
+        mapping_applied = False
+        mapped_from = None
+
+        mapping = _get_approved_mapping_for_term(q)
+        if ENABLE_APPROVED_SIGN_MAPPINGS and mapping:
+            target_gloss = mapping.get("target_gloss")
+            target_composite = mapping.get("target_composite_glosses")
+
+            if isinstance(target_gloss, str) and target_gloss.strip():
+                mapped_from = q
+                q = target_gloss.strip()
+                mapping_applied = True
+            elif isinstance(target_composite, list) and target_composite:
+                parts = []
+                for gloss in target_composite:
+                    g = str(gloss).strip()
+                    if not g:
+                        continue
+                    part = get_text_to_sign_service().search(g)
+                    if part and part.get("gloss"):
+                        parts.append(part)
+
+                if parts:
+                    glosses = [p.get("gloss") for p in parts if p.get("gloss")]
+                    images: List[str] = []
+                    seen = set()
+                    for p in parts:
+                        for img in p.get("images", []) or []:
+                            if img not in seen:
+                                seen.add(img)
+                                images.append(img)
+
+                    avg_conf = sum(float(p.get("confidence") or 0.0) for p in parts) / max(1, len(parts))
+                    return {
+                        "gloss": " ".join(glosses),
+                        "images": images,
+                        "description": f"Approved composite mapping for '{q}': {' + '.join(glosses)}",
+                        "page": parts[0].get("page") if parts else None,
+                        "confidence": float(avg_conf),
+                        "alternatives": [p.get("gloss") for p in parts if p.get("gloss")],
+                        "match_type": "ApprovedMappingComposite",
+                        "variants": int(sum(int(p.get("variants") or 0) for p in parts)),
+                        "primitives": None,
+                        "mapping_applied": True,
+                        "mapped_from": q,
+                    }
+
         r = get_text_to_sign_service().search(q)
         return {
             "gloss": r.get("gloss"),
@@ -694,10 +866,23 @@ async def search_dictionary(q: str):
             "match_type": r.get("match_type", "None"),
             "variants": r.get("variants", 0),
             "primitives": r.get("primitives", None),
+            "mapping_applied": mapping_applied,
+            "mapped_from": mapped_from,
         }
     except Exception as e:
         logger.error(f"Error searching dictionary: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/dictionary/approved-mappings/status")
+async def approved_mappings_status():
+    _load_approved_mappings_if_needed()
+    return {
+        "enabled": ENABLE_APPROVED_SIGN_MAPPINGS,
+        "path": str(APPROVED_MAPPINGS_PATH),
+        "loaded_terms": len(_approved_term_to_mapping or {}),
+        "unique_reverse_aliases": len(_approved_unique_reverse_map or {}),
+    }
 
 @app.post("/api/analytics/track")
 async def track_analytics(event: AnalyticsEventRequest):
@@ -749,6 +934,15 @@ async def list_dictionary(letter: str = "A"):
     except Exception as e:
         logger.error(f"Error listing dictionary: {str(e)}")
         return {"items": []}
+
+
+@app.get("/api/dictionary/handshapes")
+async def get_dictionary_handshapes(refresh: bool = False):
+    try:
+        return _get_handshape_inventory(force_refresh=refresh)
+    except Exception as e:
+        logger.error(f"Error building handshape inventory: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/dictionary/sign/{sign_id}")
 async def get_sign_details(sign_id: str):

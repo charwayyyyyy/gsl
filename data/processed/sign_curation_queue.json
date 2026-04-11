@@ -1,0 +1,86 @@
+{
+  "summary": {
+    "missing_terms": 6,
+    "queue_items": 6
+  },
+  "items": [
+    {
+      "term": "bye",
+      "reason": "no_exact_core_match_found",
+      "boilerplate_hit": null,
+      "aliases": [
+        "BYE",
+        "GOODBYE",
+        "GOOD BYE"
+      ],
+      "suggested_candidates": [
+        {
+          "gloss": "GOOD",
+          "english": "good",
+          "page": 102,
+          "score": 2
+        }
+      ],
+      "status": "todo"
+    },
+    {
+      "term": "goodbye",
+      "reason": "no_exact_core_match_found",
+      "boilerplate_hit": null,
+      "aliases": [
+        "GOODBYE",
+        "GOOD BYE",
+        "BYE"
+      ],
+      "suggested_candidates": [
+        {
+          "gloss": "GOOD",
+          "english": "good",
+          "page": 102,
+          "score": 2
+        }
+      ],
+      "status": "todo"
+    },
+    {
+      "term": "she",
+      "reason": "no_exact_core_match_found",
+      "boilerplate_hit": null,
+      "aliases": [
+        "SHE"
+      ],
+      "suggested_candidates": [],
+      "status": "todo"
+    },
+    {
+      "term": "today",
+      "reason": "no_exact_core_match_found",
+      "boilerplate_hit": null,
+      "aliases": [
+        "TODAY"
+      ],
+      "suggested_candidates": [],
+      "status": "todo"
+    },
+    {
+      "term": "sign",
+      "reason": "exists_only_as_boilerplate_heading",
+      "boilerplate_hit": "SIGN",
+      "aliases": [
+        "SIGN"
+      ],
+      "suggested_candidates": [],
+      "status": "todo"
+    },
+    {
+      "term": "language",
+      "reason": "exists_only_as_boilerplate_heading",
+      "boilerplate_hit": "LANGUAGE",
+      "aliases": [
+        "LANGUAGE"
+      ],
+      "suggested_candidates": [],
+      "status": "todo"
+    }
+  ]
+}

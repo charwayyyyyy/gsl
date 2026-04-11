@@ -1,0 +1,206 @@
+{
+  "summary": {
+    "total_mappings": 6,
+    "ready_mappings": 4,
+    "pending_mappings": 2,
+    "suggested_viable_mappings": 4
+  },
+  "checks": [
+    {
+      "term": "bye",
+      "status": "approved",
+      "target_gloss": "LATER",
+      "target_composite_glosses": [],
+      "ready": true,
+      "exists": {
+        "dictionary": true,
+        "templates": true,
+        "sign_index": true
+      },
+      "composite_exists": [],
+      "suggested": {
+        "target_gloss": "LATER",
+        "target_exists": {
+          "dictionary": true,
+          "templates": true,
+          "sign_index": true
+        },
+        "composite_glosses": [],
+        "composite_exists": [],
+        "viable": true
+      },
+      "notes": "No direct BYE/GOODBYE gloss found. Suggested fallback is LATER (as in SEE YOU LATER), pending signer validation."
+    },
+    {
+      "term": "goodbye",
+      "status": "approved",
+      "target_gloss": "LATER",
+      "target_composite_glosses": [],
+      "ready": true,
+      "exists": {
+        "dictionary": true,
+        "templates": true,
+        "sign_index": true
+      },
+      "composite_exists": [],
+      "suggested": {
+        "target_gloss": "LATER",
+        "target_exists": {
+          "dictionary": true,
+          "templates": true,
+          "sign_index": true
+        },
+        "composite_glosses": [],
+        "composite_exists": [],
+        "viable": true
+      },
+      "notes": "No direct GOODBYE gloss found. Suggested fallback is LATER, pending signer validation."
+    },
+    {
+      "term": "she",
+      "status": "approved",
+      "target_gloss": "HER",
+      "target_composite_glosses": [],
+      "ready": true,
+      "exists": {
+        "dictionary": true,
+        "templates": true,
+        "sign_index": true
+      },
+      "composite_exists": [],
+      "suggested": {
+        "target_gloss": "HER",
+        "target_exists": {
+          "dictionary": true,
+          "templates": true,
+          "sign_index": true
+        },
+        "composite_glosses": [],
+        "composite_exists": [],
+        "viable": true
+      },
+      "notes": "No exact SHE gloss found. Suggested pronoun mapping is HER, with WOMAN/FEMALE as alternates based on context."
+    },
+    {
+      "term": "today",
+      "status": "approved",
+      "target_gloss": null,
+      "target_composite_glosses": [
+        "NOW",
+        "DAY"
+      ],
+      "ready": true,
+      "exists": {
+        "dictionary": false,
+        "templates": false,
+        "sign_index": false
+      },
+      "composite_exists": [
+        {
+          "gloss": "NOW",
+          "exists": {
+            "dictionary": true,
+            "templates": true,
+            "sign_index": true
+          }
+        },
+        {
+          "gloss": "DAY",
+          "exists": {
+            "dictionary": true,
+            "templates": true,
+            "sign_index": true
+          }
+        }
+      ],
+      "suggested": {
+        "target_gloss": null,
+        "target_exists": {
+          "dictionary": false,
+          "templates": false,
+          "sign_index": false
+        },
+        "composite_glosses": [
+          "NOW",
+          "DAY"
+        ],
+        "composite_exists": [
+          {
+            "gloss": "NOW",
+            "exists": {
+              "dictionary": true,
+              "templates": true,
+              "sign_index": true
+            }
+          },
+          {
+            "gloss": "DAY",
+            "exists": {
+              "dictionary": true,
+              "templates": true,
+              "sign_index": true
+            }
+          }
+        ],
+        "viable": true
+      },
+      "notes": "No exact TODAY gloss found. Suggested composite is NOW + DAY, pending language review."
+    },
+    {
+      "term": "sign",
+      "status": "blocked",
+      "target_gloss": null,
+      "target_composite_glosses": [],
+      "ready": false,
+      "exists": {
+        "dictionary": false,
+        "templates": false,
+        "sign_index": false
+      },
+      "composite_exists": [],
+      "suggested": {
+        "target_gloss": null,
+        "target_exists": {
+          "dictionary": false,
+          "templates": false,
+          "sign_index": false
+        },
+        "composite_glosses": [],
+        "composite_exists": [],
+        "viable": false
+      },
+      "notes": "SIGN currently appears only in dictionary boilerplate headings; add a dedicated lexical sign entry before mapping."
+    },
+    {
+      "term": "language",
+      "status": "blocked",
+      "target_gloss": null,
+      "target_composite_glosses": [],
+      "ready": false,
+      "exists": {
+        "dictionary": false,
+        "templates": false,
+        "sign_index": false
+      },
+      "composite_exists": [],
+      "suggested": {
+        "target_gloss": null,
+        "target_exists": {
+          "dictionary": false,
+          "templates": false,
+          "sign_index": false
+        },
+        "composite_glosses": [],
+        "composite_exists": [],
+        "viable": false
+      },
+      "notes": "LANGUAGE currently appears only in dictionary boilerplate headings; add a dedicated lexical sign entry before mapping."
+    }
+  ],
+  "sources": {
+    "curation": "/Users/wm/Documents/gsl/data/curated/core_term_mappings.json",
+    "dictionary": "/Users/wm/Documents/gsl/data/processed/gsl_dictionary.json",
+    "templates": "/Users/wm/Documents/gsl/data/processed/dictionary_motion_templates.json",
+    "sign_index": "/Users/wm/Documents/gsl/data/processed/gsl_sign_index.json"
+  }
+}

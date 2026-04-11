@@ -28,6 +28,7 @@ export function useSignRecognition(): UseSignRecognitionReturn {
   const frameBufferRef = useRef<FrameData[]>([]);
   const stabilizerRef = useRef(new RecognitionStabilizer());
   const lastVideoTimeRef = useRef<number>(-1);
+  const lastProcessedTimestampRef = useRef<number>(0);
 
   // throttle state updates to reduce React renders
   const lastDebugUpdateRef = useRef<number>(0);
@@ -97,10 +98,14 @@ export function useSignRecognition(): UseSignRecognitionReturn {
     if (videoElement.currentTime === lastVideoTimeRef.current) return;
     lastVideoTimeRef.current = videoElement.currentTime;
 
+    // Cap detection work to ~15 FPS to keep UI responsive on lower-end devices.
+    if (timestamp - lastProcessedTimestampRef.current < 66) return;
+    lastProcessedTimestampRef.current = timestamp;
+
     const result = landmarkerRef.current.detectForVideo(videoElement, timestamp);
     
     if (result && result.landmarks && result.landmarks.length > 0) {
-      setIsDetecting(true);
+      setIsDetecting(prev => (prev ? prev : true));
       // Append to rolling buffer
       frameBufferRef.current.push({
         timestamp,
@@ -141,7 +146,7 @@ export function useSignRecognition(): UseSignRecognitionReturn {
       }
 
     } else {
-      setIsDetecting(false);
+      setIsDetecting(prev => (prev ? false : prev));
       stabilizerRef.current.processMatch(null);
     }
   }, [isReady, speakText]);

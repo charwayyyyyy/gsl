@@ -134,19 +134,6 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
     }
   }, [state.isAudioEnabled])
 
-  // Monitor video levels (placeholder for video quality)
-  const monitorVideoLevel = useCallback(() => {
-    // Simple video level monitoring based on stream activity
-    if (state.videoStream && state.videoStream.active) {
-      const level = Math.random() * 0.3 + 0.7 // Simulate good video signal
-      setState(prev => ({ ...prev, videoLevel: level }))
-    }
-
-    if (state.isVideoEnabled) {
-      videoAnimRef.current = requestAnimationFrame(monitorVideoLevel)
-    }
-  }, [state.videoStream, state.isVideoEnabled])
-
   // Start video capture
   const startVideo = useCallback(async () => {
     if (!state.isSupported) {
@@ -218,7 +205,8 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
         ...prev,
         videoStream: stream,
         isVideoEnabled: true,
-        isConnected: true
+        isConnected: true,
+        videoLevel: 1
       }))
       maintainVideoRef.current = true
 
@@ -263,9 +251,6 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
         }
       }, 5000)
 
-      // Start monitoring video levels
-      monitorVideoLevel()
-      
     } catch (error) {
       let errorMessage = 'Failed to access camera. '
       
@@ -292,7 +277,7 @@ export const useWebRTC = (): WebRTCState & WebRTCActions => {
       setState(prev => ({ ...prev, error: errorMessage }))
       console.error('Video capture error:', error)
     }
-  }, [state.isSupported, settings.accessibility.largeText, monitorVideoLevel])
+  }, [state.isSupported, settings.accessibility.largeText])
 
   // Start audio capture
   const startAudio = useCallback(async () => {

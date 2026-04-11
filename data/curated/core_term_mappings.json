@@ -1,0 +1,53 @@
+{
+  "metadata": {
+    "description": "Curated mappings for uncovered core terms from sign coverage audit.",
+    "source_report": "data/processed/sign_curation_queue.json",
+    "status_values": ["approved", "review", "blocked"],
+    "notes": "Only approved mappings should be consumed by runtime services."
+  },
+  "mappings": [
+    {
+      "term": "bye",
+      "target_gloss": "LATER",
+      "suggested_target_gloss": "LATER",
+      "status": "approved",
+      "notes": "No direct BYE/GOODBYE gloss found. Suggested fallback is LATER (as in SEE YOU LATER), pending signer validation."
+    },
+    {
+      "term": "goodbye",
+      "target_gloss": "LATER",
+      "suggested_target_gloss": "LATER",
+      "status": "approved",
+      "notes": "No direct GOODBYE gloss found. Suggested fallback is LATER, pending signer validation."
+    },
+    {
+      "term": "she",
+      "target_gloss": "HER",
+      "suggested_target_gloss": "HER",
+      "alternate_candidates": ["WOMAN", "FEMALE"],
+      "status": "approved",
+      "notes": "No exact SHE gloss found. Suggested pronoun mapping is HER, with WOMAN/FEMALE as alternates based on context."
+    },
+    {
+      "term": "today",
+      "target_gloss": ["NOW", "DAY"],
+      "suggested_composite_glosses": ["NOW", "DAY"],
+      "status": "approved",
+      "notes": "No exact TODAY gloss found. Suggested composite is NOW + DAY, pending language review."
+    },
+    {
+      "term": "sign",
+      "target_gloss": null,
+      "suggested_target_gloss": null,
+      "status": "blocked",
+      "notes": "SIGN currently appears only in dictionary boilerplate headings; add a dedicated lexical sign entry before mapping."
+    },
+    {
+      "term": "language",
+      "target_gloss": null,
+      "suggested_target_gloss": null,
+      "status": "blocked",
+      "notes": "LANGUAGE currently appears only in dictionary boilerplate headings; add a dedicated lexical sign entry before mapping."
+    }
+  ]
+}

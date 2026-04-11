@@ -1122,7 +1122,6 @@ const Interpreter: React.FC = () => {
                 {currentSession.direction === 'sign_to_speech' ? (
                   <>
                     <VideoCapture
-                      onFrameCapture={handleVideoFrame}
                       showLandmarks={visual.showLandmarks}
                       showConfidence={visual.showConfidence}
                       isActive={isCameraActive}
