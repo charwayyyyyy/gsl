@@ -351,7 +351,7 @@ const Help: React.FC = () => {
   };
 
   return (
-    <div className={`min-h-screen relative overflow-hidden p-4 md:p-8 pt-20 sm:pt-24 transition-colors duration-500 ${
+    <div className={`min-h-screen relative overflow-hidden p-4 md:p-8 pt-24 sm:pt-28 transition-colors duration-500 ${
       accessibility.highContrast ? 'bg-white dark:bg-black' : 'bg-slate-50 dark:bg-[#050505]'
     }`}>
       {/* Background Orbs */}
@@ -364,7 +364,7 @@ const Help: React.FC = () => {
       )}
 
       <div className="max-w-6xl mx-auto relative z-10">
-        <div className="mb-16 text-center animate-fade-in">
+        <div className="mb-12 sm:mb-16 text-center animate-fade-in">
           <div className="inline-flex items-center justify-center w-16 h-16 sm:w-24 sm:h-24 rounded-[1.5rem] sm:rounded-[2rem] bg-blue-500/10 border border-blue-500/20 mb-6 sm:mb-8 shadow-glass-hover backdrop-blur-xl relative group">
             <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full group-hover:bg-blue-500/30 transition-all duration-500 opacity-50" />
             <HelpCircle className={`text-blue-400 relative z-10 ${accessibility.largeText ? 'w-10 h-10 sm:w-14 sm:h-14' : 'w-8 h-8 sm:w-12 sm:h-12'}`} />
@@ -377,7 +377,7 @@ const Help: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-4 mb-16 animate-slide-up">
+        <div className="flex flex-wrap justify-center gap-3 sm:gap-4 mb-10 sm:mb-16 animate-slide-up">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -402,7 +402,7 @@ const Help: React.FC = () => {
           })}
         </div>
 
-        <div className={`glass-card p-6 sm:p-10 md:p-16 mb-16 min-h-[500px] relative overflow-hidden group ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}`}>
+        <div className={`glass-card p-6 sm:p-10 md:p-16 mb-10 sm:mb-16 min-h-[500px] relative overflow-hidden group ${accessibility.highContrast ? 'bg-black border-4 border-yellow-400' : ''}`}>
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 blur-[80px] -mr-32 -mt-32 rounded-full" />
           <div className="relative z-10">
             {renderContent()}

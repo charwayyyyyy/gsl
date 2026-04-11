@@ -3,11 +3,13 @@ import json
 import logging
 import re
 import time
+from datetime import datetime
 from fastapi import APIRouter
 from pathlib import Path
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -127,6 +129,159 @@ def build_dictionary_context(sources: list) -> str:
 
     return "\n\n".join(blocks)
 
+def is_dictionary_count_question(message: str) -> bool:
+    text = (message or "").lower()
+    patterns = [
+        r"\bhow\s+many\s+signs?\b",
+        r"\bhow\s+many\s+entries?\b",
+        r"\bnumber\s+of\s+signs?\b",
+        r"\bcount\s+of\s+signs?\b",
+        r"\bhow\s+many\s+signs\s+is\s+in\s+the\s+dictionary\b",
+        r"\bhow\s+many\s+signs\s+are\s+in\s+the\s+dictionary\b",
+    ]
+    return any(re.search(p, text) for p in patterns)
+
+def build_dictionary_count_answer() -> str:
+    total = len(load_dictionary())
+    return (
+        f"The current GSL dictionary has {total} usable signs in the processed dataset. "
+        "If you want, I can also help you search a specific sign or open the dictionary."
+    )
+
+def safe_eval_math(expression: str):
+    import ast
+    import operator as op
+
+    allowed_ops = {
+        ast.Add: op.add,
+        ast.Sub: op.sub,
+        ast.Mult: op.mul,
+        ast.Div: op.truediv,
+        ast.FloorDiv: op.floordiv,
+        ast.Mod: op.mod,
+        ast.Pow: op.pow,
+        ast.USub: op.neg,
+        ast.UAdd: op.pos,
+    }
+
+    def _eval(node):
+        if isinstance(node, ast.Expression):
+            return _eval(node.body)
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+            return node.value
+        if isinstance(node, ast.Num):
+            return node.n
+        if isinstance(node, ast.BinOp) and type(node.op) in allowed_ops:
+            return allowed_ops[type(node.op)](_eval(node.left), _eval(node.right))
+        if isinstance(node, ast.UnaryOp) and type(node.op) in allowed_ops:
+            return allowed_ops[type(node.op)](_eval(node.operand))
+        raise ValueError("Unsupported expression")
+
+    tree = ast.parse(expression, mode="eval")
+    return _eval(tree)
+
+def build_local_general_answer(message: str) -> Optional[str]:
+    text = (message or "").strip().lower()
+    compact = re.sub(r"\s+", " ", text)
+
+    if not compact:
+        return None
+
+    if any(phrase in compact for phrase in ["what can you help me with", "what can you do", "help me", "how can you help"]):
+        return (
+            "I can answer general questions, explain Ghana Sign Language signs, count dictionary entries, "
+            "and help you open the right dictionary page when a sign is available."
+        )
+
+    if any(phrase in compact for phrase in ["who are you", "what are you", "your name"]):
+        return "I’m the SignBridge Assistant. I help with Ghana Sign Language and general questions."
+
+    if any(phrase in compact for phrase in ["capital of france", "what is the capital of france"]):
+        return "The capital of France is Paris."
+
+    if any(phrase in compact for phrase in ["capital of ghana", "what is the capital of ghana"]):
+        return "The capital of Ghana is Accra."
+
+    if any(phrase in compact for phrase in ["capital of", "what is the capital"]):
+        country_matches = {
+            "france": "Paris",
+            "ghana": "Accra",
+            "nigeria": "Abuja",
+            "kenya": "Nairobi",
+            "south africa": "Pretoria",
+            "canada": "Ottawa",
+            "united states": "Washington, D.C.",
+            "usa": "Washington, D.C.",
+            "uk": "London",
+            "united kingdom": "London",
+        }
+        for country, capital in country_matches.items():
+            if country in compact:
+                return f"The capital of {country.title()} is {capital}."
+
+    math_match = re.search(r"(?<!\w)(?:what is |calculate )?([0-9\s\+\-\*\/\%\(\)\.\^]+)(?:\?|$)", text)
+    if math_match:
+        expression = math_match.group(1).replace("^", "**").strip()
+        if re.fullmatch(r"[0-9\s\+\-\*\/\%\(\)\.\*]+", expression):
+            try:
+                result = safe_eval_math(expression)
+                if isinstance(result, float) and result.is_integer():
+                    result = int(result)
+                return f"The answer is {result}."
+            except Exception:
+                pass
+
+    if any(phrase in compact for phrase in ["what time is it", "current time", "what day is it", "current date"]):
+        now = datetime.now()
+        return f"It’s {now.strftime('%I:%M %p on %A, %d %B %Y').lstrip('0')}."
+
+    if compact in {"hello", "hi", "hey"}:
+        return "Hello! How can I help you today?"
+
+    if compact in {"yes", "yeah", "yep", "sure", "ok", "okay", "alright"}:
+        return "Great. What would you like to ask next?"
+
+    if "thank you" in compact or compact == "thanks":
+        return "You’re welcome."
+
+    return None
+
+def concise_sign_description(gloss_text: str, raw_description: str) -> str:
+    if not raw_description:
+        return ""
+
+    cleaned = " ".join(raw_description.split())
+    upper_cleaned = cleaned.upper()
+    upper_gloss = gloss_text.upper()
+    idx = upper_cleaned.find(upper_gloss)
+    if idx >= 0:
+        segment = cleaned[idx + len(gloss_text):].strip(" :.-")
+        if segment:
+            return segment[:220].rstrip(" ,.;") + "."
+
+    return cleaned[:220].rstrip(" ,.;") + "."
+
+def build_local_sign_answer(user_message: str, sources: list) -> str:
+    if not sources:
+        return "I’m having trouble reaching the AI service right now. Please try again in a moment."
+
+    top = sources[0]
+    gloss = top.get("gloss", "this sign")
+    page = top.get("page", 0)
+    description = concise_sign_description(gloss, top.get("description", ""))
+
+    if description:
+        answer = f"To sign \"{top.get('english') or gloss.lower()}\" in Ghana Sign Language, {description.lower()}"
+    else:
+        answer = f"I found the GSL dictionary entry for {gloss}, but I don't have a clean step-by-step description for it right now."
+
+    if page:
+        answer += f"\n\nYou can open the dictionary entry for \"{gloss}\" on page {page} to see diagrams."
+    else:
+        answer += f"\n\nYou can open the dictionary entry for \"{gloss}\" to see diagrams."
+
+    return answer
+
 def is_sign_related_query(message: str) -> bool:
     text = (message or "").lower()
     patterns = [
@@ -134,7 +289,6 @@ def is_sign_related_query(message: str) -> bool:
         r"\bhow\s+to\s+sign\b",
         r"\bsign\s+language\b",
         r"\bgsl\b",
-        r"\bdictionary\b",
         r"\btranslate\b",
         r"\bgesture\b",
     ]
@@ -156,6 +310,25 @@ def extract_sign_target(message: str) -> str:
 
 def handle_fallback(message, sources=None, reason=""):
     logger.warning(f"Using fallback response. Reason: {reason}")
+    if is_dictionary_count_question(message):
+        return {
+            "answer": build_dictionary_count_answer(),
+            "sources": [],
+            "used_fallback": True
+        }
+    if sources and is_sign_related_query(message):
+        return {
+            "answer": build_local_sign_answer(message, sources),
+            "sources": sources,
+            "used_fallback": True
+        }
+    local_general = build_local_general_answer(message)
+    if local_general:
+        return {
+            "answer": local_general,
+            "sources": [],
+            "used_fallback": True
+        }
     return {
         "answer": "I’m having trouble reaching the AI service right now. Please try again in a moment.",
         "sources": sources or [],
@@ -165,6 +338,13 @@ def handle_fallback(message, sources=None, reason=""):
 @router.post("/chat")
 async def chat(data: dict):
     user_message = data.get("message", "")
+    if is_dictionary_count_question(user_message):
+        return {
+            "answer": build_dictionary_count_answer(),
+            "sources": [],
+            "used_fallback": True
+        }
+
     sources = []
     if is_sign_related_query(user_message):
         target = extract_sign_target(user_message)

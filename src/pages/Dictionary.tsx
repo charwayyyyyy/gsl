@@ -335,7 +335,7 @@ const Dictionary: React.FC = () => {
   }
 
   return (
-    <div className={`min-h-screen relative overflow-hidden ${accessibility.highContrast ? 'bg-black text-yellow-400' : 'bg-slate-50 dark:bg-slate-950'}`}>
+    <div className={`min-h-screen relative overflow-hidden pt-10 sm:pt-8 ${accessibility.highContrast ? 'bg-black text-yellow-400' : 'bg-slate-50 dark:bg-slate-950'}`}>
       {/* Background Orbs */}
       {!accessibility.highContrast && (
         <>
@@ -345,10 +345,10 @@ const Dictionary: React.FC = () => {
       )}
 
       {/* Mode Header */}
-      <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-b-2' : 'bg-white/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-white/5'}`}>
+      <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-b-2' : 'bg-white/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-white/5'} mt-4 sm:mt-6`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <div className="flex items-center gap-3 sm:gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 py-4 sm:py-5">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-6">
               <button
                 onClick={() => navigate('/')}
                 className={`
@@ -365,11 +365,11 @@ const Dictionary: React.FC = () => {
                 <ArrowLeft className={`${accessibility.largeText ? 'w-8 h-8' : 'w-6 h-6'}`} />
               </button>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <div className="w-12 h-12 rounded-xl overflow-hidden bg-black hidden sm:flex items-center justify-center shadow-lg border border-white/10 p-1">
                   <img src={logo} alt="Logo" className="w-full h-full object-contain" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <h1 className={`${accessibility.largeText ? 'text-xl sm:text-2xl' : 'text-lg sm:text-xl'} font-serif italic tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
                     SignBridge Ghana
                   </h1>
@@ -380,7 +380,7 @@ const Dictionary: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={() => navigate('/help')}
                 className={`

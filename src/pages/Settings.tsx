@@ -38,6 +38,8 @@ const Settings: React.FC = () => {
   const [hasChanges, setHasChanges] = useState(false)
 
   const { accessibility: accessibilitySettings } = settings
+  const reducedMotion = accessibilitySettings.reducedMotion
+  const motionClasses = reducedMotion ? 'transition-none duration-0' : 'transition-all duration-500'
 
   const isActive = (tabId: string) => activeTab === tabId
 
@@ -119,14 +121,44 @@ const Settings: React.FC = () => {
   )
 
   const tabs = [
-    { id: 'accessibility', label: 'Accessibility', icon: Accessibility, color: 'blue' },
-    { id: 'translation', label: 'Translation', icon: Globe, color: 'indigo' },
-    { id: 'audio', label: 'Audio', icon: Volume2, color: 'rose' },
-    { id: 'visual', label: 'Visual', icon: Eye, color: 'amber' },
-    { id: 'ghana', label: 'Ghana', icon: BookOpen, color: 'emerald' }
+    {
+      id: 'accessibility',
+      label: 'Accessibility',
+      icon: Accessibility,
+      activeClass: 'bg-blue-600 text-slate-900 dark:text-white shadow-[0_10px_30px_rgba(0,0,0,0.3)] scale-105 z-10',
+      iconClass: 'bg-blue-500/15 text-blue-500'
+    },
+    {
+      id: 'translation',
+      label: 'Translation',
+      icon: Globe,
+      activeClass: 'bg-indigo-600 text-slate-900 dark:text-white shadow-[0_10px_30px_rgba(0,0,0,0.3)] scale-105 z-10',
+      iconClass: 'bg-indigo-500/15 text-indigo-500'
+    },
+    {
+      id: 'audio',
+      label: 'Audio',
+      icon: Volume2,
+      activeClass: 'bg-rose-600 text-slate-900 dark:text-white shadow-[0_10px_30px_rgba(0,0,0,0.3)] scale-105 z-10',
+      iconClass: 'bg-rose-500/15 text-rose-500'
+    },
+    {
+      id: 'visual',
+      label: 'Visual',
+      icon: Eye,
+      activeClass: 'bg-amber-600 text-slate-900 dark:text-white shadow-[0_10px_30px_rgba(0,0,0,0.3)] scale-105 z-10',
+      iconClass: 'bg-amber-500/15 text-amber-500'
+    },
+    {
+      id: 'ghana',
+      label: 'Ghana',
+      icon: BookOpen,
+      activeClass: 'bg-emerald-600 text-slate-900 dark:text-white shadow-[0_10px_30px_rgba(0,0,0,0.3)] scale-105 z-10',
+      iconClass: 'bg-emerald-500/15 text-emerald-500'
+    }
   ]
 
-  const renderTabButton = (tab: { id: string, label: string, icon: any, color: string }) => {
+  const renderTabButton = (tab: { id: string, label: string, icon: any, activeClass: string, iconClass: string }) => {
     const Icon = tab.icon
     const active = isActive(tab.id)
 
@@ -135,11 +167,11 @@ const Settings: React.FC = () => {
         key={tab.id}
         onClick={() => setActiveTab(tab.id)}
         className={`
-          flex items-center space-x-2 sm:space-x-3 px-4 py-3 sm:px-8 sm:py-4 rounded-2xl transition-all duration-500 relative overflow-hidden group
+          flex items-center space-x-2 sm:space-x-3 px-4 py-3 sm:px-8 sm:py-4 rounded-2xl ${motionClasses} relative overflow-hidden group
           ${active
             ? accessibilitySettings.highContrast
               ? 'bg-blue-600 text-slate-900 dark:text-white shadow-[0_10px_30px_rgba(0,0,0,0.3)] scale-105 z-10 border-4 border-yellow-400'
-              : `bg-${tab.color}-600 text-slate-900 dark:text-white shadow-[0_10px_30px_rgba(0,0,0,0.3)] scale-105 z-10`
+              : tab.activeClass
             : accessibilitySettings.highContrast
               ? 'glass-card bg-black border-2 border-slate-600 text-slate-300 hover:text-slate-900 dark:text-white hover:scale-105 hover:border-yellow-400'
               : 'glass-card text-slate-400 hover:text-slate-900 dark:text-white hover:scale-105'
@@ -150,7 +182,7 @@ const Settings: React.FC = () => {
       >
         <div className={`
           p-1.5 sm:p-2 rounded-xl transition-colors duration-500
-          ${active ? 'bg-white/20' : 'bg-slate-800/50 group-hover:bg-slate-700'}
+          ${active ? 'bg-white/20' : accessibilitySettings.highContrast ? 'bg-slate-800/50 group-hover:bg-slate-700' : tab.iconClass}
         `}>
           <Icon className={accessibilitySettings.largeText ? 'w-5 h-5 sm:w-7 sm:h-7' : 'w-4 h-4 sm:w-6 sm:h-6'} />
         </div>
@@ -176,7 +208,7 @@ const Settings: React.FC = () => {
   }
 
   const renderAccessibilityTab = () => (
-    <div className="space-y-8 animate-fade-in">
+    <div className={`space-y-8 ${reducedMotion ? '' : 'animate-fade-in'}`}>
       <div>
         <h3 className={`${getTextSize()} font-bold mb-8 text-slate-900 dark:text-white flex items-center gap-3`}>
           <div className="w-2 h-8 bg-blue-500 rounded-full" />
@@ -233,7 +265,7 @@ const Settings: React.FC = () => {
   )
 
   const renderTranslationTab = () => (
-    <div className="space-y-10 animate-fade-in">
+    <div className={`space-y-10 ${reducedMotion ? '' : 'animate-fade-in'}`}>
       <div>
         <h3 className={`${getTextSize()} font-bold mb-8 text-slate-900 dark:text-white flex items-center gap-3`}>
           <div className="w-2 h-8 bg-indigo-500 rounded-full" />
@@ -281,7 +313,7 @@ const Settings: React.FC = () => {
               translation.updateTranslation({ avatarMode: '3d_avatar' })
               setHasChanges(true)
             }}
-            className={`p-8 rounded-[2rem] border-2 transition-all duration-500 text-left relative overflow-hidden group ${translation.avatarMode === '3d_avatar'
+            className={`p-8 rounded-[2rem] border-2 ${motionClasses} text-left relative overflow-hidden group ${translation.avatarMode === '3d_avatar'
               ? accessibilitySettings.highContrast
                 ? 'bg-blue-600/20 border-yellow-400 shadow-glass-hover bg-black'
                 : 'bg-blue-600/20 border-blue-500 shadow-glass-hover'
@@ -308,7 +340,7 @@ const Settings: React.FC = () => {
               translation.updateTranslation({ avatarMode: 'video_clips' })
               setHasChanges(true)
             }}
-            className={`p-8 rounded-[2rem] border-2 transition-all duration-500 text-left relative overflow-hidden group ${translation.avatarMode === 'video_clips'
+            className={`p-8 rounded-[2rem] border-2 ${motionClasses} text-left relative overflow-hidden group ${translation.avatarMode === 'video_clips'
               ? accessibilitySettings.highContrast
                 ? 'bg-blue-600/20 border-yellow-400 shadow-glass-hover bg-black'
                 : 'bg-blue-600/20 border-blue-500 shadow-glass-hover'
@@ -359,7 +391,7 @@ const Settings: React.FC = () => {
   )
 
   const renderAudioTab = () => (
-    <div className="space-y-10 animate-fade-in">
+    <div className={`space-y-10 ${reducedMotion ? '' : 'animate-fade-in'}`}>
       <div>
         <h3 className={`${getTextSize()} font-bold mb-8 text-slate-900 dark:text-white flex items-center gap-3`}>
           <div className="w-2 h-8 bg-rose-500 rounded-full" />
@@ -427,7 +459,7 @@ const Settings: React.FC = () => {
   )
 
   const renderVisualTab = () => (
-    <div className="space-y-10 animate-fade-in">
+    <div className={`space-y-10 ${reducedMotion ? '' : 'animate-fade-in'}`}>
       <div>
         <h3 className={`${getTextSize()} font-bold mb-8 text-slate-900 dark:text-white flex items-center gap-3`}>
           <div className="w-2 h-8 bg-blue-500 rounded-full" />
@@ -436,9 +468,9 @@ const Settings: React.FC = () => {
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[
-            { value: 'light', label: 'Light Mode', desc: 'Clear & classic', icon: Sun, color: 'amber' },
-            { value: 'dark', label: 'Dark Mode', desc: 'Easy on eyes', icon: Moon, color: 'blue' },
-            { value: 'default', label: 'System', desc: 'Sync with OS', icon: Laptop, color: 'slate' }
+            { value: 'light', label: 'Light Mode', desc: 'Clear & classic', icon: Sun, panelClass: 'bg-amber-600/20 border-amber-500', iconClass: 'bg-amber-500/10 text-amber-500' },
+            { value: 'dark', label: 'Dark Mode', desc: 'Easy on eyes', icon: Moon, panelClass: 'bg-blue-600/20 border-blue-500', iconClass: 'bg-blue-500/10 text-blue-500' },
+            { value: 'default', label: 'System', desc: 'Sync with OS', icon: Laptop, panelClass: 'bg-slate-600/20 border-slate-500', iconClass: 'bg-slate-500/10 text-slate-500' }
           ].map((option) => (
             <button
               key={option.value}
@@ -446,17 +478,17 @@ const Settings: React.FC = () => {
                 visual.updateVisual({ colorScheme: option.value as any })
                 setHasChanges(true)
               }}
-              className={`p-6 rounded-[2rem] border-2 transition-all duration-500 text-left relative overflow-hidden group ${visual.colorScheme === option.value
+              className={`p-6 rounded-[2rem] border-2 ${motionClasses} text-left relative overflow-hidden group ${visual.colorScheme === option.value
                 ? accessibilitySettings.highContrast
-                  ? `bg-${option.color}-600/20 border-yellow-400 shadow-glass-hover bg-black`
-                  : `bg-${option.color}-600/20 border-${option.color}-500 shadow-glass-hover`
+                  ? 'bg-black border-yellow-400 shadow-glass-hover'
+                  : `${option.panelClass} shadow-glass-hover`
                 : accessibilitySettings.highContrast
                   ? 'glass-card bg-black border-slate-600 hover:border-yellow-400'
                   : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)]'
                 }`}
             >
               <div className="relative z-10 flex items-start gap-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-${option.color}-500/10 text-${option.color}-500 group-hover:scale-110 transition-transform`}>
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${option.iconClass} group-hover:scale-110 transition-transform`}>
                   <option.icon size={24} />
                 </div>
                 <div>
@@ -544,10 +576,14 @@ const Settings: React.FC = () => {
                 visual.updateVisual({ animationQuality: option.value as any })
                 setHasChanges(true)
               }}
-              className={`p-8 rounded-[2rem] border-2 transition-all duration-500 text-left relative overflow-hidden group ${visual.animationQuality === option.value
+              className={`p-8 rounded-[2rem] border-2 ${motionClasses} text-left relative overflow-hidden group ${visual.animationQuality === option.value
                 ? accessibilitySettings.highContrast
-                  ? `bg-${option.color}-600/20 border-yellow-400 shadow-glass-hover bg-black`
-                  : `bg-${option.color}-600/20 border-${option.color}-500 shadow-glass-hover`
+                  ? 'bg-black border-yellow-400 shadow-glass-hover'
+                  : option.value === 'low'
+                    ? 'bg-slate-600/20 border-slate-500 shadow-glass-hover'
+                    : option.value === 'medium'
+                      ? 'bg-blue-600/20 border-blue-500 shadow-glass-hover'
+                      : 'bg-indigo-600/20 border-indigo-500 shadow-glass-hover'
                 : accessibilitySettings.highContrast
                   ? 'glass-card bg-black border-slate-600 hover:border-yellow-400'
                   : 'glass-card border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)]'
@@ -569,8 +605,8 @@ const Settings: React.FC = () => {
   )
 
   const renderGhanaTab = () => (
-    <div className="space-y-10 animate-fade-in">
-      <div className={`glass-card p-6 sm:p-10 relative overflow-hidden group border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)] transition-all duration-500 ${accessibilitySettings.highContrast ? 'bg-black border-4 border-yellow-400' : 'border-blue-500/30'}`}>
+    <div className={`space-y-10 ${reducedMotion ? '' : 'animate-fade-in'}`}>
+      <div className={`glass-card p-6 sm:p-10 relative overflow-hidden group border-amber-500/30 hover:border-amber-400/80 hover:shadow-[0_0_40px_rgba(251,191,36,0.2)] ${motionClasses} ${accessibilitySettings.highContrast ? 'bg-black border-4 border-yellow-400' : 'border-blue-500/30'}`}>
         <div className="absolute inset-0 bg-blue-600/5 group-hover:bg-blue-600/10 transition-colors duration-500" />
         <div className="relative z-10 flex items-center gap-8">
           <div className="w-20 h-20 rounded-[1.5rem] bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-5xl shadow-inner backdrop-blur-xl">
@@ -644,12 +680,12 @@ const Settings: React.FC = () => {
   )
 
   return (
-    <div className={`min-h-screen relative overflow-hidden p-4 md:p-8 pt-20 sm:pt-24 transition-colors duration-500 ${accessibilitySettings.highContrast
+    <div className={`min-h-screen relative overflow-hidden p-4 md:p-8 pt-20 sm:pt-24 ${motionClasses} transition-colors duration-500 ${accessibilitySettings.highContrast
       ? 'bg-black'
       : 'bg-slate-50 dark:bg-[#050505]'
       }`}>
       {/* Background Orbs */}
-      {!accessibilitySettings.highContrast && (
+      {!accessibilitySettings.highContrast && !reducedMotion && (
         <>
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full animate-pulse-slow" />
           <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600/10 blur-[120px] rounded-full animate-pulse-slow" style={{ animationDelay: '2s' }} />
@@ -657,7 +693,7 @@ const Settings: React.FC = () => {
       )}
 
       <div className="max-w-6xl mx-auto relative z-10">
-        <div className="flex flex-col md:flex-row md:items-center justify-between mb-16 gap-8 animate-fade-in">
+        <div className={`flex flex-col md:flex-row md:items-center justify-between mb-12 sm:mb-16 gap-8 ${reducedMotion ? '' : 'animate-fade-in'}`}>
           <div>
             <button
               onClick={() => navigate(-1)}
@@ -687,11 +723,11 @@ const Settings: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex flex-wrap justify-center md:justify-start gap-4 mb-16 animate-slide-up">
+        <div className={`flex flex-wrap justify-center md:justify-start gap-3 sm:gap-4 mb-10 sm:mb-16 ${reducedMotion ? '' : 'animate-slide-up'}`}>
           {tabs.map(renderTabButton)}
         </div>
 
-        <div className={`glass-card p-6 sm:p-10 md:p-16 mb-16 min-h-[500px] relative overflow-hidden ${accessibilitySettings.highContrast ? 'bg-black border-4 border-yellow-400' : ''}`}>
+        <div className={`glass-card p-6 sm:p-10 md:p-16 mb-6 sm:mb-10 min-h-[500px] relative overflow-hidden ${accessibilitySettings.highContrast ? 'bg-black border-4 border-yellow-400' : ''}`}>
           <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/5 blur-[80px] -mr-32 -mt-32 rounded-full" />
           <div className="relative z-10">
             {activeTab === 'accessibility' && renderAccessibilityTab()}
@@ -699,6 +735,31 @@ const Settings: React.FC = () => {
             {activeTab === 'audio' && renderAudioTab()}
             {activeTab === 'visual' && renderVisualTab()}
             {activeTab === 'ghana' && renderGhanaTab()}
+          </div>
+        </div>
+
+        <div className={`sticky bottom-24 sm:bottom-8 z-20 transition-all duration-300 ${hasChanges ? 'opacity-100 translate-y-0' : 'pointer-events-none opacity-0 translate-y-2'}`}>
+          <div className="glass-card px-5 py-4 sm:px-6 sm:py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-blue-500/20 shadow-[0_12px_40px_rgba(15,23,42,0.15)]">
+            <div>
+              <p className="font-bold text-slate-900 dark:text-white text-sm sm:text-base">Settings updated</p>
+              <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm">Changes are saved automatically, but you can still broadcast an update event or restore defaults.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={handleSave}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-500 transition-colors"
+              >
+                <Save className="w-4 h-4" />
+                Save
+              </button>
+              <button
+                onClick={handleReset}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl glass-card text-slate-400 hover:text-white transition-colors"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Reset
+              </button>
+            </div>
           </div>
         </div>
       </div>
