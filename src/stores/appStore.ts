@@ -65,6 +65,7 @@ export interface AppState {
   // Translation state
   currentSession: TranslationSession | null
   isTranslating: boolean
+  lastDirection: TranslationSession['direction'] | null
   lastTranslation: {
     input: string
     output: string
@@ -79,6 +80,7 @@ export interface AppState {
   // UI state
   currentPage: 'home' | 'interpreter' | 'settings' | 'help'
   showAccessibilityPanel: boolean
+  hasHydrated: boolean
   
   // Actions
   updateSettings: (settings: Partial<AppSettings>) => void
@@ -89,6 +91,7 @@ export interface AppState {
   setConnectionStatus: (status: AppState['connectionStatus']) => void
   setCurrentPage: (page: AppState['currentPage']) => void
   toggleAccessibilityPanel: () => void
+  setHasHydrated: (hydrated: boolean) => void
   resetSettings: () => void
 }
 
@@ -137,11 +140,13 @@ export const useAppStore = create<AppState>()(
       settings: defaultSettings,
       currentSession: null,
       isTranslating: false,
+      lastDirection: null,
       lastTranslation: null,
       isConnected: false,
       connectionStatus: 'disconnected',
       currentPage: 'home',
       showAccessibilityPanel: false,
+      hasHydrated: false,
 
       // Actions
       updateSettings: (newSettings) => {
@@ -180,7 +185,7 @@ export const useAppStore = create<AppState>()(
           startTime: Date.now(),
           totalEvents: 0
         }
-        set({ currentSession: session, isTranslating: true })
+        set({ currentSession: session, isTranslating: true, lastDirection: direction })
       },
 
       endTranslationSession: () => {
@@ -190,7 +195,7 @@ export const useAppStore = create<AppState>()(
             ...session,
             endTime: Date.now()
           }
-          set({ currentSession: updatedSession, isTranslating: false })
+          set({ currentSession: updatedSession, isTranslating: false, lastDirection: session.direction })
         }
       },
 
@@ -217,6 +222,10 @@ export const useAppStore = create<AppState>()(
         set((state) => ({ showAccessibilityPanel: !state.showAccessibilityPanel }))
       },
 
+      setHasHydrated: (hydrated) => {
+        set({ hasHydrated: hydrated })
+      },
+
       resetSettings: () => {
         set({ settings: defaultSettings })
       }
@@ -225,8 +234,15 @@ export const useAppStore = create<AppState>()(
       name: 'gsl-interpreter-settings',
       partialize: (state) => ({
         settings: state.settings,
-        currentPage: state.currentPage
-      })
+        currentPage: state.currentPage,
+        currentSession: state.currentSession,
+        isTranslating: state.isTranslating,
+        lastDirection: state.lastDirection,
+        lastTranslation: state.lastTranslation
+      }),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true)
+      }
     }
   )
 )

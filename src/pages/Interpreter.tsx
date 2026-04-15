@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react'
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { API_BASE_URL, WS_BASE_URL } from '@/config'
 import { useNavigate } from 'react-router-dom'
 import { useAppStore, useVisualSettings } from '../stores/appStore'
@@ -6,7 +6,7 @@ import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX, Camera,
 import { useWebRTC, useWebSocket } from '../hooks/useWebRTC'
 import VideoCapture from '../components/VideoCapture'
 import AudioCapture from '../components/AudioCapture'
-const Avatar3D = React.lazy(() => import('../components/Avatar3D'))
+import Avatar3D from '../components/Avatar3D'
 import SmartTipsOverlay from '../components/SmartTipsOverlay'
 import { useSignRecognition } from '../hooks/useSignRecognition'
 import SignDebugOverlay from '../components/SignDebugOverlay'
@@ -47,7 +47,12 @@ const Interpreter: React.FC = () => {
     currentSession,
     isTranslating,
     lastTranslation,
-    settings
+    settings,
+    hasHydrated,
+    lastDirection,
+    startTranslationSession,
+    endTranslationSession,
+    setLastTranslation
   } = useAppStore()
   const { colorScheme, updateVisual } = useVisualSettings()
   
@@ -85,9 +90,15 @@ const Interpreter: React.FC = () => {
   const [manualInput, setManualInput] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [isSignRecognized, setIsSignRecognized] = useState(false)
+  const [isMicListening, setIsMicListening] = useState(false)
   const [avatarStatus, setAvatarStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null)
   const [avatarKeyframes, setAvatarKeyframes] = useState<any[] | null>(null)
+  const browserAutoStartedRef = useRef(false)
+  const browserRecognitionRef = useRef<any>(null)
+  const browserRecognitionRestartRef = useRef<number | null>(null)
+  const browserRecognitionShouldRunRef = useRef(false)
+  const lastBrowserFinalTranscriptRef = useRef('')
 
   // Smart Tips state
   const [showSmartTips, setShowSmartTips] = useState(true)
@@ -95,8 +106,6 @@ const Interpreter: React.FC = () => {
   const [livePredictedConf, setLivePredictedConf] = useState(0)
   const [liveTopMatches, setLiveTopMatches] = useState<Array<{ gloss: string; confidence: number }>>([])
   const [livePrimitives, setLivePrimitives] = useState<SignPrimitives | null>(null)
-
-  const { startTranslationSession, endTranslationSession, setLastTranslation } = useAppStore.getState()
 
   // Local MediaPipe Pipeline
   const { isReady, isDetecting, predictedGloss, confidence: localConfidence, debugInfo, processVideoFrame } = useSignRecognition()
@@ -164,10 +173,11 @@ const Interpreter: React.FC = () => {
   }, [currentSession?.direction, isDemoRunning])
 
   useEffect(() => {
+    if (!hasHydrated) return
     if (!currentSession) {
-      startTranslationSession('sign_to_speech')
+      startTranslationSession(lastDirection || 'sign_to_speech')
     }
-  }, [])
+  }, [currentSession, hasHydrated, lastDirection, startTranslationSession])
 
   useEffect(() => {
     const w = window as any
@@ -176,6 +186,28 @@ const Interpreter: React.FC = () => {
       setSupportsBrowserRecognition(true)
       setRecognitionTier('browser')
     }
+  }, [])
+
+  const stopBrowserRecognition = useCallback(() => {
+    browserRecognitionShouldRunRef.current = false
+    lastBrowserFinalTranscriptRef.current = ''
+    if (browserRecognitionRestartRef.current) {
+      window.clearTimeout(browserRecognitionRestartRef.current)
+      browserRecognitionRestartRef.current = null
+    }
+    const recognition = browserRecognitionRef.current
+    if (recognition) {
+      try {
+        recognition.onend = null
+        recognition.onerror = null
+        recognition.onresult = null
+        recognition.stop()
+      } catch {
+        // ignore stop errors on already-closed recognition instances
+      }
+    }
+    browserRecognitionRef.current = null
+    setIsProcessing(false)
   }, [])
 
   useEffect(() => {
@@ -244,7 +276,6 @@ const Interpreter: React.FC = () => {
       setRecognizedWords(tokens)
       setIsProcessing(true)
       if (tokens.length === 0) {
-        setTranslationText('')
         setTranslationText('')
         setSilenceMessage('No speech detected')
         setSttConfidence(sttConf)
@@ -336,6 +367,7 @@ const Interpreter: React.FC = () => {
       setSignSequence(results)
       setCurrentSignIndex(0)
       setCurrentFrameIndex(0)
+      setAutoPlay(true)
       setMatchedCount(matchCountLocal)
       setUnknownCount(tokens.length - matchCountLocal)
       setDictConfidence(dictConfLocal)
@@ -356,7 +388,8 @@ const Interpreter: React.FC = () => {
     [setLastTranslation]
   )
 
-  const startBrowserRecognition = () => {
+  const startBrowserRecognition = useCallback(() => {
+    if (currentSession?.direction !== 'speech_to_sign' || isMuted) return
     const w = window as any
     const Recognition = w.SpeechRecognition || w.webkitSpeechRecognition
     if (!Recognition) {
@@ -365,46 +398,96 @@ const Interpreter: React.FC = () => {
       return
     }
     try {
+      stopBrowserRecognition()
       const recognition = new Recognition()
       recognition.lang = 'en-US'
-      recognition.continuous = false
-      recognition.interimResults = false
+      recognition.continuous = true
+      recognition.interimResults = true
+      recognition.maxAlternatives = 1
       recognition.onstart = () => {
         setSpeechError(null)
+        setSilenceMessage(null)
         setRecognitionTier('browser')
-        setIsProcessing(true)
-      }
-      recognition.onend = () => { 
+        lastBrowserFinalTranscriptRef.current = ''
+        // Keep speech mode responsive; avoid blocking overlay while continuously listening.
         setIsProcessing(false)
+      }
+      recognition.onend = () => {
+        setIsProcessing(false)
+        if (!browserRecognitionShouldRunRef.current) return
+        browserRecognitionRestartRef.current = window.setTimeout(() => {
+          try {
+            recognition.start()
+          } catch {
+            // Browser may reject immediate restart; next end cycle will retry.
+          }
+        }, 450)
       }
       recognition.onerror = (event: any) => {
         const code = event && event.error ? String(event.error) : ''
         if (code === 'not-allowed') {
+          browserRecognitionShouldRunRef.current = false
           setSpeechError(
             'Microphone access was denied for browser recognition. Falling back to server.'
           )
+          setRecognitionTier('backend')
         } else if (code === 'no-speech') {
-          setSpeechError('No speech detected. You can try again or type below.')
-          setSilenceMessage('No speech detected')
+          setSpeechError(null)
+          setSilenceMessage('No speech detected yet. Still listening...')
         } else {
-          setSpeechError('Browser speech recognition failed. Using server transcription.')
+          setSpeechError('Browser speech recognition had an issue. Retrying...')
         }
-        setRecognitionTier('backend')
       }
       recognition.onresult = (event: any) => {
-        if (!event || !event.results || !event.results[0] || !event.results[0][0]) return
-        const res = event.results[0][0]
-        const text = String(res.transcript || '')
-        const conf =
-          typeof res.confidence === 'number' && res.confidence > 0 ? res.confidence : 0.7
+        if (!event || !event.results) return
+        let latestFinalText = ''
+        let conf = 0.7
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+          const result = event.results[i]
+          if (!result || !result[0]) continue
+          if (result.isFinal) {
+            latestFinalText = String(result[0].transcript || '')
+            if (typeof result[0].confidence === 'number' && result[0].confidence > 0) {
+              conf = result[0].confidence
+            }
+          }
+        }
+        const text = latestFinalText.trim()
+        if (!text) return
+        const normalized = text.toLowerCase()
+        if (normalized === lastBrowserFinalTranscriptRef.current) return
+        lastBrowserFinalTranscriptRef.current = normalized
+        setSpeechError(null)
+        setSilenceMessage(null)
         runTextToSignPipeline(text, 'browser', conf)
       }
+      browserRecognitionRef.current = recognition
+      browserRecognitionShouldRunRef.current = true
       recognition.start()
     } catch (e) {
       setRecognitionTier('backend')
       setSpeechError('Browser speech recognition could not start. Using server transcription.')
     }
-  }
+  }, [currentSession?.direction, isMuted, runTextToSignPipeline, stopBrowserRecognition])
+
+  useEffect(() => {
+    if (currentSession?.direction !== 'speech_to_sign') {
+      browserAutoStartedRef.current = false
+      stopBrowserRecognition()
+      return
+    }
+    if (!supportsBrowserRecognition || browserAutoStartedRef.current || isMuted) return
+    const timer = window.setTimeout(() => {
+      startBrowserRecognition()
+      browserAutoStartedRef.current = true
+    }, 400)
+    return () => window.clearTimeout(timer)
+  }, [currentSession?.direction, supportsBrowserRecognition, isMuted, startBrowserRecognition, stopBrowserRecognition])
+
+  useEffect(() => {
+    if (currentSession?.direction === 'speech_to_sign' && !isMuted) return
+    stopBrowserRecognition()
+  }, [currentSession?.direction, isMuted, stopBrowserRecognition])
 
   useEffect(() => {
     if (!autoPlay || !signSequence.length) return
@@ -529,15 +612,16 @@ const Interpreter: React.FC = () => {
   useEffect(() => {
     let animId: number;
     const loop = () => {
-      const vid = document.querySelector('video');
-      if (vid && isReady) {
+      const videos = Array.from(document.querySelectorAll('video')) as HTMLVideoElement[];
+      const vid = videos.find((video) => video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0);
+      if (vid && isReady && currentSession?.direction === 'sign_to_speech') {
         processVideoFrame(vid, performance.now());
       }
       animId = requestAnimationFrame(loop);
     };
     loop();
     return () => cancelAnimationFrame(animId);
-  }, [isReady, processVideoFrame]);
+  }, [currentSession?.direction, isReady, processVideoFrame]);
 
   // Local Recognition State Sync
   useEffect(() => {
@@ -673,6 +757,20 @@ const Interpreter: React.FC = () => {
     if (!audioSocket.lastMessage) return
     if (currentSession?.direction !== 'speech_to_sign') return
     const message = audioSocket.lastMessage
+    if (message.type === 'transcription_error' || message.error) {
+      const raw = String(message.error || 'Speech backend unavailable.')
+      const quotaHit = raw.toLowerCase().includes('quota') || raw.toLowerCase().includes('resource_exhausted')
+      setSpeechError(
+        quotaHit
+          ? 'Speech backend quota exhausted. Switching to browser microphone recognition.'
+          : 'Speech backend error. Using browser microphone recognition.'
+      )
+      if (supportsBrowserRecognition && !isMuted) {
+        setRecognitionTier('browser')
+        startBrowserRecognition()
+      }
+      return
+    }
     if (message.type === 'transcription') {
       const text = String(message.text || '').trim()
       const conf =
@@ -698,7 +796,7 @@ const Interpreter: React.FC = () => {
       runTextToSignPipeline(text, 'backend', conf)
       updateSpeechToSignSequence(text)
     }
-  }, [audioSocket.lastMessage, currentSession?.direction, runTextToSignPipeline, updateSpeechToSignSequence])
+  }, [audioSocket.lastMessage, currentSession?.direction, isMuted, runTextToSignPipeline, startBrowserRecognition, supportsBrowserRecognition, updateSpeechToSignSequence])
 
   useEffect(() => {
     if (currentSession?.direction !== 'speech_to_sign' && currentSession?.direction !== 'text_to_sign') {
@@ -815,9 +913,9 @@ const Interpreter: React.FC = () => {
     }
   }, [settings.translation.speechSpeed, audio.volumeLevel, audio.ghanaianAccent, isMuted])
 
-  // Auto-speak translations for sign-to-speech and text-to-sign
+  // Auto-speak translations only for sign-to-speech
   useEffect(() => {
-    if ((currentSession?.direction === 'sign_to_speech' || currentSession?.direction === 'text_to_sign') &&
+    if (currentSession?.direction === 'sign_to_speech' &&
       translationText &&
       !isSpeaking) {
       speakText(translationText)
@@ -861,6 +959,26 @@ const Interpreter: React.FC = () => {
   const getHeaderSize = () => {
     return accessibility.largeText ? 'text-2xl sm:text-4xl' : 'text-xl sm:text-3xl'
   }
+
+  const avatarMatchedSequence = useMemo(
+    () => signSequence.filter(entry => entry.status === 'matched' && !!entry.gloss),
+    [signSequence]
+  )
+
+  const avatarGlossSequence = useMemo(
+    () => avatarMatchedSequence.map(entry => String(entry.gloss || entry.word || '').toUpperCase()).filter(Boolean),
+    [avatarMatchedSequence]
+  )
+
+  const avatarPrimitiveSequence = useMemo(
+    () => avatarMatchedSequence.map(entry => entry.primitives || null),
+    [avatarMatchedSequence]
+  )
+
+  const avatarPlaybackKey = useMemo(
+    () => avatarMatchedSequence.map(entry => `${String(entry.gloss || entry.word || '').toUpperCase()}:${entry.status}`).join('|'),
+    [avatarMatchedSequence]
+  )
 
   const getConfidenceColor = (level: number) => {
     if (level === 0) return 'text-slate-400'
@@ -1052,9 +1170,9 @@ const Interpreter: React.FC = () => {
                     </div>
                   )}
                   {currentSession.direction === 'speech_to_sign' && (
-                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all duration-300 ${!isMuted ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'}`}>
-                      {!isMuted ? <Volume2 size={12} /> : <VolumeX size={12} />}
-                      {!isMuted ? 'Mic On' : 'Muted'}
+                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all duration-300 ${isMicListening ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-amber-500/10 text-amber-600 border-amber-500/20'}`}>
+                      {isMicListening ? <Mic size={12} /> : <Mic size={12} />}
+                      {isMicListening ? 'Mic Listening' : 'Mic Idle'}
                     </div>
                   )}
                   <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all duration-300 ${(videoSocket.isConnected || audioSocket.isConnected) ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-rose-500/10 text-rose-500 border-rose-500/20'}`}>
@@ -1066,7 +1184,7 @@ const Interpreter: React.FC = () => {
 
               <div className="relative rounded-2xl overflow-hidden shadow-2xl bg-slate-900 ring-1 ring-white/10 group/input">
                 {/* Processing Overlay */}
-                {isProcessing && (
+                {isProcessing && currentSession.direction === 'sign_to_speech' && (
                   <div className="absolute inset-0 z-20 bg-black/40 backdrop-blur-[2px] flex items-center justify-center animate-fade-in">
                     <div className="flex flex-col items-center gap-4">
                       {isSignRecognized ? (
@@ -1174,7 +1292,33 @@ const Interpreter: React.FC = () => {
                       showLevel={true}
                       className="w-full"
                       disabled={isMuted}
+                      autoStart={!isMuted}
+                      onListeningChange={setIsMicListening}
                     />
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {supportsBrowserRecognition && (
+                        <button
+                          type="button"
+                          onClick={startBrowserRecognition}
+                          className="px-4 py-2 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 text-[10px] font-black text-blue-500 uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
+                        >
+                          Trigger Browser Speech Recognition
+                        </button>
+                      )}
+                      <span className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
+                        Source: {lastTierUsed === 'browser' ? 'Browser STT' : lastTierUsed === 'backend' ? 'Server STT' : 'Manual Input'}
+                      </span>
+                    </div>
+
+                    {(speechError || silenceMessage) && (
+                      <div className="mt-4 rounded-2xl border border-amber-400/30 bg-amber-500/10 p-3 flex items-start gap-2">
+                        <AlertTriangle size={16} className="text-amber-500 mt-0.5" />
+                        <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
+                          {speechError || silenceMessage}
+                        </p>
+                      </div>
+                    )}
                     
                     {/* Empty state for speech recognition */}
                     {!translationText && !isMuted && (
@@ -1183,7 +1327,7 @@ const Interpreter: React.FC = () => {
                           <Mic size={24} />
                         </div>
                         <span className="text-[10px] font-black text-emerald-500/70 uppercase tracking-[0.2em] text-center leading-relaxed">
-                          Listening for speech...<br/>Results appear on the right
+                          Listening for speech...<br/>Avatar output appears on the right
                         </span>
                       </div>
                     )}
@@ -1371,39 +1515,90 @@ const Interpreter: React.FC = () => {
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-4">
                   <div className="w-14 h-14 rounded-2xl bg-blue-500/10 dark:bg-blue-500/20 flex items-center justify-center text-blue-500 shadow-inner">
-                    <Volume2 size={32} />
+                    {currentSession.direction === 'sign_to_speech' ? <Volume2 size={32} /> : <User size={32} />}
                   </div>
                   <div>
                     <h2 className={`${getHeaderSize()} font-bold tracking-tight ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'} mb-0`}>
-                      Live Translation
+                      {currentSession.direction === 'sign_to_speech' ? 'Live Translation' : 'Signing Avatar'}
                     </h2>
                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-widest transition-all duration-300">
-                      {isSignRecognized 
-                        ? '✨ Stable match confirmed' 
-                        : debugInfo?.rawMatch 
-                          ? `Comparing: ${debugInfo.rawMatch.gloss} (${(debugInfo.rawMatch.confidence * 100).toFixed(0)}%)` 
-                          : isDetecting 
-                            ? 'Tracking handshape & movement...' 
-                            : 'Waiting for sign...'
+                      {currentSession.direction === 'sign_to_speech'
+                        ? (isSignRecognized
+                          ? 'Stable match confirmed'
+                          : debugInfo?.rawMatch
+                            ? `Comparing: ${debugInfo.rawMatch.gloss} (${(debugInfo.rawMatch.confidence * 100).toFixed(0)}%)`
+                            : isDetecting
+                              ? 'Tracking handshape and movement...'
+                              : 'Waiting for sign...')
+                        : (avatarStatus === 'ready'
+                          ? 'Avatar is signing from dictionary sequence'
+                          : avatarStatus === 'loading'
+                            ? 'Preparing motion path from dictionary'
+                            : 'Speak or type to generate a sign sequence')
                       }
                     </p>
                   </div>
                 </div>
-                {lastUpdateTime && (
-                  <div className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border border-slate-200/50 dark:border-slate-700/50 shadow-sm flex items-center gap-2">
-                    {isTranslating && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
-                    )}
-                    Updated {lastUpdateTime}
+                <div className="flex items-center gap-2">
+                  <div className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border shadow-sm flex items-center gap-2 ${isMuted || audio.volumeLevel <= 0 ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-300 border-rose-200 dark:border-rose-400/30' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300 border-emerald-200 dark:border-emerald-400/30'}`}>
+                    {isMuted || audio.volumeLevel <= 0 ? <VolumeX size={12} /> : <Volume2 size={12} />}
+                    {isMuted || audio.volumeLevel <= 0 ? 'Speaker Muted' : `Speaker ${Math.round((audio.volumeLevel || 0) * 100)}%`}
                   </div>
-                )}
+                  {lastUpdateTime && (
+                    <div className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border border-slate-200/50 dark:border-slate-700/50 shadow-sm flex items-center gap-2">
+                      {isTranslating && (
+                        <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+                      )}
+                      Updated {lastUpdateTime}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className={`min-h-[220px] p-10 rounded-[2rem] border-2 transition-all duration-500 flex items-center justify-center relative overflow-hidden ${accessibility.highContrast
                 ? 'bg-black border-yellow-400 text-yellow-200'
                 : 'bg-white/40 dark:bg-slate-950/40 border-blue-500/20 hover:border-blue-400/40 text-slate-900 dark:text-white shadow-[inset_0_2px_15px_rgba(0,0,0,0.03)] dark:shadow-[inset_0_2px_15px_rgba(0,0,0,0.3)]'
                 }`}>
-                
+                {currentSession.direction !== 'sign_to_speech' && showAvatar ? (
+                  <div className="w-full h-[28rem] relative rounded-3xl overflow-hidden bg-slate-900 shadow-2xl border border-white/10">
+                    <Avatar3D
+                      key={avatarPlaybackKey}
+                      isVisible={avatarGlossSequence.length > 0}
+                      signSequence={avatarGlossSequence}
+                      primitiveSequence={avatarPrimitiveSequence}
+                      currentSignIndex={currentSignIndex}
+                      currentSign={
+                        avatarGlossSequence.length > 0
+                          ? avatarGlossSequence[Math.min(currentSignIndex, avatarGlossSequence.length - 1)]
+                          : undefined
+                      }
+                    />
+
+                    <SmartTipsOverlay
+                      predictedGloss={livePredictedGloss}
+                      predictedConfidence={livePredictedConf}
+                      primitives={livePrimitives}
+                      topMatches={liveTopMatches}
+                      highContrast={accessibility.highContrast}
+                      visible={showSmartTips}
+                    />
+
+                    {(avatarStatus === 'idle' || avatarStatus === 'error' || !avatarKeyframes || avatarKeyframes.length === 0) && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-6">
+                        <div className="rounded-xl p-4 text-center border bg-slate-900/80 border-slate-600 max-w-xl">
+                          <div className="text-5xl mb-3">🤟</div>
+                          <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium text-slate-200`}>
+                            {avatarMessage || 'Avatar will activate only for signs that exist in the dictionary.'}
+                          </p>
+                          <p className="text-xs text-slate-400 mt-2">
+                            Dictionary pages remain the primary reference for sign accuracy.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                <>
                 {/* Background pulse when detecting */}
                 {!translationText && isCameraActive && (
                   <div className="absolute inset-0 bg-blue-500/5 dark:bg-blue-400/5 animate-pulse-slow pointer-events-none" />
@@ -1480,6 +1675,8 @@ const Interpreter: React.FC = () => {
                       )}
                     </div>
                   </div>
+                )}
+                </>
                 )}
               </div>
 
@@ -1785,74 +1982,6 @@ const Interpreter: React.FC = () => {
               </div>
             )}
 
-            {(currentSession.direction === 'speech_to_sign' || currentSession.direction === 'text_to_sign') && showAvatar && (
-              <div className={`${accessibility.highContrast ? 'bg-gray-900 border-yellow-400 border-2 p-6' : 'glass-card p-8'}`}>
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-2xl bg-purple-500/10 dark:bg-purple-500/20 flex items-center justify-center text-purple-500">
-                    <User size={24} />
-                  </div>
-                  <h3 className={`${accessibility.largeText ? 'text-xl' : 'text-lg'} font-bold ${accessibility.highContrast ? 'text-yellow-400' : 'text-slate-900 dark:text-white'}`}>
-                    Signing Avatar
-                  </h3>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="h-96 relative rounded-3xl overflow-hidden bg-slate-900 shadow-2xl border border-white/10">
-                    <React.Suspense fallback={
-                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-white">
-                        <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
-                        <span className="text-xs font-black uppercase tracking-widest animate-pulse">Loading Avatar...</span>
-                      </div>
-                    }>
-                      <Avatar3D
-                        isVisible={avatarStatus === 'ready' && !!avatarKeyframes && avatarKeyframes.length > 0}
-                        signSequence={
-                          avatarKeyframes
-                            ? avatarKeyframes
-                              .map(kf => String(kf.sign || kf.gloss || '').toUpperCase())
-                              .filter(label => label.length > 0)
-                            : []
-                        }
-                        currentSign={
-                          avatarKeyframes && avatarKeyframes.length > 0
-                            ? String(avatarKeyframes[0].sign || avatarKeyframes[0].gloss || '').toUpperCase()
-                            : undefined
-                        }
-                      />
-                    </React.Suspense>
-
-                    <SmartTipsOverlay
-                      predictedGloss={livePredictedGloss}
-                      predictedConfidence={livePredictedConf}
-                      primitives={livePrimitives}
-                      topMatches={liveTopMatches}
-                      highContrast={accessibility.highContrast}
-                      visible={showSmartTips}
-                    />
-                  </div>
-
-                  {avatarStatus === 'loading' && (
-                    <div className="rounded-2xl p-4 flex items-center justify-between bg-blue-50/50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20">
-                      <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} ${accessibility.highContrast ? 'text-yellow-300' : 'text-blue-800'}`}>
-                        Preparing signing sequence from dictionary...
-                      </p>
-                    </div>
-                  )}
-
-                  {(avatarStatus === 'idle' || avatarStatus === 'error' || !avatarKeyframes || avatarKeyframes.length === 0) && (
-                    <div className={`rounded-xl p-4 text-center border transition-colors ${accessibility.highContrast ? 'bg-black border-yellow-400' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700/50'}`}>
-                      <div className="text-6xl mb-4">🤟</div>
-                      <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-700 dark:text-slate-300'}`}>
-                        {avatarMessage || 'Avatar will activate only for signs that exist in the dictionary.'}
-                      </p>
-                      <p className={`${accessibility.largeText ? 'text-sm' : 'text-xs'} ${accessibility.highContrast ? 'text-yellow-200' : 'text-slate-500 dark:text-slate-400'} mt-2`}>
-                        Dictionary pages remain the primary reference for sign accuracy.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>

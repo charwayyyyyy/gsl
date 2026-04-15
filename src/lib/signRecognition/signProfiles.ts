@@ -9,34 +9,35 @@ export const SUPPORTED_SIGNS: SignProfile[] = [
     location: ['HIGH', 'FACE'],
     locationTolerance: 0.2,
     motion: {
-      primaryDirection: ['FORWARD', 'RIGHT', 'LEFT', 'STATIC'],
+      primaryDirection: ['FORWARD', 'RIGHT', 'LEFT'],
       repetition: 0
     },
     requiresTwoHands: false,
-    stabilityFrames: 8
+    stabilityFrames: 4
   },
   {
     id: "thank_you",
     gloss: 'THANK YOU',
     handshape: ['FLAT', 'OPEN'],
-    location: ['HIGH', 'MID', 'FACE', 'CHEST'],
+    location: ['FACE', 'CHEST', 'MID'],
     motion: {
       primaryDirection: ['FORWARD', 'DOWN'],
       repetition: 0
     },
     requiresTwoHands: false,
-    stabilityFrames: 6
+    stabilityFrames: 4
   },
   {
     id: "food",
     gloss: 'FOOD',
-    handshape: ['PINCH'],
-    location: ['HIGH', 'FACE'],
+    handshape: ['PINCH', 'CURVED'],
+    location: ['FACE', 'CHEST', 'HIGH'],
     motion: {
-      primaryDirection: ['UP', 'STATIC'],
+      primaryDirection: ['UP', 'STATIC', 'FORWARD'],
       repetition: 0
     },
     requiresTwoHands: false,
+    stabilityFrames: 3,
   },
   {
     id: "yes",
@@ -48,16 +49,18 @@ export const SUPPORTED_SIGNS: SignProfile[] = [
       repetition: 1
     },
     requiresTwoHands: false,
+    stabilityFrames: 3,
   },
   {
     id: "no",
     gloss: 'NO',
-    handshape: ['PINCH', 'FLAT', 'POINT'],
+    handshape: ['POINT'],
     location: ['MID', 'HIGH'],
     motion: {
-      primaryDirection: ['STATIC', 'RIGHT', 'LEFT'],
+      primaryDirection: ['RIGHT', 'LEFT'],
       repetition: 1
     },
     requiresTwoHands: false,
+    stabilityFrames: 4,
   }
 ];

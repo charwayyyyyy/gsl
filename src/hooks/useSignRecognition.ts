@@ -94,6 +94,8 @@ export function useSignRecognition(): UseSignRecognitionReturn {
 
   const processVideoFrame = useCallback((videoElement: HTMLVideoElement, timestamp: number) => {
     if (!isReady || !landmarkerRef.current) return;
+    if (!videoElement.videoWidth || !videoElement.videoHeight) return;
+    if (videoElement.readyState < 2) return;
 
     if (videoElement.currentTime === lastVideoTimeRef.current) return;
     lastVideoTimeRef.current = videoElement.currentTime;
@@ -102,52 +104,58 @@ export function useSignRecognition(): UseSignRecognitionReturn {
     if (timestamp - lastProcessedTimestampRef.current < 66) return;
     lastProcessedTimestampRef.current = timestamp;
 
-    const result = landmarkerRef.current.detectForVideo(videoElement, timestamp);
-    
-    if (result && result.landmarks && result.landmarks.length > 0) {
-      setIsDetecting(prev => (prev ? prev : true));
-      // Append to rolling buffer
-      frameBufferRef.current.push({
-        timestamp,
-        landmarks: result.landmarks,
-        handednesses: result.handednesses
-      });
-      if (frameBufferRef.current.length > 30) {
-        frameBufferRef.current.shift();
-      }
+    try {
+      const result = landmarkerRef.current.detectForVideo(videoElement, timestamp);
 
-      // 1. Extract Features
-      const features = extractFeatures(frameBufferRef.current);
-      if (!features) {
-        stabilizerRef.current.processMatch(null); 
-        return;
-      }
-
-      // 2. Match against profiles
-      const match = matchSign(features);
-
-      // 3. Stabilize & Cooldown
-      const { confirmedMatch, shouldSpeak } = stabilizerRef.current.processMatch(match);
-
-      if (confirmedMatch) {
-        setPredictedGloss(confirmedMatch.gloss);
-        setConfidence(confirmedMatch.confidence);
-
-        if (shouldSpeak) {
-          setLastSpoken(confirmedMatch.gloss);
-          speakText(confirmedMatch.gloss.toLowerCase());
+      if (result && result.landmarks && result.landmarks.length > 0) {
+        setIsDetecting(prev => (prev ? prev : true));
+        // Append to rolling buffer
+        frameBufferRef.current.push({
+          timestamp,
+          landmarks: result.landmarks,
+          handednesses: result.handednesses
+        });
+        if (frameBufferRef.current.length > 30) {
+          frameBufferRef.current.shift();
         }
-      }
 
-      // Throttled debug publish (approx 10fps limit for React renders so we don't block the main thread drastically)
-      if (timestamp - lastDebugUpdateRef.current > 100) {
-        setDebugInfo({ features, rawMatch: match });
-        lastDebugUpdateRef.current = timestamp;
-      }
+        // 1. Extract Features
+        const features = extractFeatures(frameBufferRef.current);
+        if (!features) {
+          stabilizerRef.current.processMatch(null); 
+          return;
+        }
 
-    } else {
-      setIsDetecting(prev => (prev ? false : prev));
-      stabilizerRef.current.processMatch(null);
+        // 2. Match against profiles
+        const match = matchSign(features);
+
+        // 3. Stabilize & Cooldown
+        const { confirmedMatch, shouldSpeak } = stabilizerRef.current.processMatch(match);
+
+        if (confirmedMatch) {
+          setPredictedGloss(confirmedMatch.gloss);
+          setConfidence(confirmedMatch.confidence);
+
+          if (shouldSpeak) {
+            setLastSpoken(confirmedMatch.gloss);
+            speakText(confirmedMatch.gloss.toLowerCase());
+          }
+        }
+
+        // Throttled debug publish (approx 10fps limit for React renders so we don't block the main thread drastically)
+        if (timestamp - lastDebugUpdateRef.current > 100) {
+          setDebugInfo({ features, rawMatch: match });
+          lastDebugUpdateRef.current = timestamp;
+        }
+
+      } else {
+        setIsDetecting(prev => (prev ? false : prev));
+        stabilizerRef.current.processMatch(null);
+      }
+    } catch (error) {
+      console.warn('MediaPipe hand detection skipped for current frame:', error)
+      setIsDetecting(false)
+      stabilizerRef.current.processMatch(null)
     }
   }, [isReady, speakText]);
 

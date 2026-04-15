@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Mic, MicOff, Volume2, AlertCircle } from 'lucide-react'
 import { useAppStore } from '../stores/appStore'
 import { useWebRTC } from '../hooks/useWebRTC'
@@ -8,16 +8,21 @@ interface AudioCaptureProps {
   showLevel?: boolean
   className?: string
   disabled?: boolean
+  autoStart?: boolean
+  onListeningChange?: (isListening: boolean) => void
 }
 
 const AudioCapture: React.FC<AudioCaptureProps> = ({
   onAudioData,
   showLevel = true,
   className = '',
-  disabled = false
+  disabled = false,
+  autoStart = false,
+  onListeningChange
 }) => {
   const [error, setError] = useState<string | null>(null)
   const [micState, setMicState] = useState<'idle' | 'requesting_permission' | 'listening' | 'processing' | 'error'>('idle')
+  const autoStartRequestedRef = useRef(false)
   
   const { settings } = useAppStore()
   const { 
@@ -54,6 +59,30 @@ const AudioCapture: React.FC<AudioCaptureProps> = ({
       setError(webrtcError)
     }
   }, [webrtcError])
+
+  useEffect(() => {
+    onListeningChange?.(isAudioEnabled)
+  }, [isAudioEnabled, onListeningChange])
+
+  useEffect(() => {
+    if (!autoStart || disabled || !isSupported || isAudioEnabled) return
+    if (autoStartRequestedRef.current) return
+
+    autoStartRequestedRef.current = true
+    setError(null)
+    setMicState('requesting_permission')
+    startAudio().catch((err) => {
+      console.error('Auto-start audio failed:', err)
+      setError('Microphone could not start automatically. Tap the mic button to retry.')
+      setMicState('error')
+      autoStartRequestedRef.current = false
+    })
+  }, [autoStart, disabled, isSupported, isAudioEnabled, startAudio])
+
+  useEffect(() => {
+    if (!disabled || !isAudioEnabled) return
+    stopAudio()
+  }, [disabled, isAudioEnabled, stopAudio])
 
   useEffect(() => {
     if (!onAudioData || !isAudioEnabled) return

@@ -84,6 +84,7 @@ APPROVED_MAPPINGS_PATH = Path("data") / "processed" / "approved_sign_mappings.js
 _approved_term_to_mapping: Optional[Dict[str, Dict[str, Any]]] = None
 _approved_unique_reverse_map: Optional[Dict[str, str]] = None
 _handshape_inventory_cache: Optional[Dict[str, Any]] = None
+_recognition_profiles_cache: Optional[Dict[str, Any]] = None
 
 
 def _normalize_term(text: str) -> str:
@@ -202,6 +203,117 @@ def _get_handshape_inventory(force_refresh: bool = False) -> Dict[str, Any]:
     if _handshape_inventory_cache is None or force_refresh:
         _handshape_inventory_cache = _build_handshape_inventory()
     return _handshape_inventory_cache
+
+
+def _map_primitive_direction(direction: str) -> str:
+    d = (direction or "NONE").upper()
+    if d in {"UP", "DOWN", "LEFT", "RIGHT", "FORWARD", "BACKWARD", "CIRCULAR"}:
+        return d
+    if d in {"HOLD", "TAP", "NONE"}:
+        return "STATIC"
+    return "STATIC"
+
+
+def _map_primitive_location(location: str) -> str:
+    l = (location or "UNKNOWN").upper()
+    if l in {"FACE", "CHIN"}:
+        return "FACE"
+    if l == "HEAD":
+        return "HIGH"
+    if l == "CHEST":
+        return "CHEST"
+    if l == "TORSO":
+        return "MID"
+    if l == "NEUTRAL":
+        return "NEUTRAL"
+    return "MID"
+
+
+def _map_primitive_handshape(handshape: str) -> str:
+    h = (handshape or "UNKNOWN").upper()
+    allowed = {"FLAT", "FIST", "OPEN", "PINCH", "POINT", "CURVED"}
+    return h if h in allowed else "UNKNOWN"
+
+
+def _is_recognition_candidate(gloss: str, entry: Dict[str, Any]) -> bool:
+    g = (gloss or "").strip().upper()
+    if not g:
+        return False
+    if len(g) > 28:
+        return False
+    if not re.fullmatch(r"[A-Z][A-Z\s'\-]*", g):
+        return False
+
+    images = entry.get("images") or []
+    if not images:
+        return False
+
+    desc = str(entry.get("description") or "").lower()
+    noisy_markers = [
+        "table of content",
+        "message of support",
+        "foreword",
+        "copyright",
+        "ghanaan sign language third edition dictionary",
+    ]
+    if any(marker in desc for marker in noisy_markers):
+        return False
+
+    variants = int(entry.get("variants") or len(images))
+    if variants > 4:
+        return False
+
+    return True
+
+
+def _build_recognition_profiles(force_refresh: bool = False) -> Dict[str, Any]:
+    global _recognition_profiles_cache
+    if _recognition_profiles_cache is not None and not force_refresh:
+        return _recognition_profiles_cache
+
+    service = get_text_to_sign_service()
+    profiles: List[Dict[str, Any]] = []
+
+    for gloss, entry in service.dictionary.items():
+        if not _is_recognition_candidate(gloss, entry):
+            continue
+
+        primitives = service._infer_primitives(gloss, entry)
+        if not primitives or not primitives.get("can_animate"):
+            continue
+
+        mapped_handshape = _map_primitive_handshape(str(primitives.get("handshape") or "UNKNOWN"))
+        mapped_location = _map_primitive_location(str(primitives.get("location") or "UNKNOWN"))
+        mapped_direction = _map_primitive_direction(str(primitives.get("direction") or "NONE"))
+        repetition = 1 if str(primitives.get("repetition") or "SINGLE").upper() == "REPEAT" else 0
+
+        # Skip profiles with no discriminative primitive signal.
+        if mapped_handshape == "UNKNOWN" and mapped_direction == "STATIC" and mapped_location == "MID":
+            continue
+
+        profiles.append({
+            "id": str(gloss).lower().replace(" ", "_"),
+            "gloss": gloss,
+            "handshape": [mapped_handshape] if mapped_handshape != "UNKNOWN" else ["OPEN", "FLAT", "POINT", "PINCH", "FIST", "CURVED"],
+            "handedness": "RIGHT_OR_LEFT",
+            "location": [mapped_location],
+            "motion": {
+                "primaryDirection": [mapped_direction],
+                "repetition": repetition,
+            },
+            "requiresTwoHands": bool(primitives.get("two_hands")),
+            "stabilityFrames": 4,
+            "source": "dictionary_primitives",
+            "page": entry.get("page"),
+        })
+
+    profiles.sort(key=lambda p: p.get("gloss", ""))
+    _recognition_profiles_cache = {
+        "count": len(profiles),
+        "profiles": profiles,
+        "generated_at": datetime.now().isoformat(),
+    }
+    return _recognition_profiles_cache
 
 def get_dictionary_service():
     global _dictionary_service
@@ -685,10 +797,10 @@ async def audio_stream(websocket: WebSocket):
                 # Assuming 44.1kHz from frontend (as seen in Interpreter.tsx)
                 sample_rate = message.get("sample_rate", 44100)
                 
-                # Process every ~3 seconds of audio
-                chunk_seconds = 3
+                # Process shorter chunks for faster speech feedback
+                chunk_seconds = 1.4
                 chunk_size = int(sample_rate * chunk_seconds)
-                overlap_seconds = 0.5
+                overlap_seconds = 0.25
                 overlap = int(sample_rate * overlap_seconds)
                 
                 response = None
@@ -702,7 +814,7 @@ async def audio_stream(websocket: WebSocket):
                         # Use transcribe_audio which handles numpy -> WAV conversion
                         # Pass sample_rate explicitly to ensure correct WAV header
                         result = await get_speech_service().transcribe_audio(chunk, sample_rate=sample_rate)
-                        
+
                         if result.get("text"):
                             response = {
                                 "type": "transcription",
@@ -711,9 +823,21 @@ async def audio_stream(websocket: WebSocket):
                                 "timestamp": message["timestamp"],
                                 "session_id": session_id
                             }
+                        elif result.get("error"):
+                            response = {
+                                "type": "transcription_error",
+                                "error": result.get("error", "Speech transcription backend failed"),
+                                "timestamp": message["timestamp"],
+                                "session_id": session_id,
+                            }
                     except Exception as e:
                         logger.error(f"Transcription error: {e}")
-                        # Don't send error to client for every chunk failure to avoid spam
+                        response = {
+                            "type": "transcription_error",
+                            "error": str(e),
+                            "timestamp": message.get("timestamp", int(datetime.now().timestamp() * 1000)),
+                            "session_id": session_id,
+                        }
                 
                 if response:
                     await manager.send_personal_message(json.dumps(response), session_id)
@@ -942,6 +1066,23 @@ async def get_dictionary_handshapes(refresh: bool = False):
         return _get_handshape_inventory(force_refresh=refresh)
     except Exception as e:
         logger.error(f"Error building handshape inventory: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/dictionary/recognition-profiles")
+async def get_dictionary_recognition_profiles(refresh: bool = False, limit: int = 0):
+    try:
+        payload = _build_recognition_profiles(force_refresh=refresh)
+        profiles = payload.get("profiles", [])
+        if isinstance(limit, int) and limit > 0:
+            profiles = profiles[:limit]
+        return {
+            "count": len(profiles),
+            "profiles": profiles,
+            "generated_at": payload.get("generated_at"),
+        }
+    except Exception as e:
+        logger.error(f"Error building recognition profiles: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/dictionary/sign/{sign_id}")

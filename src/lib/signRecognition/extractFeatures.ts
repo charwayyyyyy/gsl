@@ -21,7 +21,7 @@ function extractHandShape(hand: NormalizedLandmark[], wrist: NormalizedLandmark)
 
   const pinchDist = Math.hypot(hand[4].x - hand[8].x, hand[4].y - hand[8].y);
 
-  if (pinchDist < 0.05) return 'PINCH';
+  if (pinchDist < 0.038) return 'PINCH';
   if (extendedCount === 1 && indexExt) return 'POINT';
   if (extendedCount >= 3) return 'OPEN';
   if (extendedCount === 0) return 'FIST';
@@ -30,8 +30,10 @@ function extractHandShape(hand: NormalizedLandmark[], wrist: NormalizedLandmark)
 }
 
 function getRelativeLocation(wrist: NormalizedLandmark): RelativeLocation {
-  if (wrist.y < 0.3) return 'HIGH';
-  if (wrist.y < 0.6) return 'MID';
+  if (wrist.y < 0.25) return 'FACE';
+  if (wrist.y < 0.4) return 'HIGH';
+  if (wrist.y < 0.62) return 'CHEST';
+  if (wrist.y < 0.8) return 'MID';
   return 'LOW';
 }
 
@@ -45,16 +47,23 @@ function computeMotionFeatures(wristHistory: NormalizedLandmark[], timestamps: n
   
   const dx = newest.x - oldest.x;
   const dy = newest.y - oldest.y;
+  const dz = newest.z - oldest.z;
   
   const dt = (timestamps[timestamps.length - 1] - timestamps[0]) / 1000.0; // seconds
-  const distance = Math.hypot(dx, dy);
+  const distance = Math.hypot(dx, dy, dz);
   const velocity = dt > 0 ? distance / dt : 0;
   
   const threshold = 0.05; // Base movement needed
   
   let primaryDirection: MotionDirection = 'STATIC';
   if (distance > threshold) {
-    if (Math.abs(dx) > Math.abs(dy)) {
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+    const absZ = Math.abs(dz);
+
+    if (absZ > absX && absZ > absY && absZ > 0.035) {
+      primaryDirection = dz < 0 ? 'FORWARD' : 'BACKWARD';
+    } else if (absX > absY) {
       primaryDirection = dx > 0 ? 'RIGHT' : 'LEFT';
     } else {
       primaryDirection = dy > 0 ? 'DOWN' : 'UP';
@@ -83,6 +92,11 @@ function computeMotionFeatures(wristHistory: NormalizedLandmark[], timestamps: n
   // Stability proxy: straightforward line vs noisy
   const pathLength = wristHistory.slice(1).reduce((acc, pt, i) => acc + Math.hypot(pt.x - wristHistory[i].x, pt.y - wristHistory[i].y), 0);
   const stability = distance > 0 ? distance / (pathLength || 1) : 1;
+
+  // Heuristic circular detection: noisy, multi-axis movement with direction changes.
+  if (primaryDirection !== 'FORWARD' && primaryDirection !== 'BACKWARD' && changes >= 3 && stability < 0.62) {
+    primaryDirection = 'CIRCULAR';
+  }
 
   return {
     primaryDirection,

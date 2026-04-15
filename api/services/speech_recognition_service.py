@@ -17,7 +17,7 @@ class SpeechRecognitionConfig:
     model_name: str = "base"  # Placeholder, not used in API mode
     language: str = "en"
     api_key: Optional[str] = os.getenv("GEMINI_API_KEY")
-    api_url: str = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+    api_url: str = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
 class SpeechRecognitionService:
     """Service for speech recognition using External API (Gemini 1.5 Flash)"""
