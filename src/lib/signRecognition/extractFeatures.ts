@@ -21,7 +21,7 @@ function extractHandShape(hand: NormalizedLandmark[], wrist: NormalizedLandmark)
 
   const pinchDist = Math.hypot(hand[4].x - hand[8].x, hand[4].y - hand[8].y);
 
-  if (pinchDist < 0.038) return 'PINCH';
+  if (pinchDist < 0.05) return 'PINCH';
   if (extendedCount === 1 && indexExt) return 'POINT';
   if (extendedCount >= 3) return 'OPEN';
   if (extendedCount === 0) return 'FIST';

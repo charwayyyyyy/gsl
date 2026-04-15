@@ -24,7 +24,7 @@ export const fetchAiResponse = async (userInput: string): Promise<AssistantRespo
 
     if (!response.ok) {
       return {
-        answer: "Connection issue. Please try again.",
+        answer: "I’m having trouble connecting right now. Please try again in a moment.",
         sources: [],
         used_fallback: true
       };
@@ -36,7 +36,7 @@ export const fetchAiResponse = async (userInput: string): Promise<AssistantRespo
   } catch (error) {
     console.error("AI Assistant Error:", error);
     return {
-      answer: "Connection issue. Please try again.",
+      answer: "I’m having trouble connecting right now. Please try again in a moment.",
       sources: [],
       used_fallback: true
     };

@@ -187,6 +187,10 @@ def build_local_general_answer(message: str) -> Optional[str]:
     if not compact:
         return None
 
+    # Avoid hijacking sign/dictionary intents like: "help me open hello".
+    if ("help me" in compact or "how can you help" in compact) and any(k in compact for k in ["open ", " dictionary", "sign for", "signs about"]):
+        return None
+
     if any(phrase in compact for phrase in ["what can you help me with", "what can you do", "help me", "how can you help"]):
         return (
             "I can answer general questions, explain Ghana Sign Language signs, count dictionary entries, "
@@ -195,6 +199,13 @@ def build_local_general_answer(message: str) -> Optional[str]:
 
     if any(phrase in compact for phrase in ["who are you", "what are you", "your name"]):
         return "I’m the SignBridge Assistant. I help with Ghana Sign Language and general questions."
+
+    if re.search(r"\bwhat\s+is\s+(a\s+)?sign\s+language\b", compact):
+        return (
+            "A sign language is a natural language that uses hand shapes, movements, facial expressions, and body posture "
+            "to communicate. It has its own grammar and vocabulary (it’s not just spoken language spelled on the hands). "
+            "If you want a specific Ghana Sign Language sign, ask something like: ‘How do I sign family?’"
+        )
 
     if any(phrase in compact for phrase in ["capital of france", "what is the capital of france"]):
         return "The capital of France is Paris."
@@ -265,6 +276,38 @@ def build_local_sign_answer(user_message: str, sources: list) -> str:
     if not sources:
         return "I’m having trouble reaching the AI service right now. Please try again in a moment."
 
+    compact = re.sub(r"\s+", " ", (user_message or "").strip().lower())
+    if "open" in compact and sources:
+        top = sources[0]
+        gloss = top.get("gloss", "this sign")
+        page = top.get("page", 0)
+        if page:
+            return f"Sure — I found the dictionary entry for \"{gloss}\" (page {page}). Open it to see the diagrams."
+        return f"Sure — I found the dictionary entry for \"{gloss}\". Open it to see the diagrams."
+
+    if any(phrase in compact for phrase in ["show me signs", "signs about", "related signs", "related to"]) and len(sources) > 1:
+        topic = extract_sign_target(user_message) or (user_message or "").strip()
+        lines = []
+        for s in sources[:5]:
+            gloss = s.get("gloss") or ""
+            english = s.get("english") or ""
+            page = s.get("page") or 0
+
+            label = english or gloss
+            if gloss and english and english.upper() != gloss.upper():
+                label = f"{english} ({gloss})"
+
+            if page:
+                lines.append(f"- {label} — page {page}")
+            else:
+                lines.append(f"- {label}")
+
+        return (
+            f"Here are a few Ghana Sign Language dictionary entries related to \"{topic}\":\n"
+            + "\n".join(lines)
+            + "\n\nOpen any entry to see diagrams."
+        )
+
     top = sources[0]
     gloss = top.get("gloss", "this sign")
     page = top.get("page", 0)
@@ -284,6 +327,11 @@ def build_local_sign_answer(user_message: str, sources: list) -> str:
 
 def is_sign_related_query(message: str) -> bool:
     text = (message or "").lower()
+
+    # Prefer a general definition answer for this phrasing.
+    if re.search(r"\bwhat\s+is\s+(a\s+)?sign\s+language\b", text):
+        return False
+
     patterns = [
         r"\bhow\s+do\s+i\s+sign\b",
         r"\bhow\s+to\s+sign\b",
@@ -291,15 +339,25 @@ def is_sign_related_query(message: str) -> bool:
         r"\bgsl\b",
         r"\btranslate\b",
         r"\bgesture\b",
+        r"\bshow\s+me\s+signs?\b",
+        r"\bsigns?\s+about\b",
+        r"\bdictionary\b",
+        r"\bopen\b",
+        r"\bpage\b",
     ]
     return any(re.search(p, text) for p in patterns)
 
 def extract_sign_target(message: str) -> str:
     text = (message or "").strip()
     patterns = [
+        r"(?i)show\s+me\s+signs?\s+about\s+(.+?)\??$",
+        r"(?i)signs?\s+about\s+(.+?)\??$",
+        r"(?i)(?:ok(?:ay)?\s+)?help\s+me\s+open\s+(.+?)\??$",
+        r"(?i)(?:please\s+)?open\s+(?:the\s+)?(?:dictionary\s+entry\s+for\s+)?(.+?)\??$",
         r"(?i)how\s+do\s+i\s+sign\s+(.+?)\??$",
         r"(?i)how\s+to\s+sign\s+(.+?)\??$",
         r"(?i)what\s+is\s+the\s+sign\s+for\s+(.+?)\??$",
+        r"(?i)show\s+me\s+the\s+sign\s+for\s+(.+?)\??$",
     ]
     for p in patterns:
         m = re.search(p, text)
@@ -316,17 +374,20 @@ def handle_fallback(message, sources=None, reason=""):
             "sources": [],
             "used_fallback": True
         }
-    if sources and is_sign_related_query(message):
-        return {
-            "answer": build_local_sign_answer(message, sources),
-            "sources": sources,
-            "used_fallback": True
-        }
+
+    # Prefer a strong local general answer when available (e.g. definitional questions).
     local_general = build_local_general_answer(message)
     if local_general:
         return {
             "answer": local_general,
             "sources": [],
+            "used_fallback": True
+        }
+
+    if sources and is_sign_related_query(message):
+        return {
+            "answer": build_local_sign_answer(message, sources),
+            "sources": sources,
             "used_fallback": True
         }
     return {
@@ -347,11 +408,13 @@ async def chat(data: dict):
 
     sources = []
     if is_sign_related_query(user_message):
+        compact = re.sub(r"\s+", " ", (user_message or "").strip().lower())
+        max_results = 5 if ("show me signs" in compact or "signs about" in compact) else 3
         target = extract_sign_target(user_message)
         if target:
-            sources = search_dictionary(target)
+            sources = search_dictionary(target, max_results=max_results)
         if not sources:
-            sources = search_dictionary(user_message)
+            sources = search_dictionary(user_message, max_results=max_results)
     
     if not GEMINI_API_KEY:
         return handle_fallback(user_message, sources, "No API key configured.")

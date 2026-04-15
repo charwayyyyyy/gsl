@@ -19,7 +19,7 @@ export const SUPPORTED_SIGNS: SignProfile[] = [
     id: "thank_you",
     gloss: 'THANK YOU',
     handshape: ['FLAT', 'OPEN'],
-    location: ['FACE', 'CHEST', 'MID'],
+    location: ['FACE', 'HIGH'],
     motion: {
       primaryDirection: ['FORWARD', 'DOWN'],
       repetition: 0
@@ -31,10 +31,10 @@ export const SUPPORTED_SIGNS: SignProfile[] = [
     id: "food",
     gloss: 'FOOD',
     handshape: ['PINCH', 'CURVED'],
-    location: ['FACE', 'CHEST', 'HIGH'],
+    location: ['FACE', 'HIGH'],
     motion: {
-      primaryDirection: ['UP', 'STATIC', 'FORWARD'],
-      repetition: 0
+      primaryDirection: ['UP', 'FORWARD'],
+      repetition: 1
     },
     requiresTwoHands: false,
     stabilityFrames: 3,

@@ -13,7 +13,7 @@ interface ChatMessage {
 export default function Assistant() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'model', content: "Hello! I'm the SignBridge Assistant. You can ask me anything, and I’ll answer like a smart chat assistant. If your question is about Ghana Sign Language, I’ll also show you the relevant dictionary entry." }
+    { role: 'model', content: "Hello — I’m the SignBridge Assistant. I’m here to support you.\n\nYou can ask anything, and if it’s about Ghana Sign Language I’ll also show the relevant dictionary entry.\n\nHow can I help you today?" }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -21,7 +21,7 @@ export default function Assistant() {
 
   const suggestedQuestions = [
     "How do I sign hello?",
-    "What can you help me with?",
+    "How can you help me?",
     "Show me signs about family",
     "Where is thank you?"
   ];
@@ -51,7 +51,14 @@ export default function Assistant() {
       }]);
     } catch (error) {
       console.error('Chat error:', error);
-      setMessages([...newMessages, { role: 'model', content: "Connection issue. Please try again." }]);
+      setMessages([
+        ...newMessages,
+        {
+          role: 'model',
+          content:
+            "I’m having trouble connecting right now. If you want, you can still ask for dictionary help like: ‘Show me signs about family’."
+        }
+      ]);
     } finally {
       setIsLoading(false);
     }
