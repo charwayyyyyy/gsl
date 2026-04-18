@@ -6,8 +6,11 @@ import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX, Camera,
 import { useWebRTC, useWebSocket } from '../hooks/useWebRTC'
 import VideoCapture from '../components/VideoCapture'
 import AudioCapture from '../components/AudioCapture'
-import Avatar3D from '../components/Avatar3D'
 import SmartTipsOverlay from '../components/SmartTipsOverlay'
+import { mapTextToGloss } from '../lib/gsl/glossMapper'
+import { SignSequencePlayer } from '../lib/gsl/signPlayer'
+import { PoseFrame } from '../lib/gsl/poseLibrary'
+import SkeletalAvatar from '../components/SkeletalAvatar'
 import { useSignRecognition } from '../hooks/useSignRecognition'
 import SignDebugOverlay from '../components/SignDebugOverlay'
 
@@ -94,6 +97,20 @@ const Interpreter: React.FC = () => {
   const [avatarStatus, setAvatarStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [avatarMessage, setAvatarMessage] = useState<string | null>(null)
   const [avatarKeyframes, setAvatarKeyframes] = useState<any[] | null>(null)
+  const [currentPoseFrame, setCurrentPoseFrame] = useState<PoseFrame | null>(null)
+  const [playingGloss, setPlayingGloss] = useState<string>('')
+  const signPlayerRef = useRef<SignSequencePlayer | null>(null)
+
+  useEffect(() => {
+    signPlayerRef.current = new SignSequencePlayer((frame, gloss) => {
+      setCurrentPoseFrame(frame)
+      setPlayingGloss(gloss)
+    })
+    return () => {
+      signPlayerRef.current?.stop()
+    }
+  }, [])
+
   const browserAutoStartedRef = useRef(false)
   const browserRecognitionRef = useRef<any>(null)
   const browserRecognitionRestartRef = useRef<number | null>(null)
@@ -922,6 +939,13 @@ const Interpreter: React.FC = () => {
     }
   }, [translationText, currentSession?.direction, speakText, isSpeaking])
 
+  // Trigger avatar animation for text-to-sign or speech-to-sign
+  useEffect(() => {
+    if (currentSession?.direction !== 'sign_to_speech' && signSequence.length > 0) {
+      signPlayerRef.current?.playGlossSequence(signSequence)
+    }
+  }, [signSequence, currentSession?.direction])
+
   // Fetch primitives for active sign in speech-to-sign mode for Smart Tips overlay
   useEffect(() => {
     if (currentSession?.direction === 'speech_to_sign') {
@@ -1560,18 +1584,11 @@ const Interpreter: React.FC = () => {
                 : 'bg-white/40 dark:bg-slate-950/40 border-blue-500/20 hover:border-blue-400/40 text-slate-900 dark:text-white shadow-[inset_0_2px_15px_rgba(0,0,0,0.03)] dark:shadow-[inset_0_2px_15px_rgba(0,0,0,0.3)]'
                 }`}>
                 {currentSession.direction !== 'sign_to_speech' && showAvatar ? (
-                  <div className="w-full h-[28rem] relative rounded-3xl overflow-hidden bg-slate-900 shadow-2xl border border-white/10">
-                    <Avatar3D
-                      key={avatarPlaybackKey}
-                      isVisible={avatarGlossSequence.length > 0}
-                      signSequence={avatarGlossSequence}
-                      primitiveSequence={avatarPrimitiveSequence}
-                      currentSignIndex={currentSignIndex}
-                      currentSign={
-                        avatarGlossSequence.length > 0
-                          ? avatarGlossSequence[Math.min(currentSignIndex, avatarGlossSequence.length - 1)]
-                          : undefined
-                      }
+                  <div className="w-full h-[28rem] relative rounded-3xl overflow-hidden bg-slate-900 shadow-2xl border border-white/10 text-white flex items-center justify-center">
+                    <SkeletalAvatar 
+                      currentFrame={currentPoseFrame} 
+                      showDebug={visual.demoMode || import.meta.env.DEV} 
+                      playingGloss={playingGloss}
                     />
 
                     <SmartTipsOverlay
@@ -1583,19 +1600,6 @@ const Interpreter: React.FC = () => {
                       visible={showSmartTips}
                     />
 
-                    {(avatarStatus === 'idle' || avatarStatus === 'error' || !avatarKeyframes || avatarKeyframes.length === 0) && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-6">
-                        <div className="rounded-xl p-4 text-center border bg-slate-900/80 border-slate-600 max-w-xl">
-                          <div className="text-5xl mb-3">🤟</div>
-                          <p className={`${accessibility.largeText ? 'text-lg' : 'text-base'} font-medium text-slate-200`}>
-                            {avatarMessage || 'Avatar will activate only for signs that exist in the dictionary.'}
-                          </p>
-                          <p className="text-xs text-slate-400 mt-2">
-                            Dictionary pages remain the primary reference for sign accuracy.
-                          </p>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ) : (
                 <>

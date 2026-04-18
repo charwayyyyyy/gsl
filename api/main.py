@@ -520,26 +520,8 @@ async def startup_event():
       if not dict_path.exists():
         src_pdf = Path("Ghanaian Sign Language Dictionary - 3rd Edition.pdf")
         raw_pdf = Path("data")/"raw"/"gsl_dictionary.pdf"
-        if parse_pdf and src_pdf.exists():
-          try:
-            data = parse_pdf(src_pdf)
-            with open(dict_path, "w", encoding="utf-8") as f:
-              json.dump(data, f, ensure_ascii=False, indent=2)
-            logger.info(f"Dictionary extracted: {len(data)} entries")
-          except Exception as e:
-            logger.warning(f"Parse failed for src_pdf: {e}")
-        elif parse_pdf and raw_pdf.exists():
-          try:
-            data = parse_pdf(raw_pdf)
-            with open(dict_path, "w", encoding="utf-8") as f:
-              json.dump(data, f, ensure_ascii=False, indent=2)
-            logger.info("Dictionary extracted from data/raw")
-          except Exception as e:
-            logger.warning(f"Parse failed for raw_pdf: {e}")
-        else:
-          with open(dict_path, "w", encoding="utf-8") as f:
-            json.dump({}, f, ensure_ascii=False, indent=2)
-          logger.warning("No PDF found; wrote empty dictionary")
+        if False: # Disabled automatic PDF parsing to fix long Render deployment times
+          pass
       else:
         try:
           with open(dict_path, "r", encoding="utf-8") as f:
