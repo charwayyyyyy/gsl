@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { PoseFrame } from '../lib/gsl/poseLibrary';
+import { PoseFrame, createWellFormedHand } from '../lib/gsl/poseLibrary';
 
 interface SkeletalAvatarProps {
   currentFrame: PoseFrame | null;
@@ -87,12 +87,20 @@ export const SkeletalAvatar: React.FC<SkeletalAvatarProps> = ({ currentFrame, sh
     ctx.moveTo(250, 500); ctx.lineTo(350, 500);
     ctx.stroke();
 
-    if (currentFrame) {
+      // Check if hand data is valid, else fallback to idle pose
+      const leftHandData = (currentFrame?.hands.left && currentFrame.hands.left.length > 0) 
+        ? currentFrame.hands.left 
+        : createWellFormedHand(0.2, 0.8, false, false);
+        
+      const rightHandData = (currentFrame?.hands.right && currentFrame.hands.right.length > 0) 
+        ? currentFrame.hands.right 
+        : createWellFormedHand(0.8, 0.8, true, false);
+
       // Arms connecting from shoulders to wrist (landmark 0)
-      const lx = currentFrame.hands.left[0][0] * canvas.width;
-      const ly = currentFrame.hands.left[0][1] * canvas.height;
-      const rx = currentFrame.hands.right[0][0] * canvas.width;
-      const ry = currentFrame.hands.right[0][1] * canvas.height;
+      const lx = leftHandData[0][0] * canvas.width;
+      const ly = leftHandData[0][1] * canvas.height;
+      const rx = rightHandData[0][0] * canvas.width;
+      const ry = rightHandData[0][1] * canvas.height;
 
       // Draw arms
       ctx.beginPath();
@@ -128,9 +136,8 @@ export const SkeletalAvatar: React.FC<SkeletalAvatarProps> = ({ currentFrame, sh
         });
       };
 
-      drawHand(currentFrame.hands.left, LEFT_HAND_COLOR);
-      drawHand(currentFrame.hands.right, RIGHT_HAND_COLOR);
-    }
+      drawHand(leftHandData, LEFT_HAND_COLOR);
+      drawHand(rightHandData, RIGHT_HAND_COLOR);
 
   }, [currentFrame, showDebug]);
 

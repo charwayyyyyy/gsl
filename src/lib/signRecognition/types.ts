@@ -54,12 +54,14 @@ export interface ScoreBreakdown {
   motion: number;
   handedness: number;
   multiHand: number;
+  facial: number;
 }
 
 export interface MatchResult {
   gloss: string;
   confidence: number;
   breakdown: ScoreBreakdown;
+  status?: 'reject' | 'tentative' | 'accept';
 }
 
 export interface FrameData {

@@ -66,12 +66,20 @@ export function matchSign(features: ExtractedFeatures): MatchResult | null {
       }
     }
 
+    // 6. Facial Score (5%)
+    let facialScore = 1.0; // Assume 1.0 until full facial feature extraction is available
+
     const confidence = 
       (handshapeScore * 0.35) + 
-      (locationScore * 0.25) + 
       (motionScore * 0.25) + 
+      (locationScore * 0.20) + 
       (multiHandScore * 0.10) + 
-      (handednessScore * 0.05);
+      (handednessScore * 0.05) +
+      (facialScore * 0.05);
+
+    let status: 'reject' | 'tentative' | 'accept' = 'reject';
+    if (confidence > 0.70) status = 'accept';
+    else if (confidence >= 0.50) status = 'tentative';
 
     if (confidence > highestScore) {
       highestScore = confidence;
@@ -79,12 +87,14 @@ export function matchSign(features: ExtractedFeatures): MatchResult | null {
         gloss: profile.gloss, 
         confidence, 
         breakdown: {
-          handshape: handshapeScore,
-          location: locationScore,
-          motion: motionScore,
-          multiHand: multiHandScore,
-          handedness: handednessScore
-        }
+          handshape: handshapeScore * 0.35,
+          location: locationScore * 0.20,
+          motion: motionScore * 0.25,
+          multiHand: multiHandScore * 0.10,
+          handedness: handednessScore * 0.05,
+          facial: facialScore * 0.05
+        },
+        status
       };
     }
   }

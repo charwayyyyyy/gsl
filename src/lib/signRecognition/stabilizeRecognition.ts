@@ -32,7 +32,7 @@ export class RecognitionStabilizer {
     if (match) {
       this.state.history.push(match);
     } else {
-      this.state.history.push({ gloss: 'UNKNOWN', confidence: 0, breakdown: { handshape: 0, location: 0, motion: 0, handedness: 0, multiHand: 0 } });
+      this.state.history.push({ gloss: 'UNKNOWN', confidence: 0, breakdown: { handshape: 0, location: 0, motion: 0, handedness: 0, multiHand: 0, facial: 0 } });
     }
 
     if (this.state.history.length > this.HISTORY_LIMIT) {
@@ -88,10 +88,10 @@ export class RecognitionStabilizer {
     }
 
     // --- We have a stable, dominant match ---
-    const confirmedMatch = { 
+    const confirmedMatch: import('./types').MatchResult = { 
       gloss: topCandidate[0], 
       confidence: normalizedTopScore,
-      breakdown: this.state.history.find(h => h.gloss === topCandidate[0])?.breakdown || { handshape: 0, location: 0, motion: 0, handedness: 0, multiHand: 0 }
+      breakdown: this.state.history.find(h => h.gloss === topCandidate[0])?.breakdown || { handshape: 0, location: 0, motion: 0, handedness: 0, multiHand: 0, facial: 0 }
     };
 
     const isCooldownOver = (now - this.state.lastSpokenTime) > this.COOLDOWN_MS;

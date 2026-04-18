@@ -4,6 +4,11 @@ export const lerp = (start: number, end: number, t: number) => {
   return start + (end - start) * t;
 };
 
+// Phase 3.2: Easing & Realistic Bezier-style motion
+export const easeInOutCubic = (t: number): number => {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+};
+
 export const interpolateFrames = (f1: PoseFrame, f2: PoseFrame, t: number): PoseFrame => {
   const interpHand = (h1: number[][], h2: number[][]) => {
     return h1.map((point, i) => [
@@ -63,7 +68,9 @@ export class AnimationPlayer {
           p2Index = frames.length - 1;
         }
 
-        const localProgress = segmentProgress - p1Index;
+        let localProgress = segmentProgress - p1Index;
+        // Apply ease-in-out to local interpolation segment
+        localProgress = easeInOutCubic(localProgress);
         
         const currentFrame = interpolateFrames(frames[p1Index], frames[p2Index], localProgress);
         onUpdate(currentFrame);
