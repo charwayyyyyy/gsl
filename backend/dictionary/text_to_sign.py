@@ -467,19 +467,21 @@ class TextToSignService:
             phrase in text
             for phrase in ["both hands", "two hands", "hands together", "with both hands"]
         )
-        facial = any(
-            phrase in text
-            for phrase in [
-                "eyebrow",
-                "eyebrows",
-                "eye",
-                "eyes",
-                "mouth",
-                "cheek",
-                "facial expression",
-                "face",
-            ]
-        )
+        face_eyebrows = "neutral"
+        if "raise eyebrows" in text or "raised eyebrows" in text or "eyebrows up" in text:
+            face_eyebrows = "raised"
+        elif "frown" in text or "furrowed brows" in text or "eyebrows down" in text or "scrunch" in text:
+            face_eyebrows = "frown"
+
+        face_mouth = "neutral"
+        if "smile" in text or "smiling" in text:
+            face_mouth = "smile"
+        elif "open mouth" in text or "mouth open" in text or "say ah" in text:
+            face_mouth = "open"
+        elif "round mouth" in text or "purse lips" in text or "pucker" in text or "say o" in text:
+            face_mouth = "round"
+
+        facial = face_eyebrows != "neutral" or face_mouth != "neutral"
 
         can_animate = direction != "NONE" or handshape != "UNKNOWN" or location != "UNKNOWN"
 
@@ -490,6 +492,8 @@ class TextToSignService:
             "location": location,
             "two_hands": two_hands,
             "facial": facial,
+            "face_eyebrows": face_eyebrows,
+            "face_mouth": face_mouth,
             "can_animate": can_animate,
         }
 

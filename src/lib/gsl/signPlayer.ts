@@ -128,12 +128,23 @@ export class SignSequencePlayer {
       }
 
       // 3. Overlay facial expressions
+      // Base hardcoded expressions from glossary map
       const faceData = applyFacialExpression(gloss);
+      
+      // Dynamic dictionary-driven expressions (highest priority, injected from backend)
+      const dynamicEyebrows = primitives?.face_eyebrows && primitives.face_eyebrows !== 'neutral' 
+        ? primitives.face_eyebrows 
+        : null;
+        
+      const dynamicMouth = primitives?.face_mouth && primitives.face_mouth !== 'neutral' 
+        ? primitives.face_mouth 
+        : null;
+
       const framesWithFace: PoseFrame[] = poseData.frames.map(frame => ({
         ...frame,
         face: {
-          mouth:    faceData.mouth    !== 'neutral' ? faceData.mouth    : frame.face.mouth,
-          eyebrows: faceData.eyebrows !== 'neutral' ? faceData.eyebrows : frame.face.eyebrows,
+          mouth:    dynamicMouth || (faceData.mouth !== 'neutral' ? faceData.mouth : frame.face.mouth),
+          eyebrows: dynamicEyebrows || (faceData.eyebrows !== 'neutral' ? faceData.eyebrows : frame.face.eyebrows),
         },
       }));
 
