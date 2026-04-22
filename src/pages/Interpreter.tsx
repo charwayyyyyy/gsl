@@ -1,4 +1,12 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+// Speak out a recognized sign using browser TTS
+function speak(text: string) {
+  if ('speechSynthesis' in window && text) {
+    const utter = new window.SpeechSynthesisUtterance(text);
+    window.speechSynthesis.cancel(); // Stop any ongoing speech
+    window.speechSynthesis.speak(utter);
+  }
+}
 import { API_BASE_URL, WS_BASE_URL } from '@/config'
 import { useNavigate } from 'react-router-dom'
 import { useAppStore, useVisualSettings } from '../stores/appStore'
