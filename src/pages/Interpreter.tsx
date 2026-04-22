@@ -10,6 +10,7 @@ import SmartTipsOverlay from '../components/SmartTipsOverlay'
 import { mapTextToGloss } from '../lib/gsl/glossMapper'
 import { SignSequencePlayer } from '../lib/gsl/signPlayer'
 import { PoseFrame } from '../lib/gsl/poseLibrary'
+import { AiSignBridge } from '../lib/gsl/aiSignBridge'
 import SkeletalAvatar from '../components/SkeletalAvatar'
 import { useSignRecognition } from '../hooks/useSignRecognition'
 import SignDebugOverlay from '../components/SignDebugOverlay'
@@ -1039,7 +1040,7 @@ const Interpreter: React.FC = () => {
       {!accessibility.highContrast && (
         <>
           <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/20 dark:bg-blue-600/10 rounded-full blur-[120px] animate-pulse-slow" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-400/20 dark:bg-indigo-600/10 rounded-full blur-[120px] animate-pulse-slow" style={{ animationDelay: '-2s' }} />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-400/20 dark:bg-indigo-600/10 rounded-full blur-[120px] animate-pulse-slow delay-[-2000]" />
         </>
       )}
 
@@ -1252,8 +1253,8 @@ const Interpreter: React.FC = () => {
                             </span>
                             <div className="flex gap-1 justify-center">
                               <div className={`w-1 h-1 rounded-full bg-blue-500 ${demoStep === 'detecting' ? 'animate-bounce' : ''}`} />
-                              <div className={`w-1 h-1 rounded-full bg-blue-500 ${demoStep === 'detecting' ? 'animate-bounce' : ''}`} style={{ animationDelay: '0.2s' }} />
-                              <div className={`w-1 h-1 rounded-full bg-blue-500 ${demoStep === 'detecting' ? 'animate-bounce' : ''}`} style={{ animationDelay: '0.4s' }} />
+                              <div className={`w-1 h-1 rounded-full bg-blue-500 ${demoStep === 'detecting' ? 'animate-bounce delay-200' : ''}`} />
+                              <div className={`w-1 h-1 rounded-full bg-blue-500 ${demoStep === 'detecting' ? 'animate-bounce delay-400' : ''}`} />
                             </div>
                           </div>
                         </div>
@@ -1376,47 +1377,13 @@ const Interpreter: React.FC = () => {
                   </div>
                 ) : (
                   <div className="p-4 sm:p-10 bg-purple-900/10 space-y-6 border-t border-purple-500/20 relative">
-                    <textarea
-                      id="primary-text-input"
-                      value={manualInput}
-                      onChange={e => setManualInput(e.target.value)}
-                      rows={accessibility.largeText ? 5 : 4}
-                      className={`
-                        w-full rounded-2xl border-2 px-6 py-5 transition-all duration-300
-                        ${accessibility.highContrast
-                          ? 'bg-black border-yellow-400 text-yellow-200 placeholder-yellow-500'
-                          : 'bg-white/80 dark:bg-slate-900/80 border-purple-200 dark:border-purple-800/50 text-slate-900 dark:text-white placeholder-slate-400 focus:border-purple-500 dark:focus:border-purple-400 shadow-inner'
-                        }
-                        focus:outline-none focus:ring-4 focus:ring-purple-500/20
-                        ${accessibility.largeText ? 'text-2xl' : 'text-xl'}
-                      `}
-                      placeholder="Type exactly what you want to translate here..."
-                      autoFocus
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const text = manualInput.trim()
-                        if (!text) return
-                        setSilenceMessage(null)
-                        setSpeechError(null)
-                        setRecognitionTier('manual')
-                        runTextToSignPipeline(text, 'manual', 0.9)
+                    {/* AI Sign Bridge: User input → AI/dictionary → Avatar */}
+                    <AiSignBridge
+                      onFrame={(frame, gloss) => {
+                        setCurrentPoseFrame(frame);
+                        setPlayingGloss(gloss);
                       }}
-                      className={`
-                        w-full flex items-center justify-center gap-4 px-8 py-5 rounded-2xl font-bold shadow-xl
-                        ${accessibility.highContrast
-                          ? 'bg-yellow-400 text-black hover:bg-yellow-500'
-                          : 'bg-purple-600 text-white hover:bg-purple-500 shadow-purple-500/30'
-                        }
-                        transform hover:-translate-y-1 active:scale-95 transition-all duration-300
-                        focus:outline-none focus:ring-4 focus:ring-purple-300/50
-                        ${accessibility.largeText ? 'text-2xl' : 'text-xl'}
-                      `}
-                    >
-                      <Keyboard className="w-8 h-8" />
-                      Translate
-                    </button>
+                    />
                     {/* Demo Example Controls */}
                     {visual.demoMode && !isDemoRunning && (
                       <div className="mt-8 flex flex-col gap-3 animate-slide-up">
@@ -1614,7 +1581,7 @@ const Interpreter: React.FC = () => {
                       {translationText}
                     </p>
                     {confidence > 0.05 && (
-                      <div className="flex flex-col items-center gap-3 animate-fade-in" style={{ animationDelay: '200ms' }}>
+                      <div className="flex flex-col items-center gap-3 animate-fade-in delay-200">
                         <div className="h-2 w-48 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden p-0.5 shadow-inner">
                           <div
                             className={`h-full rounded-full transition-all duration-1000 ${confidence >= 0.7 ? 'bg-emerald-500' : confidence >= 0.4 ? 'bg-amber-500' : 'bg-rose-500'
@@ -1642,7 +1609,7 @@ const Interpreter: React.FC = () => {
                       </div>
                       {/* Pulse rings */}
                       <div className="absolute inset-0 rounded-3xl border-2 border-blue-500/20 animate-ping-slow" />
-                      <div className="absolute inset-0 rounded-3xl border-2 border-blue-500/10 animate-ping-slow" style={{ animationDelay: '1s' }} />
+                      <div className="absolute inset-0 rounded-3xl border-2 border-blue-500/10 animate-ping-slow delay-1000" />
                     </div>
                     <div className="text-center">
                       <p className={`${accessibility.largeText ? 'text-2xl' : 'text-xl'} font-bold ${accessibility.highContrast ? 'text-yellow-300' : 'text-slate-500'}`}>
@@ -1656,8 +1623,8 @@ const Interpreter: React.FC = () => {
                       <div className="flex items-center justify-center gap-2 mt-2">
                         <div className="flex gap-1">
                           <div className="w-1 h-1 rounded-full bg-blue-500 animate-bounce" />
-                          <div className="w-1 h-1 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0.2s' }} />
-                          <div className="w-1 h-1 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: '0.4s' }} />
+                          <div className="w-1 h-1 rounded-full bg-blue-500 animate-bounce delay-200" />
+                          <div className="w-1 h-1 rounded-full bg-blue-500 animate-bounce delay-400" />
                         </div>
                         <p className="text-sm font-medium text-slate-400 dark:text-slate-600 uppercase tracking-widest">
                           System ready and active
@@ -1826,6 +1793,7 @@ const Interpreter: React.FC = () => {
                               {frameCount > 1 && (
                                 <div className="flex items-center justify-between p-3 rounded-[1.5rem] bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700/50 shadow-inner">
                                   <button
+                                    title="Previous frame"
                                     type="button"
                                     onClick={() => {
                                       setAutoPlay(false);
@@ -1843,7 +1811,8 @@ const Interpreter: React.FC = () => {
                                   </button>
                                   
                                   <div className="flex items-center gap-4">
-                                    <button 
+                                    <button
+                                      title={autoPlay ? "Pause sequence" : "Play sequence"}
                                       onClick={() => setAutoPlay(!autoPlay)}
                                       className={`p-4 rounded-full ${autoPlay ? 'bg-blue-500 text-white animate-pulse' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'} transition-all duration-300 shadow-lg`}
                                     >
@@ -1855,6 +1824,7 @@ const Interpreter: React.FC = () => {
                                   </div>
 
                                   <button
+                                    title="Next frame"
                                     type="button"
                                     onClick={() => {
                                       setAutoPlay(false);
@@ -1929,6 +1899,7 @@ const Interpreter: React.FC = () => {
 
                                 return (
                                   <button
+                                    title={`Go to entry ${idx + 1}`}
                                     key={idx}
                                     onClick={() => {
                                       setCurrentSignIndex(idx);
