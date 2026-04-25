@@ -11,8 +11,9 @@ PROCESSED = DATA_DIR / "processed"
 IMAGES_DIR = PROCESSED / "images"
 OUT_PATH = PROCESSED / "gsl_sign_index.json"
 
-API_KEY = os.getenv("GEMINI_API_KEY")
-EMBEDDING_MODEL = "models/embedding-001"
+API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+EMBEDDING_MODEL = "models/gemini-embedding-001"
+EMBEDDING_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent"
 
 def embed_text_api(text: str) -> Optional[np.ndarray]:
     """Get text embeddings via Gemini API."""
@@ -20,7 +21,6 @@ def embed_text_api(text: str) -> Optional[np.ndarray]:
         return None
     
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{EMBEDDING_MODEL}:embedContent?key={API_KEY}"
         payload = {
             "model": EMBEDDING_MODEL,
             "content": {
@@ -28,7 +28,7 @@ def embed_text_api(text: str) -> Optional[np.ndarray]:
             }
         }
         with httpx.Client(timeout=30.0) as client:
-            resp = client.post(url, json=payload)
+            resp = client.post(EMBEDDING_URL, headers={"x-goog-api-key": API_KEY}, json=payload)
             if resp.status_code == 200:
                 vec = resp.json()["embedding"]["values"]
                 return np.array(vec)

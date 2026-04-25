@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
-import { extractFeatures, matchSign, RecognitionStabilizer } from '../lib/signRecognition';
+import { FilesetResolver, HandLandmarker, PoseLandmarker } from '@mediapipe/tasks-vision';
+import { API_BASE_URL } from '@/config';
+import { extractFeatures, loadMotionTemplateCache, matchSign, MotionTemplate, RecognitionStabilizer, refineMatchWithMotionTemplate, setSupportedSigns } from '../lib/signRecognition';
 import { FrameData, MatchResult, ExtractedFeatures } from '../lib/signRecognition/types';
 
 interface UseSignRecognitionReturn {
@@ -25,6 +26,8 @@ export function useSignRecognition(): UseSignRecognitionReturn {
   const [debugInfo, setDebugInfo] = useState<{ features: ExtractedFeatures | null; rawMatch: MatchResult | null } | null>(null);
 
   const landmarkerRef = useRef<HandLandmarker | null>(null);
+  const poseLandmarkerRef = useRef<PoseLandmarker | null>(null);
+  const motionTemplatesRef = useRef<Map<string, MotionTemplate> | null>(null);
   const frameBufferRef = useRef<FrameData[]>([]);
   const stabilizerRef = useRef(new RecognitionStabilizer());
   const lastVideoTimeRef = useRef<number>(-1);
@@ -54,8 +57,44 @@ export function useSignRecognition(): UseSignRecognitionReturn {
           minTrackingConfidence: 0.5
         });
 
+        let poseLandmarker: PoseLandmarker | null = null;
+        try {
+          poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+            baseOptions: {
+              modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task",
+              delegate: "GPU"
+            },
+            runningMode: "VIDEO",
+            numPoses: 1,
+            minPoseDetectionConfidence: 0.5,
+            minPosePresenceConfidence: 0.5,
+            minTrackingConfidence: 0.5
+          });
+        } catch (poseError) {
+          console.warn('Pose Landmarker unavailable; continuing with hand-only landmarks.', poseError);
+        }
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/dictionary/recognition-profiles`);
+          if (response.ok) {
+            const payload = await response.json();
+            if (Array.isArray(payload?.profiles)) {
+              setSupportedSigns(payload.profiles);
+            }
+          }
+        } catch (profileError) {
+          console.warn('Falling back to bundled recognition profiles:', profileError);
+        }
+
+        try {
+          motionTemplatesRef.current = await loadMotionTemplateCache(API_BASE_URL);
+        } catch (templateError) {
+          console.warn('Motion templates unavailable; local refinement disabled.', templateError);
+        }
+
         if (active) {
           landmarkerRef.current = handLandmarker;
+          poseLandmarkerRef.current = poseLandmarker;
           setIsReady(true);
         }
       } catch (err) {
@@ -69,6 +108,9 @@ export function useSignRecognition(): UseSignRecognitionReturn {
       active = false;
       if (landmarkerRef.current) {
         landmarkerRef.current.close();
+      }
+      if (poseLandmarkerRef.current) {
+        poseLandmarkerRef.current.close();
       }
     };
   }, []);
@@ -106,6 +148,7 @@ export function useSignRecognition(): UseSignRecognitionReturn {
 
     try {
       const result = landmarkerRef.current.detectForVideo(videoElement, timestamp);
+      const poseResult = poseLandmarkerRef.current?.detectForVideo(videoElement, timestamp);
 
       if (result && result.landmarks && result.landmarks.length > 0) {
         setIsDetecting(prev => (prev ? prev : true));
@@ -113,7 +156,8 @@ export function useSignRecognition(): UseSignRecognitionReturn {
         frameBufferRef.current.push({
           timestamp,
           landmarks: result.landmarks,
-          handednesses: result.handednesses
+          handednesses: result.handednesses,
+          poseLandmarks: poseResult?.landmarks,
         });
         if (frameBufferRef.current.length > 30) {
           frameBufferRef.current.shift();
@@ -127,7 +171,13 @@ export function useSignRecognition(): UseSignRecognitionReturn {
         }
 
         // 2. Match against profiles
-        const match = matchSign(features);
+        const profileMatch = matchSign(features);
+        const match = refineMatchWithMotionTemplate(
+          profileMatch,
+          frameBufferRef.current,
+          features.multiHand.activeHand,
+          motionTemplatesRef.current,
+        );
 
         // 3. Stabilize & Cooldown
         const { confirmedMatch, shouldSpeak } = stabilizerRef.current.processMatch(match);

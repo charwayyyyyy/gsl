@@ -1,24 +1,14 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react'
-// Speak out a recognized sign using browser TTS
-function speak(text: string) {
-  if ('speechSynthesis' in window && text) {
-    const utter = new window.SpeechSynthesisUtterance(text);
-    window.speechSynthesis.cancel(); // Stop any ongoing speech
-    window.speechSynthesis.speak(utter);
-  }
-}
+import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { API_BASE_URL, WS_BASE_URL } from '@/config'
 import { useNavigate } from 'react-router-dom'
 import { useAppStore, useVisualSettings } from '../stores/appStore'
 import { ArrowLeft, Settings, HelpCircle, Eye, EyeOff, Volume2, VolumeX, Camera, CameraOff, ChevronLeft, ChevronRight, Play, Pause, AlertTriangle, BookOpen, User, Lightbulb, Keyboard, Sun, Moon, CheckCircle, Mic, Laptop } from 'lucide-react'
-import { useWebRTC, useWebSocket } from '../hooks/useWebRTC'
+import { useWebSocket } from '../hooks/useWebRTC'
 import VideoCapture from '../components/VideoCapture'
 import AudioCapture from '../components/AudioCapture'
 import SmartTipsOverlay from '../components/SmartTipsOverlay'
-import { mapTextToGloss } from '../lib/gsl/glossMapper'
 import { SignSequencePlayer } from '../lib/gsl/signPlayer'
 import { PoseFrame } from '../lib/gsl/poseLibrary'
-import { AiSignBridge } from '../lib/gsl/aiSignBridge'
 import SkeletalAvatar from '../components/SkeletalAvatar'
 import { useSignRecognition } from '../hooks/useSignRecognition'
 import SignDebugOverlay from '../components/SignDebugOverlay'
@@ -49,21 +39,120 @@ interface SignWord {
   primitives?: SignPrimitives | null
 }
 
+interface SpeechToSignApiEntry {
+  word?: string
+  gloss?: string | null
+  images?: string[]
+  description?: string
+  page?: number
+  confidence?: number
+  match_type?: string
+  variants?: number
+  status?: 'matched' | 'unknown'
+  primitives?: SignPrimitives | null
+}
+
+interface SpeechToSignResponse {
+  entries?: SpeechToSignApiEntry[]
+  recognized_units?: string[]
+  gsl_sequence?: string[]
+  matched_count?: number
+  unknown_count?: number
+  confidence?: number
+}
+
+interface CachedDictionaryEntry extends SpeechToSignApiEntry {
+  alternatives?: string[]
+  mapping_applied?: boolean
+  mapped_from?: string | null
+}
+
+interface BrowserSpeechRecognitionAlternative {
+  transcript?: string
+  confidence?: number
+}
+
+interface BrowserSpeechRecognitionResult {
+  isFinal: boolean
+  0?: BrowserSpeechRecognitionAlternative
+}
+
+interface BrowserSpeechRecognitionEvent {
+  resultIndex: number
+  results: ArrayLike<BrowserSpeechRecognitionResult>
+}
+
+interface BrowserSpeechRecognitionErrorEvent {
+  error?: string
+}
+
+interface BrowserSpeechRecognition {
+  lang: string
+  continuous: boolean
+  interimResults: boolean
+  maxAlternatives: number
+  onstart: (() => void) | null
+  onend: (() => void) | null
+  onerror: ((event: BrowserSpeechRecognitionErrorEvent) => void) | null
+  onresult: ((event: BrowserSpeechRecognitionEvent) => void) | null
+  start: () => void
+  stop: () => void
+}
+
+interface BrowserSpeechRecognitionConstructor {
+  new (): BrowserSpeechRecognition
+}
+
+type BrowserSpeechWindow = Window & typeof globalThis & {
+  SpeechRecognition?: BrowserSpeechRecognitionConstructor
+  webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor
+}
+
 type RecognitionTier = 'browser' | 'backend' | 'manual'
 
-const dictionaryCache: Record<string, any> = {}
+const dictionaryCache: Record<string, CachedDictionaryEntry> = {}
+
+const mapSignPrimitives = (value: unknown): SignPrimitives | null => {
+  if (!value || typeof value !== 'object') return null
+  const primitives = value as Partial<SignPrimitives>
+  return {
+    direction: primitives.direction || 'NONE',
+    repetition: primitives.repetition || 'SINGLE',
+    handshape: primitives.handshape || 'UNKNOWN',
+    location: primitives.location || 'UNKNOWN',
+    two_hands: Boolean(primitives.two_hands),
+    facial: Boolean(primitives.facial),
+    can_animate: Boolean(primitives.can_animate),
+  }
+}
+
+const toSignWord = (entry: SpeechToSignApiEntry): SignWord => ({
+  word: String(entry.word || entry.gloss || ''),
+  gloss: entry.gloss || null,
+  images: Array.isArray(entry.images) ? entry.images : [],
+  description: typeof entry.description === 'string' ? entry.description : '',
+  page: typeof entry.page === 'number' ? entry.page : undefined,
+  confidence: typeof entry.confidence === 'number' ? entry.confidence : 0,
+  match_type: entry.match_type || 'None',
+  variants: typeof entry.variants === 'number' ? entry.variants : 0,
+  status: entry.status === 'matched' ? 'matched' : 'unknown',
+  primitives: mapSignPrimitives(entry.primitives)
+})
+
+const getSpeechRecognitionConstructor = (): BrowserSpeechRecognitionConstructor | null => {
+  const speechWindow = window as BrowserSpeechWindow
+  return speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition || null
+}
 
 const Interpreter: React.FC = () => {
   const navigate = useNavigate()
   const {
     currentSession,
     isTranslating,
-    lastTranslation,
     settings,
     hasHydrated,
     lastDirection,
     startTranslationSession,
-    endTranslationSession,
     setLastTranslation
   } = useAppStore()
   const { colorScheme, updateVisual } = useVisualSettings()
@@ -83,18 +172,18 @@ const Interpreter: React.FC = () => {
   const [showAvatar, setShowAvatar] = useState(true)
   const [isMuted, setIsMuted] = useState(false)
   const [isCameraActive, setIsCameraActive] = useState(true)
-  const [recognitionTier, setRecognitionTier] = useState<RecognitionTier>('backend')
+  const [, setRecognitionTier] = useState<RecognitionTier>('backend')
   const [lastTierUsed, setLastTierUsed] = useState<RecognitionTier>('backend')
   const [speechError, setSpeechError] = useState<string | null>(null)
-  const [dictionaryOffline, setDictionaryOffline] = useState(false)
+  const [, setDictionaryOffline] = useState(false)
   const [supportsBrowserRecognition, setSupportsBrowserRecognition] = useState(false)
   const [signSequence, setSignSequence] = useState<SignWord[]>([])
   const [currentSignIndex, setCurrentSignIndex] = useState(0)
   const [currentFrameIndex, setCurrentFrameIndex] = useState(0)
   const [autoPlay, setAutoPlay] = useState(false)
   const [recognizedWords, setRecognizedWords] = useState<string[]>([])
-  const [matchedCount, setMatchedCount] = useState(0)
-  const [unknownCount, setUnknownCount] = useState(0)
+  const [, setMatchedCount] = useState(0)
+  const [, setUnknownCount] = useState(0)
   const [silenceMessage, setSilenceMessage] = useState<string | null>(null)
   const [sttConfidence, setSttConfidence] = useState(0)
   const [dictConfidence, setDictConfidence] = useState(0)
@@ -103,9 +192,7 @@ const Interpreter: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false)
   const [isSignRecognized, setIsSignRecognized] = useState(false)
   const [isMicListening, setIsMicListening] = useState(false)
-  const [avatarStatus, setAvatarStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
-  const [avatarMessage, setAvatarMessage] = useState<string | null>(null)
-  const [avatarKeyframes, setAvatarKeyframes] = useState<any[] | null>(null)
+  const [avatarStatus, setAvatarStatus] = useState<'idle' | 'loading' | 'ready'>('idle')
   const [currentPoseFrame, setCurrentPoseFrame] = useState<PoseFrame | null>(null)
   const [playingGloss, setPlayingGloss] = useState<string>('')
   const signPlayerRef = useRef<SignSequencePlayer | null>(null)
@@ -121,10 +208,17 @@ const Interpreter: React.FC = () => {
   }, [])
 
   const browserAutoStartedRef = useRef(false)
-  const browserRecognitionRef = useRef<any>(null)
+  const browserRecognitionRef = useRef<BrowserSpeechRecognition | null>(null)
   const browserRecognitionRestartRef = useRef<number | null>(null)
   const browserRecognitionShouldRunRef = useRef(false)
   const lastBrowserFinalTranscriptRef = useRef('')
+  const runTextToSignPipelineRef = useRef<(text: string, tier: RecognitionTier, sttConf: number) => void>(() => {})
+
+  const resetAvatarPlayback = useCallback(() => {
+    signPlayerRef.current?.stop()
+    setCurrentPoseFrame(null)
+    setPlayingGloss('')
+  }, [])
 
   // Smart Tips state
   const [showSmartTips, setShowSmartTips] = useState(true)
@@ -141,12 +235,6 @@ const Interpreter: React.FC = () => {
   const audioSocket = useWebSocket(`${WS_BASE_URL}/api/audio/stream`)
 
   const { accessibility, visual, audio } = settings
-
-  const demoScenariosMap = {
-    sign_to_speech: SIGN_TO_SPEECH_DEMO,
-    speech_to_sign: SPEECH_TO_SIGN_DEMO,
-    text_to_sign: TEXT_TO_SIGN_DEMO,
-  }
 
   // Demo simulation state
   const [isDemoRunning, setIsDemoRunning] = useState(false)
@@ -191,7 +279,7 @@ const Interpreter: React.FC = () => {
       setSignSequence(prev => [...prev.slice(-4), newSign])
     } else {
       // Speech to sign / Text to sign
-      runTextToSignPipeline(scenario.input, 'manual', scenario.confidence)
+      runTextToSignPipelineRef.current(scenario.input, 'manual', scenario.confidence)
     }
 
     setIsDemoRunning(false)
@@ -206,8 +294,7 @@ const Interpreter: React.FC = () => {
   }, [currentSession, hasHydrated, lastDirection, startTranslationSession])
 
   useEffect(() => {
-    const w = window as any
-    const Recognition = w.SpeechRecognition || w.webkitSpeechRecognition
+    const Recognition = getSpeechRecognitionConstructor()
     if (Recognition) {
       setSupportsBrowserRecognition(true)
       setRecognitionTier('browser')
@@ -298,10 +385,10 @@ const Interpreter: React.FC = () => {
 
   const runTextToSignPipeline = useCallback(
     async (text: string, tier: RecognitionTier, sttConf: number) => {
-      const tokens = normalizeText(text)
-      setRecognizedWords(tokens)
       setIsProcessing(true)
-      if (tokens.length === 0) {
+      const trimmed = text.trim()
+      if (!trimmed) {
+        setRecognizedWords([])
         setTranslationText('')
         setSilenceMessage('No speech detected')
         setSttConfidence(sttConf)
@@ -311,113 +398,181 @@ const Interpreter: React.FC = () => {
         setUnknownCount(0)
         setLastTierUsed(tier)
         setLastUpdateTime(new Date().toLocaleTimeString())
+        setIsProcessing(false)
         return
       }
       setSilenceMessage(null)
-      const results: SignWord[] = []
-      let matchSum = 0
-      let matchCountLocal = 0
-      
-      // Fetch all unknown tokens concurrently
-      const fetchPromises = tokens.map(async (token) => {
-        const key = token.toLowerCase()
-        let data = dictionaryCache[key]
-        
-        if (!data) {
-          try {
-            const resp = await fetch(`${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(key)}`, {
-              signal: AbortSignal.timeout(5000)
-            })
-            if (resp.ok) {
-              data = await resp.json()
-              dictionaryCache[key] = data
-              setDictionaryOffline(false)
-            } else {
-              setDictionaryOffline(true)
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/translate/speech-to-sign`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: trimmed,
+            session_id: currentSession?.id || 'local-session',
+            speed: settings.translation.speechSpeed || 1.0,
+          }),
+          signal: AbortSignal.timeout(8000)
+        })
+
+        if (!response.ok) {
+          throw new Error(`Translation endpoint failed with status ${response.status}`)
+        }
+
+        const data: SpeechToSignResponse = await response.json()
+        const entries = Array.isArray(data.entries) ? data.entries : []
+        const results = entries.map(toSignWord)
+        const recognizedUnits = Array.isArray(data.recognized_units) && data.recognized_units.length
+          ? data.recognized_units
+          : results.map(result => result.word).filter(Boolean)
+
+        entries.forEach((entry) => {
+          const wordKey = String(entry.word || '').trim().toLowerCase()
+          const glossKey = String(entry.gloss || '').trim().toLowerCase()
+          if (wordKey) dictionaryCache[wordKey] = entry
+          if (glossKey) dictionaryCache[glossKey] = entry
+        })
+
+        const matchCountLocal = typeof data.matched_count === 'number'
+          ? data.matched_count
+          : results.filter(result => result.status === 'matched').length
+        const unknownCountLocal = typeof data.unknown_count === 'number'
+          ? data.unknown_count
+          : Math.max(0, recognizedUnits.length - matchCountLocal)
+        const dictConfLocal = typeof data.confidence === 'number'
+          ? data.confidence
+          : (matchCountLocal
+            ? results.filter(result => result.status === 'matched').reduce((sum, result) => sum + result.confidence, 0) / Math.max(1, results.filter(result => result.status === 'matched').length)
+            : 0)
+        const combined = recognizedUnits.length > 0 ? Math.max(0.01, sttConf * 0.6 + dictConfLocal * 0.4) : 0
+
+        setDictionaryOffline(false)
+        setRecognizedWords(recognizedUnits)
+        setSignSequence(results)
+        setCurrentSignIndex(0)
+        setCurrentFrameIndex(0)
+        setAutoPlay(results.length > 0)
+        setMatchedCount(matchCountLocal)
+        setUnknownCount(unknownCountLocal)
+        setDictConfidence(dictConfLocal)
+        setSttConfidence(sttConf)
+        setConfidence(combined)
+        setTranslationText(trimmed)
+        setLastTierUsed(tier)
+        setLastUpdateTime(new Date().toLocaleTimeString())
+        setLastTranslation({
+          input: trimmed,
+          output: results.map(result => result.gloss || result.word.toUpperCase()).join(' '),
+          confidence: combined,
+          timestamp: Date.now()
+        })
+      } catch {
+        const tokens = normalizeText(trimmed)
+        setRecognizedWords(tokens)
+        if (tokens.length === 0) {
+          setTranslationText('')
+          setSilenceMessage('No speech detected')
+          setSttConfidence(sttConf)
+          setDictConfidence(0)
+          setConfidence(0)
+          setMatchedCount(0)
+          setUnknownCount(0)
+          setLastTierUsed(tier)
+          setLastUpdateTime(new Date().toLocaleTimeString())
+          return
+        }
+
+        setDictionaryOffline(true)
+        const results: SignWord[] = []
+        let matchSum = 0
+        let matchCountLocal = 0
+
+        const fetchPromises = tokens.map(async (token) => {
+          const key = token.toLowerCase()
+          let data = dictionaryCache[key]
+
+          if (!data) {
+            try {
+              const resp = await fetch(`${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(key)}`, {
+                signal: AbortSignal.timeout(5000)
+              })
+              if (resp.ok) {
+                data = await resp.json()
+                dictionaryCache[key] = data
+                setDictionaryOffline(false)
+              }
+            } catch {
+              // keep offline flag from translation failure
             }
-          } catch (e) {
-            setDictionaryOffline(true)
+          }
+          return { token, data }
+        })
+
+        const resolvedTokens = await Promise.all(fetchPromises)
+        for (const { token, data } of resolvedTokens) {
+          if (data && data.gloss && data.match_type !== 'None') {
+            const entry = toSignWord({ ...data, word: token, status: 'matched' })
+            results.push(entry)
+            matchSum += entry.confidence
+            matchCountLocal += 1
+          } else {
+            results.push(toSignWord({ word: token, gloss: null, status: 'unknown' }))
           }
         }
-        return { token, data }
-      })
 
-      const resolvedTokens = await Promise.all(fetchPromises)
-
-      for (const { token, data } of resolvedTokens) {
-        if (data && data.gloss) {
-          const c = typeof data.confidence === 'number' ? data.confidence : 0
-          const primitives: SignPrimitives | null =
-            data && data.primitives && typeof data.primitives === 'object'
-              ? {
-                direction: data.primitives.direction || 'NONE',
-                repetition: data.primitives.repetition || 'SINGLE',
-                handshape: data.primitives.handshape || 'UNKNOWN',
-                location: data.primitives.location || 'UNKNOWN',
-                two_hands: Boolean(data.primitives.two_hands),
-                facial: Boolean(data.primitives.facial),
-                can_animate: Boolean(data.primitives.can_animate)
-              }
-              : null
-          results.push({
-            word: token,
-            gloss: data.gloss || null,
-            images: Array.isArray(data.images) ? data.images : [],
-            description: typeof data.description === 'string' ? data.description : '',
-            page: data.page,
-            confidence: c,
-            match_type: data.match_type || 'None',
-            variants: typeof data.variants === 'number' ? data.variants : 0,
-            status: 'matched',
-            primitives
-          })
-          matchSum += c
-          matchCountLocal += 1
-        } else {
-          results.push({
-            word: token,
-            gloss: null,
-            images: [],
-            description: '',
-            page: undefined,
-            confidence: 0,
-            match_type: 'None',
-            variants: 0,
-            status: 'unknown'
-          })
-        }
+        const dictConfLocal = matchCountLocal ? matchSum / matchCountLocal : 0
+        const combined = tokens.length > 0 ? Math.max(0.01, sttConf * 0.6 + dictConfLocal * 0.4) : 0
+        setSignSequence(results)
+        setCurrentSignIndex(0)
+        setCurrentFrameIndex(0)
+        setAutoPlay(results.length > 0)
+        setMatchedCount(matchCountLocal)
+        setUnknownCount(tokens.length - matchCountLocal)
+        setDictConfidence(dictConfLocal)
+        setSttConfidence(sttConf)
+        setConfidence(combined)
+        setTranslationText(trimmed)
+        setLastTierUsed(tier)
+        setLastUpdateTime(new Date().toLocaleTimeString())
+        setLastTranslation({
+          input: trimmed,
+          output: results.map(result => result.gloss || result.word.toUpperCase()).join(' '),
+          confidence: combined,
+          timestamp: Date.now()
+        })
+      } finally {
+        setIsProcessing(false)
       }
-      const dictConfLocal = matchCountLocal ? matchSum / matchCountLocal : 0
-      const combined =
-        tokens.length > 0 ? Math.max(0.01, sttConf * 0.6 + dictConfLocal * 0.4) : 0
-      setSignSequence(results)
-      setCurrentSignIndex(0)
-      setCurrentFrameIndex(0)
-      setAutoPlay(true)
-      setMatchedCount(matchCountLocal)
-      setUnknownCount(tokens.length - matchCountLocal)
-      setDictConfidence(dictConfLocal)
-      setSttConfidence(sttConf)
-      setConfidence(combined)
-      setTranslationText(text)
-      setLastTierUsed(tier)
-      setLastUpdateTime(new Date().toLocaleTimeString())
-      const summary = {
-        input: text,
-        output: results.map(r => r.gloss || r.word.toUpperCase()).join(' '),
-        confidence: combined,
-        timestamp: Date.now()
-      }
-      setLastTranslation(summary)
-      setIsProcessing(false)
     },
-    [setLastTranslation]
+    [currentSession?.id, setLastTranslation, settings.translation.speechSpeed]
   )
+
+  const handleTextToSignSubmit = useCallback((event?: React.FormEvent<HTMLFormElement>) => {
+    event?.preventDefault()
+    const trimmed = manualInput.trim()
+    if (!trimmed || isProcessing) {
+      return
+    }
+    setRecognitionTier('manual')
+    runTextToSignPipeline(trimmed, 'manual', 1)
+  }, [isProcessing, manualInput, runTextToSignPipeline])
+
+  const handleTextToSignClear = useCallback(() => {
+    setManualInput('')
+    setTranslationText('')
+    setSignSequence([])
+    setRecognizedWords([])
+    setMatchedCount(0)
+    setUnknownCount(0)
+    setSttConfidence(0)
+    setDictConfidence(0)
+    setConfidence(0)
+    setLastUpdateTime(new Date().toLocaleTimeString())
+    resetAvatarPlayback()
+  }, [resetAvatarPlayback])
 
   const startBrowserRecognition = useCallback(() => {
     if (currentSession?.direction !== 'speech_to_sign' || isMuted) return
-    const w = window as any
-    const Recognition = w.SpeechRecognition || w.webkitSpeechRecognition
+    const Recognition = getSpeechRecognitionConstructor()
     if (!Recognition) {
       setRecognitionTier('backend')
       setSpeechError('Browser speech recognition not available. Using server transcription.')
@@ -449,7 +604,7 @@ const Interpreter: React.FC = () => {
           }
         }, 450)
       }
-      recognition.onerror = (event: any) => {
+      recognition.onerror = (event: BrowserSpeechRecognitionErrorEvent) => {
         const code = event && event.error ? String(event.error) : ''
         if (code === 'not-allowed') {
           browserRecognitionShouldRunRef.current = false
@@ -464,7 +619,7 @@ const Interpreter: React.FC = () => {
           setSpeechError('Browser speech recognition had an issue. Retrying...')
         }
       }
-      recognition.onresult = (event: any) => {
+      recognition.onresult = (event: BrowserSpeechRecognitionEvent) => {
         if (!event || !event.results) return
         let latestFinalText = ''
         let conf = 0.7
@@ -490,11 +645,15 @@ const Interpreter: React.FC = () => {
       browserRecognitionRef.current = recognition
       browserRecognitionShouldRunRef.current = true
       recognition.start()
-    } catch (e) {
+    } catch {
       setRecognitionTier('backend')
       setSpeechError('Browser speech recognition could not start. Using server transcription.')
     }
   }, [currentSession?.direction, isMuted, runTextToSignPipeline, stopBrowserRecognition])
+
+  useEffect(() => {
+    runTextToSignPipelineRef.current = runTextToSignPipeline
+  }, [runTextToSignPipeline])
 
   useEffect(() => {
     if (currentSession?.direction !== 'speech_to_sign') {
@@ -542,11 +701,6 @@ const Interpreter: React.FC = () => {
     return () => clearInterval(interval)
   }, [autoPlay, signSequence, currentSignIndex])
 
-  // Handle video frame processing (disabled websocket transfer for frontend recognition)
-  const handleVideoFrame = useCallback((frameData: string) => {
-    // No-op string processing - handled via requestAnimationFrame
-  }, [])
-
   // Handle audio data processing
   const handleAudioData = useCallback((audioData: Float32Array) => {
     if (audioSocket.isConnected && currentSession) {
@@ -567,72 +721,7 @@ const Interpreter: React.FC = () => {
         sample_rate: 44100
       })
     }
-  }, [audioSocket.isConnected, currentSession])
-
-  // Update sign sequence for speech-to-sign to show dictionary entries
-  const updateSpeechToSignSequence = useCallback(async (text: string) => {
-    const tokens = normalizeText(text)
-    if (tokens.length === 0) {
-      setSignSequence([])
-      return
-    }
-
-    const results: SignWord[] = []
-    
-    // Fetch all unknown tokens concurrently
-    const fetchPromises = tokens.map(async (token) => {
-      const key = token.toLowerCase()
-      let data = dictionaryCache[key]
-      
-      if (!data) {
-        try {
-          const resp = await fetch(`${API_BASE_URL}/api/dictionary/search?q=${encodeURIComponent(key)}`, {
-            signal: AbortSignal.timeout(5000)
-          })
-          if (resp.ok) {
-            data = await resp.json()
-            dictionaryCache[key] = data
-          }
-        } catch (e) {
-          console.error('Error fetching dictionary entry:', e)
-        }
-      }
-      return { token, data }
-    })
-
-    const resolvedTokens = await Promise.all(fetchPromises)
-
-    for (const { token, data } of resolvedTokens) {
-      if (data && data.gloss) {
-        results.push({
-          word: token,
-          gloss: data.gloss || null,
-          images: Array.isArray(data.images) ? data.images : [],
-          description: typeof data.description === 'string' ? data.description : '',
-          page: data.page,
-          confidence: data.confidence || 1.0,
-          match_type: data.match_type || 'Exact',
-          variants: typeof data.variants === 'number' ? data.variants : 0,
-          status: 'matched',
-          primitives: data.primitives
-        })
-      } else {
-        results.push({
-          word: token,
-          gloss: null,
-          images: [],
-          description: '',
-          confidence: 0,
-          match_type: 'None',
-          variants: 0,
-          status: 'unknown'
-        })
-      }
-    }
-    setSignSequence(results)
-    setCurrentSignIndex(0)
-    setAutoPlay(true)
-  }, [])
+  }, [audioSocket, currentSession])
 
   // Frame capture loop for local recognition
   useEffect(() => {
@@ -663,7 +752,7 @@ const Interpreter: React.FC = () => {
 
       const newSign: SignWord = cached ? {
         word: predictedGloss,
-        gloss: cached.gloss,
+        gloss: cached.gloss || predictedGloss,
         images: cached.images || [],
         description: cached.description || '',
         confidence: localConfidence,
@@ -820,89 +909,25 @@ const Interpreter: React.FC = () => {
       setSpeechError(null)
       setSilenceMessage(null)
       runTextToSignPipeline(text, 'backend', conf)
-      updateSpeechToSignSequence(text)
     }
-  }, [audioSocket.lastMessage, currentSession?.direction, isMuted, runTextToSignPipeline, startBrowserRecognition, supportsBrowserRecognition, updateSpeechToSignSequence])
+  }, [audioSocket.lastMessage, currentSession?.direction, isMuted, runTextToSignPipeline, startBrowserRecognition, supportsBrowserRecognition])
 
   useEffect(() => {
     if (currentSession?.direction !== 'speech_to_sign' && currentSession?.direction !== 'text_to_sign') {
       setAvatarStatus('idle')
-      setAvatarMessage(null)
-      setAvatarKeyframes(null)
       return
     }
     if (!showAvatar) {
-      return
-    }
-    if (!signSequence.length) {
       setAvatarStatus('idle')
-      setAvatarKeyframes(null)
-      setAvatarMessage('Avatar will activate when there is a dictionary-backed translation.')
       return
     }
     const matched = signSequence.filter(s => s.status === 'matched' && s.gloss)
-    if (!matched.length) {
-      setAvatarStatus('idle')
-      setAvatarKeyframes(null)
-      setAvatarMessage('No dictionary signs available for these words. Avatar is disabled.')
+    if (isProcessing) {
+      setAvatarStatus('loading')
       return
     }
-    const gslSequence = matched.map(s => (s.gloss || '').toUpperCase())
-    if (!gslSequence.length) {
-      setAvatarStatus('idle')
-      setAvatarKeyframes(null)
-      setAvatarMessage('Avatar will activate when there is a dictionary-backed translation.')
-      return
-    }
-    setAvatarStatus('loading')
-    setAvatarMessage('Preparing signing path from dictionary.')
-    const controller = new AbortController()
-    const run = async () => {
-      try {
-        const resp = await fetch(`${API_BASE_URL}/api/avatar/render`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            gsl_sequence: gslSequence,
-            animation_mode: '3d_avatar',
-            speed: 1.0,
-            facial_expressions: true
-          }),
-          signal: controller.signal
-        })
-        if (!resp.ok) {
-          throw new Error('Avatar request failed')
-        }
-        const data = await resp.json()
-        const keyframes =
-          data &&
-            data.animation_data &&
-            Array.isArray(data.animation_data.keyframes)
-            ? data.animation_data.keyframes
-            : []
-        if (!keyframes.length) {
-          setAvatarStatus('idle')
-          setAvatarKeyframes(null)
-          setAvatarMessage(
-            'Avatar did not receive any motion instructions. Dictionary images remain primary.'
-          )
-          return
-        }
-        setAvatarKeyframes(keyframes)
-        setAvatarStatus('ready')
-        setAvatarMessage(null)
-      } catch (err) {
-        if (controller.signal.aborted) return
-        setAvatarStatus('error')
-        setAvatarKeyframes(null)
-        setAvatarMessage(
-          'Avatar engine is unavailable at the moment. Dictionary images remain primary.'
-        )
-      }
-    }
-    run()
-    return () => controller.abort()
-  }, [signSequence, currentSession?.direction, showAvatar])
+    setAvatarStatus(matched.length > 0 ? 'ready' : 'idle')
+  }, [signSequence, currentSession?.direction, showAvatar, isProcessing])
 
   // Text-to-speech functionality
   const speakText = useCallback((text: string) => {
@@ -950,17 +975,24 @@ const Interpreter: React.FC = () => {
 
   // Trigger avatar animation for text-to-sign or speech-to-sign
   useEffect(() => {
-    if (currentSession?.direction !== 'sign_to_speech' && signSequence.length > 0) {
-      signPlayerRef.current?.playGlossSequence(signSequence)
+    if (currentSession?.direction === 'sign_to_speech' || !showAvatar) {
+      resetAvatarPlayback()
+      return
     }
-  }, [signSequence, currentSession?.direction])
+    const matched = signSequence.filter(entry => entry.status === 'matched' && !!entry.gloss)
+    if (matched.length > 0) {
+      signPlayerRef.current?.playGlossSequence(matched)
+      return
+    }
+    resetAvatarPlayback()
+  }, [signSequence, currentSession?.direction, showAvatar, resetAvatarPlayback])
 
   // Fetch primitives for active sign in speech-to-sign mode for Smart Tips overlay
   useEffect(() => {
     if (currentSession?.direction === 'speech_to_sign') {
       if (signSequence.length > 0) {
         // Find the actual sign being shown right now
-        let currentSign = signSequence[currentSignIndex]
+        const currentSign = signSequence[currentSignIndex]
 
         // If avatar isn't visible, we fall back to index 0 if not playing, but autoPlay effectively drives currentSignIndex
         if (currentSign && currentSign.status === 'matched') {
@@ -992,26 +1024,6 @@ const Interpreter: React.FC = () => {
   const getHeaderSize = () => {
     return accessibility.largeText ? 'text-2xl sm:text-4xl' : 'text-xl sm:text-3xl'
   }
-
-  const avatarMatchedSequence = useMemo(
-    () => signSequence.filter(entry => entry.status === 'matched' && !!entry.gloss),
-    [signSequence]
-  )
-
-  const avatarGlossSequence = useMemo(
-    () => avatarMatchedSequence.map(entry => String(entry.gloss || entry.word || '').toUpperCase()).filter(Boolean),
-    [avatarMatchedSequence]
-  )
-
-  const avatarPrimitiveSequence = useMemo(
-    () => avatarMatchedSequence.map(entry => entry.primitives || null),
-    [avatarMatchedSequence]
-  )
-
-  const avatarPlaybackKey = useMemo(
-    () => avatarMatchedSequence.map(entry => `${String(entry.gloss || entry.word || '').toUpperCase()}:${entry.status}`).join('|'),
-    [avatarMatchedSequence]
-  )
 
   const getConfidenceColor = (level: number) => {
     if (level === 0) return 'text-slate-400'
@@ -1385,13 +1397,45 @@ const Interpreter: React.FC = () => {
                   </div>
                 ) : (
                   <div className="p-4 sm:p-10 bg-purple-900/10 space-y-6 border-t border-purple-500/20 relative">
-                    {/* AI Sign Bridge: User input → AI/dictionary → Avatar */}
-                    <AiSignBridge
-                      onFrame={(frame, gloss) => {
-                        setCurrentPoseFrame(frame);
-                        setPlayingGloss(gloss);
-                      }}
-                    />
+                    <form onSubmit={handleTextToSignSubmit} className="space-y-4">
+                      <div className="space-y-2">
+                        <label htmlFor="text-to-sign-input" className="text-[10px] font-black text-purple-500/60 uppercase tracking-[0.2em] block">
+                          Text To Sign Input
+                        </label>
+                        <textarea
+                          id="text-to-sign-input"
+                          value={manualInput}
+                          onChange={(event) => setManualInput(event.target.value)}
+                          rows={4}
+                          placeholder="Type a word or sentence to generate a Ghana Sign Language sequence"
+                          className="w-full rounded-2xl border border-purple-500/20 bg-white/80 dark:bg-slate-950/60 px-4 py-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 shadow-inner focus:outline-none focus:ring-2 focus:ring-purple-400/40 focus:border-purple-400/60 resize-y"
+                        />
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                          This uses the same dictionary-backed translator as speech-to-sign, then plays the matched sign sequence on the avatar.
+                        </p>
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 items-center">
+                        <button
+                          type="submit"
+                          disabled={isProcessing || !manualInput.trim()}
+                          className="px-4 py-2 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 disabled:bg-slate-200 disabled:text-slate-400 disabled:border-slate-300 border border-purple-500/30 text-[10px] font-black text-purple-500 uppercase tracking-widest transition-all hover:scale-105 active:scale-95 disabled:scale-100"
+                        >
+                          {isProcessing ? 'Building Sign Sequence...' : 'Translate To Signs'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleTextToSignClear}
+                          className="px-4 py-2 rounded-xl bg-slate-100/80 hover:bg-slate-200 dark:bg-slate-800/70 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-[10px] font-black text-slate-500 dark:text-slate-300 uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
+                        >
+                          Clear
+                        </button>
+                        <span className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-300">
+                          Source: Shared Dictionary Translator
+                        </span>
+                      </div>
+                    </form>
+
                     {/* Demo Example Controls */}
                     {visual.demoMode && !isDemoRunning && (
                       <div className="mt-8 flex flex-col gap-3 animate-slide-up">
@@ -1400,7 +1444,10 @@ const Interpreter: React.FC = () => {
                           {TEXT_TO_SIGN_DEMO.map((scenario) => (
                             <button
                               key={scenario.id}
-                              onClick={() => runDemoScenario(scenario)}
+                              onClick={() => {
+                                setManualInput(scenario.input)
+                                runDemoScenario(scenario)
+                              }}
                               className="px-4 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-[10px] font-black text-purple-400 uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
                             >
                               {scenario.label}
