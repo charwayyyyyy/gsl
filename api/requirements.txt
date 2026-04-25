@@ -12,6 +12,7 @@ aiofiles
 websockets
 numpy
 scipy
+fastdtw
 google-genai
 PyPDF2
 pdfplumber
