@@ -25,10 +25,20 @@ export interface MultiHandFeatures {
   symmetry: number;
 }
 
+export interface PoseContext {
+  available: boolean;
+  faceAnchor?: { x: number; y: number; z: number };
+  shoulderCenter?: { x: number; y: number; z: number };
+  hipCenter?: { x: number; y: number; z: number };
+  shoulderWidth?: number;
+  torsoHeight?: number;
+}
+
 export interface ExtractedFeatures {
   primaryHand: HandState;
   secondaryHand?: HandState;
   multiHand: MultiHandFeatures;
+  pose?: PoseContext;
 }
 
 export interface SignProfile {
@@ -68,4 +78,5 @@ export interface FrameData {
   timestamp: number;
   landmarks: import('@mediapipe/tasks-vision').NormalizedLandmark[][];
   handednesses: import('@mediapipe/tasks-vision').Category[][];
+  poseLandmarks?: import('@mediapipe/tasks-vision').NormalizedLandmark[][];
 }

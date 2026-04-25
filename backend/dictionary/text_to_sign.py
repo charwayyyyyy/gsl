@@ -1,13 +1,23 @@
 import json
+import logging
 import os
+import re
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 import numpy as np
 import httpx
 
+logger = logging.getLogger(__name__)
+
 PROCESSED = Path("data") / "processed"
 DICT_PATH = PROCESSED / "gsl_dictionary.json"
 INDEX_PATH = PROCESSED / "gsl_sign_index.json"
+APPROVED_MAPPINGS_PATH = PROCESSED / "approved_sign_mappings.json"
+EMBEDDING_MODEL = "models/gemini-embedding-001"
+EMBEDDING_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent"
+
+FILLER_WORDS = {"uh", "um", "erm", "mm", "mmm", "ah", "eh", "like"}
+AUXILIARY_WORDS = {"can", "could", "would", "should", "shall", "do", "does", "did", "is", "are", "am", "was", "were"}
 
 
 class TextToSignService:
@@ -20,6 +30,7 @@ class TextToSignService:
         self._index_matrix = None
         self._index_keys = []
         self._search_cache: Dict[str, Dict[str, Any]] = {}  # Simple cache for results
+        self._approved_term_to_mapping: Optional[Dict[str, Dict[str, Any]]] = None
         self._load_dictionary()
 
     def _load(self):
@@ -47,29 +58,62 @@ class TextToSignService:
                 else:
                     self.dictionary = loaded or {}
 
+    def _normalize_term(self, text: str) -> str:
+        return re.sub(r"\s+", " ", (text or "").strip().lower())
+
+    def _load_approved_mappings_if_needed(self):
+        if self._approved_term_to_mapping is not None:
+            return
+
+        self._approved_term_to_mapping = {}
+        if not APPROVED_MAPPINGS_PATH.exists():
+            return
+
+        try:
+            with open(APPROVED_MAPPINGS_PATH, "r", encoding="utf-8") as f:
+                payload = json.load(f)
+            mappings = payload.get("mappings", []) if isinstance(payload, dict) else []
+            if not isinstance(mappings, list):
+                mappings = []
+
+            for item in mappings:
+                if not isinstance(item, dict):
+                    continue
+                if str(item.get("status") or "").lower() != "approved":
+                    continue
+                term = self._normalize_term(str(item.get("term") or ""))
+                if term:
+                    self._approved_term_to_mapping[term] = item
+        except Exception as exc:
+            logger.warning(f"Failed to load approved sign mappings: {exc}")
+
+    def _get_approved_mapping_for_term(self, term: str) -> Optional[Dict[str, Any]]:
+        self._load_approved_mappings_if_needed()
+        if self._approved_term_to_mapping is None:
+            return None
+        return self._approved_term_to_mapping.get(self._normalize_term(term))
+
     def _preload_model(self):
         """No-op: local model disabled for free tier. Using Gemini API instead."""
         pass
 
     def _get_embedding(self, text: str) -> np.ndarray:
         """Get embedding for search query via Gemini API."""
-        api_key = os.getenv("GEMINI_API_KEY")
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
         if not api_key:
             return self._fallback_embedding(text)
             
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/models/embedding-001:embedContent?key={api_key}"
             payload = {
-                "model": "models/embedding-001",
+                "model": EMBEDDING_MODEL,
                 "content": {"parts": [{"text": text}]}
             }
             with httpx.Client(timeout=10.0) as client:
-                resp = client.post(url, json=payload)
+                resp = client.post(EMBEDDING_URL, headers={"x-goog-api-key": api_key}, json=payload)
                 if resp.status_code == 200:
                     return np.array(resp.json()["embedding"]["values"])
         except Exception as e:
-            import logging
-            logging.getLogger(__name__).warning(f"Embedding API failed: {e}")
+            logger.warning(f"Embedding API failed: {e}")
             
         return self._fallback_embedding(text)
 
@@ -108,8 +152,159 @@ class TextToSignService:
                 
                 self._index_loaded = True
             except Exception as e:
-                import logging
-                logging.getLogger(__name__).warning(f"Failed to load index: {e}")
+                logger.warning(f"Failed to load index: {e}")
+
+    def _normalize_translation_tokens(self, text: str) -> List[str]:
+        cleaned = re.sub(r"[^a-z0-9\s']", " ", (text or "").lower())
+        raw_tokens = cleaned.split()
+        return [token for token in raw_tokens if token not in FILLER_WORDS and token not in AUXILIARY_WORDS]
+
+    def _is_usable_translation_match(self, phrase: str, result: Dict[str, Any]) -> bool:
+        if not result or not result.get("gloss"):
+            return False
+
+        match_type = str(result.get("match_type") or "None")
+        confidence = float(result.get("confidence") or 0.0)
+        token_count = len(phrase.split())
+
+        if match_type.startswith("Exact"):
+            return True
+        if match_type == "Prefix/Contains":
+            return confidence >= 0.84
+        if match_type.startswith("Semantic"):
+            return token_count == 1 and confidence >= 0.62
+        return False
+
+    def _build_translation_entry(self, source_text: str, result: Dict[str, Any], match_type_override: Optional[str] = None) -> Dict[str, Any]:
+        primitives = result.get("primitives")
+        return {
+            "word": source_text,
+            "gloss": result.get("gloss"),
+            "images": list(result.get("images") or []),
+            "description": result.get("description") or "",
+            "page": result.get("page"),
+            "confidence": float(result.get("confidence") or 0.0),
+            "match_type": match_type_override or str(result.get("match_type") or "None"),
+            "variants": int(result.get("variants") or 0),
+            "status": "matched" if result.get("gloss") else "unknown",
+            "primitives": primitives if isinstance(primitives, dict) else None,
+        }
+
+    def _build_unknown_translation_entry(self, source_text: str) -> Dict[str, Any]:
+        return {
+            "word": source_text,
+            "gloss": None,
+            "images": [],
+            "description": "",
+            "page": None,
+            "confidence": 0.0,
+            "match_type": "None",
+            "variants": 0,
+            "status": "unknown",
+            "primitives": None,
+        }
+
+    def _resolve_approved_mapping_entries(self, phrase: str) -> Optional[List[Dict[str, Any]]]:
+        mapping = self._get_approved_mapping_for_term(phrase)
+        if not mapping:
+            return None
+
+        target_gloss = str(mapping.get("target_gloss") or "").strip()
+        if target_gloss:
+            result = self.search(target_gloss)
+            if result.get("gloss"):
+                return [self._build_translation_entry(phrase, result, "ApprovedMapping")]
+
+        composite = mapping.get("target_composite_glosses")
+        if not isinstance(composite, list) or not composite:
+            return None
+
+        entries: List[Dict[str, Any]] = []
+        for idx, gloss in enumerate(composite):
+            target = str(gloss or "").strip()
+            if not target:
+                continue
+            result = self.search(target)
+            if not result.get("gloss"):
+                continue
+            source_label = phrase if idx == 0 else target.lower().replace("_", " ")
+            entries.append(self._build_translation_entry(source_label, result, "ApprovedMappingComposite"))
+
+        return entries or None
+
+    def _resolve_translation_phrase(self, phrase: str) -> Optional[List[Dict[str, Any]]]:
+        approved_entries = self._resolve_approved_mapping_entries(phrase)
+        if approved_entries:
+            return approved_entries
+
+        result = self.search(phrase)
+        if self._is_usable_translation_match(phrase, result):
+            return [self._build_translation_entry(phrase, result)]
+        return None
+
+    def translate_text(self, text: str, max_phrase_len: int = 4) -> Dict[str, Any]:
+        tokens = self._normalize_translation_tokens(text)
+        if not tokens:
+            return {
+                "input_text": text,
+                "normalized_tokens": [],
+                "recognized_units": [],
+                "entries": [],
+                "gsl_sequence": [],
+                "matched_count": 0,
+                "unknown_count": 0,
+                "confidence": 0.0,
+            }
+
+        entries: List[Dict[str, Any]] = []
+        recognized_units: List[str] = []
+        matched_count = 0
+        unknown_count = 0
+        index = 0
+
+        while index < len(tokens):
+            resolved_entries: Optional[List[Dict[str, Any]]] = None
+            consumed = 1
+            max_window = min(max_phrase_len, len(tokens) - index)
+
+            for size in range(max_window, 0, -1):
+                phrase = " ".join(tokens[index:index + size])
+                candidate_entries = self._resolve_translation_phrase(phrase)
+                if candidate_entries:
+                    resolved_entries = candidate_entries
+                    consumed = size
+                    recognized_units.append(phrase)
+                    matched_count += 1
+                    break
+
+            if resolved_entries is None:
+                token = tokens[index]
+                recognized_units.append(token)
+                entries.append(self._build_unknown_translation_entry(token))
+                unknown_count += 1
+                index += 1
+                continue
+
+            entries.extend(resolved_entries)
+            index += consumed
+
+        matched_entries = [entry for entry in entries if entry.get("status") == "matched" and entry.get("gloss")]
+        confidence = (
+            sum(float(entry.get("confidence") or 0.0) for entry in matched_entries) / len(matched_entries)
+            if matched_entries
+            else 0.0
+        )
+
+        return {
+            "input_text": text,
+            "normalized_tokens": tokens,
+            "recognized_units": recognized_units,
+            "entries": entries,
+            "gsl_sequence": [str(entry.get("gloss")) for entry in matched_entries if entry.get("gloss")],
+            "matched_count": matched_count,
+            "unknown_count": unknown_count,
+            "confidence": float(confidence),
+        }
 
     def search(self, q: str) -> Dict[str, Any]:
         qn = (q or "").strip()

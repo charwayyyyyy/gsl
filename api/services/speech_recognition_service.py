@@ -61,7 +61,8 @@ class SpeechRecognitionService:
 
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    f"{self.config.api_url}?key={self.config.api_key}",
+                    self.config.api_url,
+                    headers={"x-goog-api-key": self.config.api_key},
                     json=payload,
                     timeout=30.0
                 )

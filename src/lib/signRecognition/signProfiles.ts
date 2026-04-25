@@ -1,6 +1,6 @@
 import { SignProfile } from './types'
 
-export const SUPPORTED_SIGNS: SignProfile[] = [
+const DEFAULT_SUPPORTED_SIGNS: SignProfile[] = [
   {
     id: "hello",
     gloss: 'HELLO',
@@ -64,3 +64,22 @@ export const SUPPORTED_SIGNS: SignProfile[] = [
     stabilityFrames: 4,
   }
 ];
+
+const cloneProfiles = (profiles: SignProfile[]): SignProfile[] =>
+  profiles.map((profile) => ({
+    ...profile,
+    handshape: [...profile.handshape],
+    location: Array.isArray(profile.location) ? [...profile.location] : profile.location,
+    motion: {
+      ...profile.motion,
+      primaryDirection: Array.isArray(profile.motion.primaryDirection)
+        ? [...profile.motion.primaryDirection]
+        : profile.motion.primaryDirection,
+    },
+  }));
+
+export let SUPPORTED_SIGNS: SignProfile[] = cloneProfiles(DEFAULT_SUPPORTED_SIGNS)
+
+export const setSupportedSigns = (profiles: SignProfile[]) => {
+  SUPPORTED_SIGNS = profiles.length ? cloneProfiles(profiles) : cloneProfiles(DEFAULT_SUPPORTED_SIGNS)
+}
