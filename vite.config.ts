@@ -27,6 +27,21 @@ export default defineConfig({
     host: '0.0.0.0', // Listen on all interfaces (including 127.0.0.1)
     port: 5173,
     allowedHosts: true, // Allow ngrok
+    watch: {
+      ignored: [
+        '**/.venv/**',
+        '**/api/**',
+        '**/backend/**',
+        '**/data/**',
+        '**/data_pipeline/**',
+        '**/ml/**',
+        '**/scratch/**',
+        '**/scripts/**',
+        '**/tests/**',
+        '**/*.db',
+        '**/*.sqlite',
+      ],
+    },
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8000',

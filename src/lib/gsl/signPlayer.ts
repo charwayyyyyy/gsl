@@ -1,6 +1,32 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { POSE_LIBRARY, PoseFrame, createWellFormedHand } from './poseLibrary';
 import { AnimationPlayer } from './animationPlayer';
 import { applyFacialExpression } from './facialExpressions';
+
+type PoseData = {
+  frames: PoseFrame[];
+  duration: number;
+};
+
+function resolvePoseData(gloss: string): PoseData | undefined {
+  const normalized = String(gloss || '').trim().toUpperCase();
+  if (!normalized) return undefined;
+
+  const candidateKeys = [
+    normalized,
+    normalized.replace(/[\s-]+/g, '_'),
+    normalized.replace(/[_-]+/g, ' '),
+    normalized.replace(/[\s_-]+/g, ''),
+  ];
+
+  for (const key of candidateKeys) {
+    if (POSE_LIBRARY[key]) {
+      return POSE_LIBRARY[key];
+    }
+  }
+
+  return undefined;
+}
 
 // Generate a procedural pose animation from sign primitives or sensible defaults
 function generateProceduralPose(prim: {
@@ -118,7 +144,7 @@ export class SignSequencePlayer {
       if (!gloss) continue;
 
       // 1. Try static POSE_LIBRARY first
-      let poseData = POSE_LIBRARY[gloss.toUpperCase()] || POSE_LIBRARY[gloss];
+      let poseData = resolvePoseData(gloss);
 
       // 2. Fallback: procedural generation from primitives (or sane defaults)
       if (!poseData) {

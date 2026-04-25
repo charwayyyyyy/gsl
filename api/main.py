@@ -571,7 +571,7 @@ async def startup_event():
       if build_motion_templates and not Path("data/processed/dictionary_motion_templates.json").exists():
         logger.info("Motion templates missing, but skipping build during startup for Render safety.")
       try:
-        get_text_to_sign_service()._load()
+        get_text_to_sign_service()._load(); get_dictionary_service()
       except Exception as e:
         logger.warning(f"Reload text_to_sign_service failed: {e}")
       try:
@@ -1065,6 +1065,19 @@ async def get_dictionary_recognition_profiles(refresh: bool = False, limit: int 
         }
     except Exception as e:
         logger.error(f"Error building recognition profiles: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/dictionary/motion-templates")
+async def get_dictionary_motion_templates(limit: int = 0):
+    try:
+        templates = get_dict_matcher().export_templates(limit=limit)
+        return {
+            "count": len(templates),
+            "templates": templates,
+        }
+    except Exception as e:
+        logger.error(f"Error exporting motion templates: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/dictionary/sign/{sign_id}")

@@ -1,9 +1,55 @@
 import { 
   ExtractedFeatures, HandShape, MotionDirection, 
-  RelativeLocation, HandState, FrameData, MultiHandFeatures,
-  HandednessType
+  RelativeLocation, HandState, FrameData,
+  HandednessType, PoseContext
 } from './types';
 import { NormalizedLandmark } from '@mediapipe/tasks-vision';
+
+type Point3D = Pick<NormalizedLandmark, 'x' | 'y' | 'z'>;
+
+function averagePoint(a: Point3D, b: Point3D): Point3D {
+  return {
+    x: (a.x + b.x) / 2,
+    y: (a.y + b.y) / 2,
+    z: (a.z + b.z) / 2,
+  };
+}
+
+function getPoseContext(poseLandmarks?: NormalizedLandmark[]): PoseContext | undefined {
+  if (!poseLandmarks || poseLandmarks.length < 25) return undefined;
+  const nose = poseLandmarks[0];
+  const leftShoulder = poseLandmarks[11];
+  const rightShoulder = poseLandmarks[12];
+  const leftHip = poseLandmarks[23];
+  const rightHip = poseLandmarks[24];
+  if (!nose || !leftShoulder || !rightShoulder || !leftHip || !rightHip) return undefined;
+
+  const shoulderCenter = averagePoint(leftShoulder, rightShoulder);
+  const hipCenter = averagePoint(leftHip, rightHip);
+  const shoulderWidth = Math.max(0.08, Math.hypot(leftShoulder.x - rightShoulder.x, leftShoulder.y - rightShoulder.y));
+  const torsoHeight = Math.max(0.16, Math.abs(hipCenter.y - shoulderCenter.y));
+
+  return {
+    available: true,
+    faceAnchor: { x: nose.x, y: nose.y, z: nose.z },
+    shoulderCenter,
+    hipCenter,
+    shoulderWidth,
+    torsoHeight,
+  };
+}
+
+function toBodyRelativePoint(point: Point3D, poseContext?: PoseContext): Point3D {
+  if (!poseContext?.shoulderCenter) {
+    return point;
+  }
+  const scale = Math.max(0.08, poseContext.shoulderWidth || 0.18);
+  return {
+    x: (point.x - poseContext.shoulderCenter.x) / scale,
+    y: (point.y - poseContext.shoulderCenter.y) / scale,
+    z: point.z - poseContext.shoulderCenter.z,
+  };
+}
 
 function extractHandShape(hand: NormalizedLandmark[], wrist: NormalizedLandmark): HandShape {
   const isTipExtended = (tipIdx: number, dipIdx: number) => {
@@ -29,7 +75,27 @@ function extractHandShape(hand: NormalizedLandmark[], wrist: NormalizedLandmark)
   return 'UNKNOWN';
 }
 
-function getRelativeLocation(wrist: NormalizedLandmark): RelativeLocation {
+function getRelativeLocation(wrist: NormalizedLandmark, poseContext?: PoseContext): RelativeLocation {
+  if (poseContext?.faceAnchor && poseContext.shoulderCenter && poseContext.hipCenter) {
+    const shoulderWidth = Math.max(0.08, poseContext.shoulderWidth || 0.18);
+    const torsoHeight = Math.max(0.16, poseContext.torsoHeight || shoulderWidth * 1.6);
+    const faceDistance = Math.hypot(wrist.x - poseContext.faceAnchor.x, wrist.y - poseContext.faceAnchor.y);
+
+    if (faceDistance <= shoulderWidth * 0.55 || wrist.y <= poseContext.shoulderCenter.y - shoulderWidth * 0.18) {
+      return 'FACE';
+    }
+    if (wrist.y <= poseContext.shoulderCenter.y - shoulderWidth * 0.55) {
+      return 'HIGH';
+    }
+    if (Math.abs(wrist.y - poseContext.shoulderCenter.y) <= torsoHeight * 0.45) {
+      return 'CHEST';
+    }
+    if (wrist.y <= poseContext.hipCenter.y + torsoHeight * 0.15) {
+      return 'MID';
+    }
+    return 'LOW';
+  }
+
   if (wrist.y < 0.25) return 'FACE';
   if (wrist.y < 0.4) return 'HIGH';
   if (wrist.y < 0.62) return 'CHEST';
@@ -37,7 +103,7 @@ function getRelativeLocation(wrist: NormalizedLandmark): RelativeLocation {
   return 'LOW';
 }
 
-function computeMotionFeatures(wristHistory: NormalizedLandmark[], timestamps: number[]) {
+function computeMotionFeatures(wristHistory: Point3D[], timestamps: number[]) {
   if (wristHistory.length < 5) {
     return { primaryDirection: 'STATIC' as MotionDirection, averageVelocity: 0, repetition: 0, stability: 1.0 };
   }
@@ -111,6 +177,7 @@ export function extractFeatures(frames: FrameData[]): ExtractedFeatures | null {
   const currentFrame = frames[frames.length - 1];
   
   if (!currentFrame.landmarks || currentFrame.landmarks.length === 0) return null;
+  const poseContext = getPoseContext(currentFrame.poseLandmarks?.[0]);
 
   // Process Hand 1
   const hand1 = currentFrame.landmarks[0];
@@ -124,13 +191,18 @@ export function extractFeatures(frames: FrameData[]): ExtractedFeatures | null {
     const wrist = hand[0];
     
     const history = frames
-      .map(f => f.landmarks[handIndex]?.[0])
-      .filter(Boolean) as NormalizedLandmark[];
+      .map(f => {
+        const frameWrist = f.landmarks[handIndex]?.[0];
+        if (!frameWrist) return null;
+        const framePose = getPoseContext(f.poseLandmarks?.[0]);
+        return toBodyRelativePoint(frameWrist, framePose);
+      })
+      .filter(Boolean) as Point3D[];
     
     return {
       present: true,
       handShape: extractHandShape(hand, wrist),
-      relativeLocation: getRelativeLocation(wrist),
+      relativeLocation: getRelativeLocation(wrist, poseContext),
       motion: computeMotionFeatures(history, frames.map(f => f.timestamp))
     };
   };
@@ -138,6 +210,7 @@ export function extractFeatures(frames: FrameData[]): ExtractedFeatures | null {
   const primaryHandState = ExtractHandState(0);
   const features: ExtractedFeatures = {
     primaryHand: primaryHandState,
+    pose: poseContext,
     multiHand: {
       leftHandPresent: hand1Label === 'LEFT',
       rightHandPresent: hand1Label === 'RIGHT',

@@ -22,6 +22,7 @@ except Exception:
     pipeline = None
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from backend.dictionary.text_to_sign import TextToSignService
 
 logger = logging.getLogger(__name__)
 
@@ -174,9 +175,6 @@ class GSLGrammarRules:
     def apply_grammar_rules(self, gsl_sequence: List[str], context: Optional[List[str]] = None) -> List[str]:
         """Apply GSL grammar rules to sign sequence"""
         try:
-            if not self.grammar_rules["grammar_rules_enabled"]:
-                return gsl_sequence
-            
             # Apply word order rules
             ordered_sequence = self._apply_word_order(gsl_sequence)
             
@@ -323,6 +321,7 @@ class GSLTranslationService:
         self.model = None
         self.tokenizer = None
         self.is_loaded = True # Rule-based is always loaded
+        self.text_to_sign_service = TextToSignService()
         
         # Minimal vocabulary mappings for rule-based fallback
         self.gsl_to_id = {}
@@ -376,13 +375,16 @@ class GSLTranslationService:
     async def translate_english_to_gsl(self, english_text: str, context: Optional[List[str]] = None) -> Dict:
         """Translate English text to GSL sign sequence using rule-based engine"""
         try:
-            from backend.nlp.en_to_gsl import to_gsl
-            gsl_sequence = to_gsl(english_text)
+            translation = self.text_to_sign_service.translate_text(english_text)
             
             return {
-                'gsl_sequence': gsl_sequence,
+                'gsl_sequence': translation.get('gsl_sequence', []),
                 'english_text': english_text,
-                'confidence': 0.7,
+                'entries': translation.get('entries', []),
+                'recognized_units': translation.get('recognized_units', []),
+                'matched_count': int(translation.get('matched_count', 0) or 0),
+                'unknown_count': int(translation.get('unknown_count', 0) or 0),
+                'confidence': float(translation.get('confidence', 0.0) or 0.0),
                 'translation_method': 'rule_based_optimized',
                 'timestamp': time.time()
             }
@@ -451,8 +453,12 @@ class TranslationService(GSLTranslationService):
         result = await self.translate_english_to_gsl(text)
         return {
             "gsl_sequence": result["gsl_sequence"] if "gsl_sequence" in result else result.get("gsl_signs", []),
+            "entries": result.get("entries", []),
+            "recognized_units": result.get("recognized_units", []),
             "english_text": text,
             "confidence": result.get("confidence", 0.7),
+            "matched_count": result.get("matched_count", 0),
+            "unknown_count": result.get("unknown_count", 0),
             "processing_time_ms": 120,
             "speed": speed,
         }
