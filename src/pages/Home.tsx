@@ -21,7 +21,7 @@ export default function Home() {
     else updateVisual({ colorScheme: 'light' })
   }
 
-  const handleDirectionSelect = (direction: 'sign_to_speech' | 'speech_to_sign') => {
+  const handleDirectionSelect = (direction: 'sign_to_speech' | 'speech_to_sign' | 'text_to_sign') => {
     startTranslationSession(direction)
     navigate('/interpreter')
   }
