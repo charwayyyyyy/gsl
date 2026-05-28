@@ -1,6 +1,3 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import numpy as np
 from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
@@ -10,27 +7,18 @@ import json
 import re
 from datetime import datetime
 from collections import defaultdict
+import time
 
 logger = logging.getLogger(__name__)
 
 @dataclass
 class TranslationConfig:
-    """Configuration for GSL-English translation engine"""
-    input_dim: int = 768  # BERT-like embedding dimension
-    hidden_dim: int = 512
-    num_layers: int = 4
-    num_heads: int = 8
-    dropout: float = 0.1
-    max_sequence_length: int = 512
-    vocab_size: int = 50000
-    gsl_vocab_size: int = 2000  # Number of GSL signs/concepts
-    learning_rate: float = 1e-4
-    device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
-    
+    """Configuration for GSL-English translation engine (Rule-based Optimized)"""
     # Ghana-specific settings
     support_ghanian_english: bool = True
     support_twi_loanwords: bool = True
     support_local_expressions: bool = True
+    grammar_rules_enabled: bool = True
 
 class GSLVocabulary:
     """GSL (Ghana Sign Language) vocabulary and grammar rules"""
@@ -315,32 +303,23 @@ class GSLTranslationEngine:
         pass
 
 class GSLTranslationService:
-    """Service for GSL-English translation with grammar rules"""
+    """Service for GSL-English translation with grammar rules (Rule-based Optimized)"""
     
     def __init__(self, config: Optional[TranslationConfig] = None):
         self.config = config or TranslationConfig()
         self.vocabulary = GSLVocabulary()
         self.grammar_rules = GSLGrammarRules()
         
-        # Neural translation model
+        # Rule-based engine
         self.model = GSLTranslationEngine(self.config)
-        self.optimizer = torch.optim.AdamW(self.model.parameters(), lr=self.config.learning_rate)
-        self.criterion = nn.CrossEntropyLoss(ignore_index=0)  # 0 is padding token
+        self.is_loaded = True
         
-        # Load model if exists
-        self.model_path = Path("models/gsl_translation_model.pth")
-        if self.model_path.exists():
-            self.load_model()
-        
-        logger.info("GSLTranslationService initialized")
+        logger.info("GSLTranslationService (Rule-based Optimized) initialized")
 
-    def translate_gsl_to_english(self, gsl_signs: List[str], use_neural: bool = True) -> Dict[str, Any]:
-        """Translate GSL signs to English"""
+    def translate_gsl_to_english(self, gsl_signs: List[str]) -> Dict[str, Any]:
+        """Translate GSL signs to English using rule-based logic"""
         try:
-            if use_neural and len(gsl_signs) > 0:
-                return self._neural_translate_gsl_to_english(gsl_signs)
-            else:
-                return self._rule_based_translate_gsl_to_english(gsl_signs)
+            return self._rule_based_translate_gsl_to_english(gsl_signs)
                 
         except Exception as e:
             logger.error(f"Error translating GSL to English: {e}")
@@ -352,13 +331,10 @@ class GSLTranslationService:
                 "method": "error"
             }
 
-    def translate_english_to_gsl(self, english_text: str, use_neural: bool = True) -> Dict[str, Any]:
-        """Translate English text to GSL signs"""
+    def translate_english_to_gsl(self, english_text: str) -> Dict[str, Any]:
+        """Translate English text to GSL signs using rule-based logic"""
         try:
-            if use_neural and english_text.strip():
-                return self._neural_translate_english_to_gsl(english_text)
-            else:
-                return self._rule_based_translate_english_to_gsl(english_text)
+            return self._rule_based_translate_english_to_gsl(english_text)
                 
         except Exception as e:
             logger.error(f"Error translating English to GSL: {e}")
@@ -425,119 +401,6 @@ class GSLTranslationService:
             logger.error(f"Error in rule-based English to GSL translation: {e}")
             raise e
 
-    def _neural_translate_gsl_to_english(self, gsl_signs: List[str]) -> Dict[str, Any]:
-        """Neural translation from GSL to English"""
-        try:
-            # Convert GSL signs to token IDs
-            gsl_tokens = self._gsl_signs_to_tokens(gsl_signs)
-            
-            if not gsl_tokens:
-                return self._rule_based_translate_gsl_to_english(gsl_signs)
-            
-            # Create input tensors
-            gsl_tensor = torch.tensor([gsl_tokens], dtype=torch.long).to(self.config.device)
-            
-            # Generate English text using beam search
-            english_tokens = self._generate_english_text(gsl_tensor)
-            
-            # Convert tokens to text
-            english_text = self._tokens_to_english_text(english_tokens)
-            
-            return {
-                "success": True,
-                "english_text": english_text,
-                "confidence": 0.85,  # Neural confidence
-                "gsl_signs": gsl_signs,
-                "method": "neural"
-            }
-            
-        except Exception as e:
-            logger.error(f"Error in neural GSL to English translation: {e}")
-            # Fallback to rule-based
-            return self._rule_based_translate_gsl_to_english(gsl_signs)
-
-    def _neural_translate_english_to_gsl(self, english_text: str) -> Dict[str, Any]:
-        """Neural translation from English to GSL"""
-        try:
-            # Convert English text to token IDs
-            english_tokens = self._english_text_to_tokens(english_text)
-            
-            if not english_tokens:
-                return self._rule_based_translate_english_to_gsl(english_text)
-            
-            # Create input tensors
-            english_tensor = torch.tensor([english_tokens], dtype=torch.long).to(self.config.device)
-            
-            # Generate GSL signs using beam search
-            gsl_tokens = self._generate_gsl_sequence(english_tensor)
-            
-            # Convert tokens to GSL signs
-            gsl_signs = self._tokens_to_gsl_signs(gsl_tokens)
-            
-            return {
-                "success": True,
-                "gsl_signs": gsl_signs,
-                "confidence": 0.85,  # Neural confidence
-                "english_text": english_text,
-                "method": "neural"
-            }
-            
-        except Exception as e:
-            logger.error(f"Error in neural English to GSL translation: {e}")
-            # Fallback to rule-based
-            return self._rule_based_translate_english_to_gsl(english_text)
-
-    def _gsl_signs_to_tokens(self, gsl_signs: List[str]) -> List[int]:
-        """Convert GSL signs to token IDs"""
-        tokens = []
-        vocab = self.vocabulary.gsl_signs
-        
-        for sign in gsl_signs:
-            sign_upper = sign.upper()
-            if sign_upper in vocab:
-                # Map to token ID (simple hash-based mapping for now)
-                token_id = hash(sign_upper) % self.config.gsl_vocab_size
-                tokens.append(token_id)
-        
-        return tokens[:self.config.max_sequence_length]
-
-    def _tokens_to_gsl_signs(self, tokens: List[int]) -> List[str]:
-        """Convert token IDs to GSL signs"""
-        # For now, use rule-based mapping as fallback
-        # In a real implementation, this would use a learned mapping
-        return []
-
-    def _english_text_to_tokens(self, text: str) -> List[int]:
-        """Convert English text to token IDs"""
-        # Simple word-based tokenization for now
-        words = text.lower().split()
-        tokens = []
-        
-        for word in words:
-            # Simple hash-based tokenization
-            token_id = hash(word) % self.config.vocab_size
-            tokens.append(token_id)
-        
-        return tokens[:self.config.max_sequence_length]
-
-    def _tokens_to_english_text(self, tokens: List[int]) -> str:
-        """Convert token IDs to English text"""
-        # For now, return placeholder
-        # In a real implementation, this would use a vocabulary mapping
-        return " ".join([f"word_{token}" for token in tokens])
-
-    def _generate_english_text(self, gsl_tensor: torch.Tensor) -> List[int]:
-        """Generate English text from GSL tensor"""
-        # Simplified generation - in practice, this would use beam search
-        # For now, return empty list as placeholder
-        return []
-
-    def _generate_gsl_sequence(self, english_tensor: torch.Tensor) -> List[int]:
-        """Generate GSL sequence from English tensor"""
-        # Simplified generation - in practice, this would use beam search
-        # For now, return empty list as placeholder
-        return []
-
     def _capitalize_sentences(self, text: str) -> str:
         """Capitalize sentences properly"""
         sentences = re.split(r'[.!?]+', text)
@@ -550,80 +413,14 @@ class GSLTranslationService:
         
         return '. '.join(capitalized)
 
-    def train_step(self, gsl_sequences: torch.Tensor, english_tokens: torch.Tensor, 
-                   target_tokens: torch.Tensor) -> float:
-        """Perform a single training step"""
-        try:
-            self.model.train()
-            self.optimizer.zero_grad()
-            
-            # Forward pass
-            output = self.model(gsl_sequences, english_tokens)
-            
-            # Calculate loss
-            loss = self.criterion(output.view(-1, output.size(-1)), target_tokens.view(-1))
-            
-            # Backward pass
-            loss.backward()
-            self.optimizer.step()
-            
-            return loss.item()
-            
-        except Exception as e:
-            logger.error(f"Error in training step: {e}")
-            return 0.0
-
-    def save_model(self, path: Optional[str] = None):
-        """Save model weights"""
-        try:
-            save_path = path or self.model_path
-            save_path.parent.mkdir(parents=True, exist_ok=True)
-            
-            torch.save({
-                'model_state_dict': self.model.state_dict(),
-                'optimizer_state_dict': self.optimizer.state_dict(),
-                'config': self.config,
-                'vocabulary': self.vocabulary.gsl_signs,
-                'timestamp': datetime.now().isoformat()
-            }, save_path)
-            
-            logger.info(f"Translation model saved to {save_path}")
-            
-        except Exception as e:
-            logger.error(f"Error saving model: {e}")
-
-    def load_model(self, path: Optional[str] = None):
-        """Load model weights"""
-        try:
-            load_path = path or self.model_path
-            
-            if not load_path.exists():
-                logger.warning(f"Translation model file not found: {load_path}")
-                return
-            
-            checkpoint = torch.load(load_path, map_location=self.config.device)
-            self.model.load_state_dict(checkpoint['model_state_dict'])
-            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            
-            if 'vocabulary' in checkpoint:
-                self.vocabulary.gsl_signs.update(checkpoint['vocabulary'])
-            
-            logger.info(f"Translation model loaded from {load_path}")
-            
-        except Exception as e:
-            logger.error(f"Error loading model: {e}")
-
     def get_translation_info(self) -> Dict[str, Any]:
         """Get translation service information"""
         return {
-            "service_type": "GSL-English Translation",
-            "model_parameters": sum(p.numel() for p in self.model.parameters()),
+            "service_type": "GSL-English Translation (Rule-based Optimized)",
             "gsl_vocabulary_size": len(self.vocabulary.gsl_signs),
-            "english_vocabulary_size": self.config.vocab_size,
             "supports_ghanian_english": self.config.support_ghanian_english,
             "supports_twi_loanwords": self.config.support_twi_loanwords,
-            "supports_local_expressions": self.config.support_local_expressions,
-            "model_path": str(self.model_path)
+            "supports_local_expressions": self.config.support_local_expressions
         }
 
 # Global service instance

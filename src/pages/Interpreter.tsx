@@ -403,7 +403,7 @@ const Interpreter: React.FC = () => {
       }
       setSilenceMessage(null)
       try {
-        const response = await fetch(`${API_BASE_URL}/api/translate/speech-to-sign`, {
+        const response = await fetch(`${API_BASE_URL}/api/translate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

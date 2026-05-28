@@ -1,25 +1,7 @@
 try:
-    import torch
-    import torch.nn as nn
-    import torch.nn.functional as F
+    import numpy as np
 except Exception:
-    torch = None
-    nn = None
-    F = None
-from typing import Dict, List, Optional, Tuple, Any
-import json
-import time
-import logging
-import re
-from dataclasses import dataclass
-from pathlib import Path
-import numpy as np
-try:
-    from transformers import MarianMTModel, MarianTokenizer, pipeline
-except Exception:
-    MarianMTModel = None
-    MarianTokenizer = None
-    pipeline = None
+    np = None
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from backend.dictionary.text_to_sign import TextToSignService
@@ -248,24 +230,7 @@ class GSLGrammarRules:
     def translate_to_english(self, gsl_sequence: List[str]) -> str:
         """Translate GSL sequence to English"""
         try:
-            english_words = []
-            
-            for sign in gsl_sequence:
-                # Check common phrases first
-                translated = False
-                
-                for category, phrases in self.common_phrases.items():
-                    if sign in phrases:
-                        english_words.append(phrases[sign])
-                        translated = True
-                        break
-                
-                if not translated:
-                    # Use a simple mapping or keep the sign as is
-                    english_words.append(sign.replace("_", " ").lower())
-            
-            # Apply English grammar rules
-            from ..nlp.gsl_to_en import to_english
+            from backend.nlp.gsl_to_en import to_english
             return to_english(gsl_sequence)
             
         except Exception as e:
@@ -275,42 +240,6 @@ class GSLGrammarRules:
     def _apply_english_grammar(self, sentence: str) -> str:
         """Apply basic English grammar corrections"""
         return sentence
-
-if nn is not None and torch is not None:
-    class GSLTranslationModel(nn.Module):
-        """Neural translation model for GSL-English translation"""
-        def __init__(self, config: TranslationConfig, gsl_vocab_size: int, english_vocab_size: int):
-            super().__init__()
-            self.config = config
-            self.encoder_embedding = nn.Embedding(gsl_vocab_size, 512)
-            self.decoder_embedding = nn.Embedding(english_vocab_size, 512)
-            self.encoder = nn.TransformerEncoder(
-                nn.TransformerEncoderLayer(d_model=512, nhead=8, dim_feedforward=2048, dropout=0.1, activation='relu'),
-                num_layers=6
-            )
-            self.decoder = nn.TransformerDecoder(
-                nn.TransformerDecoderLayer(d_model=512, nhead=8, dim_feedforward=2048, dropout=0.1, activation='relu'),
-                num_layers=6
-            )
-            self.output_projection = nn.Linear(512, english_vocab_size)
-            self.positional_encoding = self._create_positional_encoding(1000, 512)
-            self.dropout = nn.Dropout(0.1)
-        def _create_positional_encoding(self, max_len: int, d_model: int) -> torch.Tensor:
-            pe = torch.zeros(max_len, d_model)
-            position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-            div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-np.log(10000.0) / d_model))
-            pe[:, 0::2] = torch.sin(position * div_term)
-            pe[:, 1::2] = torch.cos(position * div_term)
-            return pe.unsqueeze(0).transpose(0, 1)
-        def forward(self, gsl_tokens: torch.Tensor, english_tokens: torch.Tensor, src_mask: Optional[torch.Tensor] = None, tgt_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
-            gsl_embedded = self.encoder_embedding(gsl_tokens) * np.sqrt(512)
-            gsl_embedded = self.dropout(gsl_embedded + self.positional_encoding[:gsl_tokens.size(0), :])
-            memory = self.encoder(gsl_embedded, src_key_padding_mask=src_mask)
-            english_embedded = self.decoder_embedding(english_tokens) * np.sqrt(512)
-            english_embedded = self.dropout(english_embedded + self.positional_encoding[:english_tokens.size(0), :])
-            decoder_output = self.decoder(english_embedded, memory, tgt_key_padding_mask=tgt_mask)
-            logits = self.output_projection(decoder_output)
-            return logits
 
 class GSLTranslationService:
     """Main translation service for GSL-English translation (Optimized for Render Free Tier)"""

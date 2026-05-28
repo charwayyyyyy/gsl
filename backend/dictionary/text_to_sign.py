@@ -5,7 +5,10 @@ import re
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 import numpy as np
-import httpx
+from sqlalchemy.orm import Session
+from api.database.database import SessionLocal
+from api.database.models import GSLSign
+from sqlalchemy import or_
 
 logger = logging.getLogger(__name__)
 
@@ -13,12 +16,6 @@ PROCESSED = Path("data") / "processed"
 DICT_PATH = PROCESSED / "gsl_dictionary.json"
 INDEX_PATH = PROCESSED / "gsl_sign_index.json"
 APPROVED_MAPPINGS_PATH = PROCESSED / "approved_sign_mappings.json"
-EMBEDDING_MODEL = "models/gemini-embedding-001"
-EMBEDDING_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent"
-
-FILLER_WORDS = {"uh", "um", "erm", "mm", "mmm", "ah", "eh", "like"}
-AUXILIARY_WORDS = {"can", "could", "would", "should", "shall", "do", "does", "did", "is", "are", "am", "was", "were"}
-
 
 class TextToSignService:
     def __init__(self):
@@ -36,27 +33,26 @@ class TextToSignService:
     def _load(self):
         """Compatibility method for main.py."""
         self._load_dictionary()
-        self._ensure_index_loaded()
 
     def _load_dictionary(self):
-        """Load the GSL dictionary from JSON."""
-        if DICT_PATH.exists():
-            with open(DICT_PATH, "r", encoding="utf-8") as f:
-                loaded = json.load(f)
-                if isinstance(loaded, dict) and "entries" in loaded and isinstance(loaded["entries"], list):
-                    d: Dict[str, Any] = {}
-                    for e in loaded["entries"]:
-                        gloss = e.get("gloss")
-                        if gloss:
-                            d[gloss] = {
-                                "english": e.get("english") or "",
-                                "description": e.get("usage") or "",
-                                "images": [e.get("image_path")] if e.get("image_path") else [],
-                                "page": e.get("source_page"),
-                            }
-                    self.dictionary = d
-                else:
-                    self.dictionary = loaded or {}
+        """Load the GSL dictionary from SQLite (Source of Truth)."""
+        db = SessionLocal()
+        try:
+            # Check if we have entries in SQLite
+            count = db.query(GSLSign).count()
+            if count == 0:
+                logger.warning("SQLite dictionary is empty. Seeding from JSON if possible...")
+                # Try to seed using GSLDictionaryService logic if needed
+                from api.services.gsl_dictionary_service import GSLDictionaryService
+                GSLDictionaryService() # This will trigger _seed_database_if_needed
+                count = db.query(GSLSign).count()
+            
+            logger.info(f"Loaded {count} signs from SQLite dictionary")
+            self.dictionary = {} # Backward compatibility
+        except Exception as e:
+            logger.error(f"Error loading dictionary from SQLite: {e}")
+        finally:
+            db.close()
 
     def _normalize_term(self, text: str) -> str:
         return re.sub(r"\s+", " ", (text or "").strip().lower())
@@ -94,70 +90,19 @@ class TextToSignService:
         return self._approved_term_to_mapping.get(self._normalize_term(term))
 
     def _preload_model(self):
-        """No-op: local model disabled for free tier. Using Gemini API instead."""
+        """No-op: local model disabled."""
         pass
 
-    def _get_embedding(self, text: str) -> np.ndarray:
-        """Get embedding for search query via Gemini API."""
-        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
-        if not api_key:
-            return self._fallback_embedding(text)
-            
-        try:
-            payload = {
-                "model": EMBEDDING_MODEL,
-                "content": {"parts": [{"text": text}]}
-            }
-            with httpx.Client(timeout=10.0) as client:
-                resp = client.post(EMBEDDING_URL, headers={"x-goog-api-key": api_key}, json=payload)
-                if resp.status_code == 200:
-                    return np.array(resp.json()["embedding"]["values"])
-        except Exception as e:
-            logger.warning(f"Embedding API failed: {e}")
-            
-        return self._fallback_embedding(text)
-
-    def _fallback_embedding(self, text: str) -> np.ndarray:
-        h = abs(hash(text)) % (10**8)
-        rng = np.random.default_rng(h)
-        # Gemini embeddings are 768d, match that
-        return rng.normal(0, 1, 768)
-
     def _ensure_index_loaded(self):
-        if self._index_loaded:
-            return
-        if INDEX_PATH.exists():
-            try:
-                with open(INDEX_PATH, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    self.index = data.get("index", {})
-                
-                # Build a NumPy matrix for vectorized similarity search
-                keys = []
-                vectors = []
-                for gloss, rec in self.index.items():
-                    tv = rec.get("text_vec", [])
-                    # Support both 384d (legacy) and 768d (Gemini)
-                    if len(tv) in [384, 768]:
-                        keys.append(gloss)
-                        vectors.append(tv)
-                
-                if vectors:
-                    self._index_matrix = np.array(vectors, dtype=float)
-                    # Pre-normalize for fast cosine similarity via dot product
-                    norms = np.linalg.norm(self._index_matrix, axis=1, keepdims=True)
-                    norms[norms == 0] = 1.0
-                    self._index_matrix = self._index_matrix / norms
-                    self._index_keys = keys
-                
-                self._index_loaded = True
-            except Exception as e:
-                logger.warning(f"Failed to load index: {e}")
+        """No-op: semantic index disabled in dictionary-only mode."""
+        self._index_loaded = True
 
     def _normalize_translation_tokens(self, text: str) -> List[str]:
+        filler_words = {"uh", "um", "erm", "mm", "mmm", "ah", "eh", "like"}
+        aux_words = {"can", "could", "would", "should", "shall", "do", "does", "did", "is", "are", "am", "was", "were"}
         cleaned = re.sub(r"[^a-z0-9\s']", " ", (text or "").lower())
         raw_tokens = cleaned.split()
-        return [token for token in raw_tokens if token not in FILLER_WORDS and token not in AUXILIARY_WORDS]
+        return [token for token in raw_tokens if token not in filler_words and token not in aux_words]
 
     def _is_usable_translation_match(self, phrase: str, result: Dict[str, Any]) -> bool:
         if not result or not result.get("gloss"):
@@ -165,14 +110,11 @@ class TextToSignService:
 
         match_type = str(result.get("match_type") or "None")
         confidence = float(result.get("confidence") or 0.0)
-        token_count = len(phrase.split())
 
         if match_type.startswith("Exact"):
             return True
         if match_type == "Prefix/Contains":
             return confidence >= 0.84
-        if match_type.startswith("Semantic"):
-            return token_count == 1 and confidence >= 0.62
         return False
 
     def _build_translation_entry(self, source_text: str, result: Dict[str, Any], match_type_override: Optional[str] = None) -> Dict[str, Any]:
@@ -316,110 +258,100 @@ class TextToSignService:
             return self._search_cache[qn.lower()]
 
         qlow = qn.lower()
-        
-        # 1. Exact Match (Gloss or English)
-        for gloss, entry in self.dictionary.items():
-            if gloss.lower() == qlow or entry.get("english", "").lower() == qlow:
-                res = self._build_match_response(gloss, entry, 1.0, "Exact")
+        db = SessionLocal()
+        try:
+            # 1. Exact Match (Gloss or English) from SQLite
+            sign = db.query(GSLSign).filter(
+                or_(GSLSign.gloss.ilike(qlow), GSLSign.english_meaning.ilike(qlow))
+            ).first()
+            
+            if sign:
+                entry = sign.to_dict()
+                res = self._build_match_response(sign.gloss, entry, 1.0, "Exact (SQLite)")
                 self._search_cache[qlow] = res
                 return res
 
-        # 2. Heuristic Forms (Plurals etc)
-        forms = {qlow}
-        if qlow.endswith("es"): forms.add(qlow[:-2])
-        elif qlow.endswith("s"): forms.add(qlow[:-1])
-        
-        for gloss, entry in self.dictionary.items():
-            if gloss.lower() in forms or entry.get("english", "").lower() in forms:
-                res = self._build_match_response(gloss, entry, 1.0, "Exact (Heuristic)")
-                self._search_cache[qlow] = res
-                return res
-
-        # 3. Partial / Prefix Match
-        cand: List[str] = []
-        for gloss, entry in self.dictionary.items():
-            if gloss.lower().startswith(qlow) or entry.get("english", "").lower().startswith(qlow):
-                cand.append(gloss)
-
-        if not cand:
-            for gloss, entry in self.dictionary.items():
-                if qlow in gloss.lower() or qlow in entry.get("english", "").lower():
-                    cand.append(gloss)
-
-        if cand:
-            cand.sort(key=len)
-            g = cand[0]
-            e = self.dictionary.get(g, {})
-            res = self._build_match_response(g, e, 0.85, "Prefix/Contains", alts=cand[1:4])
-            self._search_cache[qlow] = res
-            return res
-        
-        # Semantic search fallback
-        self._ensure_index_loaded()
-        if self._index_matrix is not None:
-            try:
-                # Vectorized search using API embedding
-                qvec = self._get_embedding(qlow)
-                
-                # Unit normalize query vector
-                qnorm = np.linalg.norm(qvec)
-                if qnorm > 0:
-                    qvec = qvec / qnorm
-                
-                # Cosine similarity is just dot product since both are unit normalized
-                # We need to handle dimension mismatch if index was built with different model
-                if qvec.size == self._index_matrix.shape[1]:
-                    similarities = self._index_matrix @ qvec
-                    
-                    # Get top match
-                    best_idx = np.argmax(similarities)
-                    sc = float(similarities[best_idx])
-                    g = self._index_keys[best_idx]
-                    
-                    # Get alternatives (top 2-4)
-                    top_indices = np.argsort(similarities)[::-1]
-                    alts = [self._index_keys[i] for i in top_indices[1:4]]
-                    
-                    e = self.dictionary.get(g, {})
-                    imgs = self._ensure_images(g, e)
-                    primitives = self._infer_primitives(g, e)
-                    
-                    res = {
-                        "gloss": g,
-                        "images": imgs,
-                        "description": e.get("description", ""),
-                        "page": e.get("page"),
-                        "confidence": float(min(0.69, max(0.0, sc))),
-                        "alternatives": alts,
-                        "match_type": "Semantic (Vectorized)",
-                        "variants": int(e.get("variants") or 0),
-                        "primitives": primitives,
-                    }
+            # 2. Heuristic Forms (Plurals etc)
+            forms = {qlow}
+            if qlow.endswith("es"): forms.add(qlow[:-2])
+            elif qlow.endswith("s"): forms.add(qlow[:-1])
+            
+            for form in forms:
+                sign = db.query(GSLSign).filter(
+                    or_(GSLSign.gloss.ilike(form), GSLSign.english_meaning.ilike(form))
+                ).first()
+                if sign:
+                    entry = sign.to_dict()
+                    res = self._build_match_response(sign.gloss, entry, 1.0, "Exact (Heuristic SQLite)")
                     self._search_cache[qlow] = res
                     return res
-            except Exception as e:
-                import logging
-                logging.getLogger(__name__).error(f"Vectorized search failed: {e}")
 
-        # Fallback to empty
-        return self._empty_response()
+            # 3. Partial / Prefix Match
+            pattern = f"{qlow}%"
+            signs = db.query(GSLSign).filter(
+                or_(GSLSign.gloss.ilike(pattern), GSLSign.english_meaning.ilike(pattern))
+            ).order_by(GSLSign.gloss.asc()).limit(4).all()
+
+            if not signs:
+                pattern = f"%{qlow}%"
+                signs = db.query(GSLSign).filter(
+                    or_(GSLSign.gloss.ilike(pattern), GSLSign.english_meaning.ilike(pattern))
+                ).order_by(GSLSign.gloss.asc()).limit(4).all()
+
+            if signs:
+                primary = signs[0]
+                entry = primary.to_dict()
+                alts = [s.gloss for s in signs[1:]]
+                res = self._build_match_response(primary.gloss, entry, 0.85, "Prefix/Contains (SQLite)", alts=alts)
+                self._search_cache[qlow] = res
+                return res
+            
+            # Fallback to empty (Removed semantic search fallback)
+            return self._empty_response()
+        except Exception as e:
+            logger.error(f"Error searching SQLite dictionary: {e}")
+            return self._empty_response()
+        finally:
+            db.close()
 
     def _empty_response(self) -> Dict[str, Any]:
-        alts: List[str] = list(self.dictionary.keys())[:3]
-        g = alts[0] if alts else None
-        e = self.dictionary.get(g or "", {})
-        primitives = self._infer_primitives(g or "", e)
-        return {
-            "gloss": g if g else None,
-            "images": self._ensure_images(g or "", e) if g else [],
-            "description": e.get("description", "") if g else "",
-            "page": e.get("page") if g else None,
-            "confidence": 0.0,
-            "alternatives": alts[1:] if len(alts) > 1 else [],
-            "match_type": "None",
-            "variants": int(e.get("variants") or 0) if g else 0,
-            "primitives": primitives,
-        }
+        db = SessionLocal()
+        try:
+            # Get some random/first alternatives from SQLite
+            signs = db.query(GSLSign).limit(3).all()
+            alts = [s.gloss for s in signs]
+            
+            g = alts[0] if alts else None
+            sign = signs[0] if signs else None
+            entry = sign.to_dict() if sign else {}
+            primitives = self._infer_primitives(g or "", entry)
+            
+            return {
+                "gloss": g if g else None,
+                "images": self._ensure_images(g or "", entry) if g else [],
+                "description": entry.get("description", "") if g else "",
+                "page": entry.get("page") if g else None,
+                "confidence": 0.0,
+                "alternatives": alts[1:] if len(alts) > 1 else [],
+                "match_type": "None",
+                "variants": int(entry.get("variants") or 0) if g else 0,
+                "primitives": primitives,
+            }
+        except Exception as e:
+            logger.error(f"Error building empty response from SQLite: {e}")
+            return {
+                "gloss": None,
+                "images": [],
+                "description": "",
+                "page": None,
+                "confidence": 0.0,
+                "alternatives": [],
+                "match_type": "None",
+                "variants": 0,
+                "primitives": None,
+            }
+        finally:
+            db.close()
 
     def _build_match_response(self, gloss: str, entry: Dict[str, Any], confidence: float, match_type: str, alts: List[str] = None) -> Dict[str, Any]:
         imgs = self._ensure_images(gloss, entry)

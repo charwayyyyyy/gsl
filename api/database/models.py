@@ -287,3 +287,28 @@ class FeedbackReport(Base):
             "reason": self.reason,
             "timestamp": self.timestamp.isoformat() if self.timestamp else None
         }
+
+class MotionTemplate(Base):
+    __tablename__ = "motion_templates"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    gloss = Column(String(100), nullable=False, unique=True, index=True)
+    sequence = Column(JSON, nullable=False)  # List[List[float]] or flat list
+    source = Column(String(50), default="synthetic")  # synthetic, recorded
+    length = Column(Integer)
+    dimensions = Column(Integer, default=3)
+    meta_data = Column(JSON)  # Any extra info
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "gloss": self.gloss,
+            "sequence": self.sequence,
+            "source": self.source,
+            "length": self.length,
+            "dimensions": self.dimensions,
+            "meta_data": self.meta_data,
+            "created_at": self.created_at.isoformat() if self.created_at else None
+        }

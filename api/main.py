@@ -14,8 +14,6 @@ import os
 import re
 from dotenv import load_dotenv
 load_dotenv()
-from google import genai
-from google.genai import types
 import uuid
 
 from .services.gsl_dictionary_service import GSLDictionaryService
@@ -169,26 +167,31 @@ def _map_predicted_gloss_if_enabled(gloss: Optional[str]) -> Optional[str]:
 
 def _build_handshape_inventory() -> Dict[str, Any]:
     service = get_text_to_sign_service()
-    dictionary = service.dictionary or {}
-
+    
     counts: Dict[str, int] = {}
     examples: Dict[str, List[Dict[str, Any]]] = {}
     total = 0
 
-    for gloss, entry in dictionary.items():
-        total += 1
-        primitives = service._infer_primitives(gloss, entry)
-        handshape = str(primitives.get("handshape") or "UNKNOWN").upper()
-        counts[handshape] = counts.get(handshape, 0) + 1
-        examples.setdefault(handshape, [])
-        if len(examples[handshape]) < 10:
-            examples[handshape].append(
-                {
-                    "gloss": gloss,
-                    "english": entry.get("english"),
-                    "page": entry.get("page"),
-                }
-            )
+    db = SessionLocal()
+    try:
+        signs = db.query(GSLSign).all()
+        for sign in signs:
+            total += 1
+            entry = sign.to_dict()
+            primitives = service._infer_primitives(sign.gloss, entry)
+            handshape = str(primitives.get("handshape") or "UNKNOWN").upper()
+            counts[handshape] = counts.get(handshape, 0) + 1
+            examples.setdefault(handshape, [])
+            if len(examples[handshape]) < 10:
+                examples[handshape].append(
+                    {
+                        "gloss": sign.gloss,
+                        "english": entry.get("english"),
+                        "page": entry.get("page"),
+                    }
+                )
+    finally:
+        db.close()
 
     return {
         "total_entries": total,
@@ -274,38 +277,45 @@ def _build_recognition_profiles(force_refresh: bool = False) -> Dict[str, Any]:
     service = get_text_to_sign_service()
     profiles: List[Dict[str, Any]] = []
 
-    for gloss, entry in service.dictionary.items():
-        if not _is_recognition_candidate(gloss, entry):
-            continue
+    db = SessionLocal()
+    try:
+        signs = db.query(GSLSign).all()
+        for sign in signs:
+            entry = sign.to_dict()
+            gloss = sign.gloss
+            if not _is_recognition_candidate(gloss, entry):
+                continue
 
-        primitives = service._infer_primitives(gloss, entry)
-        if not primitives or not primitives.get("can_animate"):
-            continue
+            primitives = service._infer_primitives(gloss, entry)
+            if not primitives or not primitives.get("can_animate"):
+                continue
 
-        mapped_handshape = _map_primitive_handshape(str(primitives.get("handshape") or "UNKNOWN"))
-        mapped_location = _map_primitive_location(str(primitives.get("location") or "UNKNOWN"))
-        mapped_direction = _map_primitive_direction(str(primitives.get("direction") or "NONE"))
-        repetition = 1 if str(primitives.get("repetition") or "SINGLE").upper() == "REPEAT" else 0
+            mapped_handshape = _map_primitive_handshape(str(primitives.get("handshape") or "UNKNOWN"))
+            mapped_location = _map_primitive_location(str(primitives.get("location") or "UNKNOWN"))
+            mapped_direction = _map_primitive_direction(str(primitives.get("direction") or "NONE"))
+            repetition = 1 if str(primitives.get("repetition") or "SINGLE").upper() == "REPEAT" else 0
 
-        # Skip profiles with no discriminative primitive signal.
-        if mapped_handshape == "UNKNOWN" and mapped_direction == "STATIC" and mapped_location == "MID":
-            continue
+            # Skip profiles with no discriminative primitive signal.
+            if mapped_handshape == "UNKNOWN" and mapped_direction == "STATIC" and mapped_location == "MID":
+                continue
 
-        profiles.append({
-            "id": str(gloss).lower().replace(" ", "_"),
-            "gloss": gloss,
-            "handshape": [mapped_handshape] if mapped_handshape != "UNKNOWN" else ["OPEN", "FLAT", "POINT", "PINCH", "FIST", "CURVED"],
-            "handedness": "RIGHT_OR_LEFT",
-            "location": [mapped_location],
-            "motion": {
-                "primaryDirection": [mapped_direction],
-                "repetition": repetition,
-            },
-            "requiresTwoHands": bool(primitives.get("two_hands")),
-            "stabilityFrames": 4,
-            "source": "dictionary_primitives",
-            "page": entry.get("page"),
-        })
+            profiles.append({
+                "id": str(gloss).lower().replace(" ", "_"),
+                "gloss": gloss,
+                "handshape": [mapped_handshape] if mapped_handshape != "UNKNOWN" else ["OPEN", "FLAT", "POINT", "PINCH", "FIST", "CURVED"],
+                "handedness": "RIGHT_OR_LEFT",
+                "location": [mapped_location],
+                "motion": {
+                    "primaryDirection": [mapped_direction],
+                    "repetition": repetition,
+                },
+                "requiresTwoHands": bool(primitives.get("two_hands")),
+                "stabilityFrames": 4,
+                "source": "dictionary_primitives",
+                "page": entry.get("page"),
+            })
+    finally:
+        db.close()
 
     profiles.sort(key=lambda p: p.get("gloss", ""))
     _recognition_profiles_cache = {
@@ -492,22 +502,6 @@ class FeedbackRequest(BaseModel):
     gloss: str
     reason: Optional[str] = None
 
-class ChatMessage(BaseModel):
-    role: str
-    content: str
-
-class ChatRequest(BaseModel):
-    messages: List[ChatMessage]
-
-# Configure Gemini AI
-api_key = os.getenv("GEMINI_API_KEY")
-gemini_client = None
-if api_key:
-    gemini_client = genai.Client(api_key=api_key)
-    logger.info("Gemini AI (google-genai) configured successfully")
-else:
-    logger.warning("GEMINI_API_KEY environment variable not set. Chatbot will not work.")
-
 # Initialize database on startup
 @app.on_event("startup")
 async def startup_event():
@@ -575,31 +569,32 @@ async def startup_event():
       except Exception as e:
         logger.warning(f"Reload text_to_sign_service failed: {e}")
       try:
-        dict_path = Path("data")/"processed"/"gsl_dictionary.json"
         report_path = Path("data")/"processed"/"gsl_dictionary_report.json"
         total = 0; usable = 0; incomplete = 0; with_images = 0; with_variants = 0
-        data = {}
-        if dict_path.exists():
-          with open(dict_path,"r",encoding="utf-8") as f: data = json.load(f)
-        for gloss, entry in data.items():
-          total += 1
-          desc_ok = bool(entry.get("description"))
-          imgs = entry.get("images") or []
-          base = Path("data")/"processed"/"images"/gloss
-          imgs_ok = False
-          valid_imgs = []
-          for im in imgs:
-            if (base/im).exists():
-              imgs_ok = True
-              valid_imgs.append(im)
-          status = "complete" if (desc_ok or imgs_ok) else "incomplete"
-          if status == "complete": usable += 1
-          else: incomplete += 1
-          if imgs_ok: with_images += 1
-          if int(entry.get("variants") or 0) > 0: with_variants += 1
-          entry["status"] = status
-          entry["images"] = valid_imgs if valid_imgs else imgs
-          data[gloss] = entry
+        
+        db = SessionLocal()
+        try:
+            signs = db.query(GSLSign).all()
+            for sign in signs:
+                total += 1
+                entry = sign.to_dict()
+                gloss = sign.gloss
+                desc_ok = bool(entry.get("description"))
+                imgs = entry.get("images") or []
+                base = Path("data")/"processed"/"images"/gloss
+                imgs_ok = False
+                for im in imgs:
+                    if (base/im).exists():
+                        imgs_ok = True
+                        break
+                status = "complete" if (desc_ok or imgs_ok) else "incomplete"
+                if status == "complete": usable += 1
+                else: incomplete += 1
+                if imgs_ok: with_images += 1
+                if int(entry.get("variants") or 0) > 0: with_variants += 1
+        finally:
+            db.close()
+            
         with open(report_path,"w",encoding="utf-8") as f:
           json.dump({
             "counts": {
@@ -615,9 +610,16 @@ async def startup_event():
       except Exception as e:
         logger.warning(f"Validation failed: {e}")
       try:
-        first_gloss = next(iter(get_text_to_sign_service().dictionary.keys()), None)
-        ok1 = first_gloss is not None
-        ok2 = bool(get_text_to_sign_service().search(first_gloss or "").get("gloss"))
+        # Simple self-test
+        db = SessionLocal()
+        try:
+            first_sign = db.query(GSLSign).first()
+            ok1 = first_sign is not None
+            ok2 = False
+            if ok1:
+                ok2 = bool(get_text_to_sign_service().search(first_sign.gloss).get("gloss"))
+        finally:
+            db.close()
         static_ok = (Path("data")/"processed"/"images").exists()
         logger.info(f"Self-test: dict_loaded={ok1} search_ok={ok2} static_ok={static_ok}")
       except Exception as e:
@@ -832,52 +834,39 @@ async def audio_stream(websocket: WebSocket):
         logger.error(f"Error in audio stream: {str(e)}")
         await manager.send_personal_message(json.dumps({"error": str(e)}), session_id)
 
-# Sign to speech translation endpoint
-@app.post("/api/translate/sign-to-speech")
-async def translate_sign_to_speech(request: SignToSpeechRequest):
+# Unified translation endpoint
+@app.post("/api/translate")
+async def translate_unified(data: dict):
     try:
-        # Process pose sequence with sign recognition
-        translation = await get_translation_service().translate_sign_to_speech(
-            request.pose_sequence, 
-            request.context
-        )
+        text = data.get("text")
+        pose_sequence = data.get("pose_sequence")
+        session_id = data.get("session_id", "anonymous")
         
-        # Log translation event
-        db = SessionLocal()
-        event = TranslationEvent(
-            session_id=request.session_id,
-            input_type="sign_sequence",
-            input_data={"pose_count": len(request.pose_sequence)},
-            output_data=translation,
-            confidence=translation["confidence"],
-            processing_time_ms=translation.get("processing_time_ms", 0)
-        )
-        db.add(event)
-        db.commit()
-        db.close()
-        
-        return translation
-        
-    except Exception as e:
-        logger.error(f"Error in sign-to-speech translation: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        if pose_sequence:
+            # Sign to speech
+            translation = await get_translation_service().translate_sign_to_speech(
+                pose_sequence, 
+                data.get("context")
+            )
+            input_type = "sign_sequence"
+            input_data = {"pose_count": len(pose_sequence)}
+        elif text:
+            # Speech to sign
+            translation = await get_translation_service().translate_speech_to_sign(
+                text,
+                data.get("speed", 1.0)
+            )
+            input_type = "speech_text"
+            input_data = {"text": text}
+        else:
+            raise HTTPException(status_code=400, detail="Either 'text' or 'pose_sequence' must be provided")
 
-# Speech to sign translation endpoint
-@app.post("/api/translate/speech-to-sign")
-async def translate_speech_to_sign(request: SpeechToSignRequest):
-    try:
-        # Process text with speech-to-sign translation
-        translation = await get_translation_service().translate_speech_to_sign(
-            request.text,
-            request.speed
-        )
-        
         # Log translation event
         db = SessionLocal()
         event = TranslationEvent(
-            session_id=request.session_id,
-            input_type="speech_text",
-            input_data={"text": request.text},
+            session_id=session_id,
+            input_type=input_type,
+            input_data=input_data,
             output_data=translation,
             confidence=translation["confidence"],
             processing_time_ms=translation.get("processing_time_ms", 0)
@@ -889,7 +878,7 @@ async def translate_speech_to_sign(request: SpeechToSignRequest):
         return translation
         
     except Exception as e:
-        logger.error(f"Error in speech-to-sign translation: {str(e)}")
+        logger.error(f"Error in unified translation: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Avatar rendering endpoint
@@ -1028,14 +1017,19 @@ async def list_dictionary(letter: str = "A"):
     try:
         items = []
         l = (letter or "A").upper()
-        for gloss, e in get_text_to_sign_service().dictionary.items():
-            if gloss.upper().startswith(l):
+        
+        db = SessionLocal()
+        try:
+            signs = db.query(GSLSign).filter(GSLSign.gloss.ilike(f"{l}%")).order_by(GSLSign.gloss.asc()).all()
+            for sign in signs:
                 items.append({
-                    "gloss": gloss,
-                    "variants": int(e.get("variants") or len(e.get("images") or [])),
-                    "page": e.get("page")
+                    "gloss": sign.gloss,
+                    "variants": 0, # Variants not explicitly tracked in basic model yet
+                    "page": sign.to_dict().get("page")
                 })
-        items.sort(key=lambda x: x["gloss"])
+        finally:
+            db.close()
+            
         return {"items": items}
     except Exception as e:
         logger.error(f"Error listing dictionary: {str(e)}")
@@ -1144,9 +1138,6 @@ async def end_translation_session(session_id: str):
     except Exception as e:
         logger.error(f"Error ending translation session: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
-
-from .routes.ai import router as ai_router
-app.include_router(ai_router, prefix="/api/ai")
 
 # Serve compiled React frontend from 'dist' folder
 # Handle SPA routing: redirect unknown paths to index.html

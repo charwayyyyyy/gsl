@@ -12,6 +12,8 @@ except Exception:
 TEMPLATES_PATH = Path("data") / "processed" / "dictionary_motion_templates.json"
 
 from scipy.spatial.distance import cdist, euclidean
+from api.database.database import SessionLocal
+from api.database.models import MotionTemplate
 
 
 @dataclass(frozen=True)

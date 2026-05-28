@@ -31,7 +31,6 @@ const Dictionary: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const { accessibility } = useAppStore(state => state.settings)
-  const [highlightedFromAssistant, setHighlightedFromAssistant] = useState(false)
   const [q, setQ] = useState('')
   const [result, setResult] = useState<SignResult | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -45,20 +44,13 @@ const Dictionary: React.FC = () => {
 
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Handle deep-linking from Assistant
+  // Handle deep-linking
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     const searchParam = params.get('search') || params.get('gloss') || params.get('id')
-    const fromAssistant = params.get('source') === 'assistant' || location.state?.fromAssistant
 
     if (searchParam && searchParam !== q) {
       setQ(searchParam)
-    }
-    
-    if (fromAssistant) {
-      setHighlightedFromAssistant(true)
-      // Automatically fade out the highlight glow after some time to keep the UI clean
-      setTimeout(() => setHighlightedFromAssistant(false), 6000)
     }
   }, [location.search])
 
@@ -561,12 +553,7 @@ const Dictionary: React.FC = () => {
           {result && !loading && (
             <div className="animate-slide-up">
               {result.gloss ? (
-                <div className={`glass-card relative overflow-hidden transition-all duration-700 shadow-2xl ${highlightedFromAssistant ? 'ring-4 ring-blue-500 border-transparent shadow-blue-500/40 transform scale-[1.01]' : 'border-amber-500/30'}`}>
-                  {highlightedFromAssistant && (
-                    <div className="absolute top-0 right-0 m-4 sm:m-6 bg-blue-100/95 text-blue-700 dark:bg-blue-900/90 dark:text-blue-300 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center gap-1.5 animate-pulse shadow-md z-20">
-                      <CheckCircle size={14} className="text-blue-500" /> Opened from Assistant
-                    </div>
-                  )}
+                <div className="glass-card relative overflow-hidden transition-all duration-700 shadow-2xl border-amber-500/30">
                   {/* Result Header */}
                   <div className="p-6 sm:p-10 border-b border-slate-100 dark:border-slate-800">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
